@@ -49,6 +49,11 @@ def test_archive_is_loaded_recursively_and_project_ids_are_created(tmp_path: Pat
     assert {item.group for item in substances} == {"DNS", "NPZ"}
     assert [item["id"] for item in result] == [1, 2]
     assert [item["name"] for item in result] == ["Аммиак", "Нефть"]
+    assert (tmp_path / "info.txt").read_text(encoding="utf-8") == (
+        "id\tname\tkind\n"
+        "1\tАммиак\t5\n"
+        "2\tНефть\t0\n"
+    )
 
 
 def test_empty_selection_is_rejected(tmp_path: Path) -> None:
