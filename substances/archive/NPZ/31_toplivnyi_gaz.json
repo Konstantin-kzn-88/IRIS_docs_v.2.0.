@@ -1,0 +1,54 @@
+{
+  "id": 31,
+  "name": "Топливный газ",
+  "kind": 2,
+  "formula": "Смесь CH4, C2H6, C3H8, C4H10, H2",
+  "composition": {
+    "components": [
+      {
+        "name": "Метан",
+        "mass_fraction": 0.7
+      },
+      {
+        "name": "Этан, пропан, бутан",
+        "mass_fraction": 0.2
+      },
+      {
+        "name": "Водород",
+        "mass_fraction": 0.1
+      }
+    ]
+  },
+  "notes": "Смесь горючих газов, используемая в качестве технологического топлива. Взрывоопасен.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.022,
+    "density_liquid_kg_per_m3": 400,
+    "density_gas_kg_per_m3": 0.9,
+    "evaporation_heat_J_per_kg": 500000,
+    "boiling_point_C": -140
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": null,
+    "lel_percent": 3.0,
+    "autoignition_temp_C": 450,
+    "energy_reserve_factor": 3,
+    "expansion_degree": 500,
+    "heat_of_combustion_kJ_per_kg": 48000,
+    "burning_rate_kg_per_s_m2": 0.05
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Легко воспламеняется, с воздухом образует взрывоопасные смеси.",
+  "odor": "Слабый или одорированный запах.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Взрывозащищенное исполнение электрических сетей, автоматический контроль НКПР.",
+  "impact": "Удушье, легкое наркотическое действие.",
+  "protection": "Изолирующий противогаз, спецодежда антистатическая.",
+  "neutralization_methods": "Отключение источников подачи, продувка системы инертным газом.",
+  "first_aid": "Вывести на свежий воздух. При термических ожогах — охлаждение водой, наложение асептической повязки. При взрыве — оказать первую помощь при механических и баротравмах (остановить кровотечение, зафиксировать переломы, противошоковая терапия) и срочно вызвать скорую помощь."
+}

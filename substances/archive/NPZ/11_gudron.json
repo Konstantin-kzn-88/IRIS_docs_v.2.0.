@@ -1,0 +1,46 @@
+{
+  "id": 11,
+  "name": "Гудрон",
+  "kind": 9,
+  "formula": "Смесь высокомолекулярных смолисто-асфальтеновых веществ",
+  "composition": {
+    "components": [
+      {
+        "name": "Остаток перегонки нефти",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Черная вязкая масса или твердый остаток перегонки нефти. Горяч и пожароопасен при нагреве.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.5,
+    "density_liquid_kg_per_m3": 1000,
+    "density_gas_kg_per_m3": 22.3,
+    "evaporation_heat_J_per_kg": 190000,
+    "boiling_point_C": 500
+  },
+  "explosion": {
+    "explosion_hazard_class": 4,
+    "flash_point_C": 290,
+    "lel_percent": null,
+    "autoignition_temp_C": 380,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 1,
+    "heat_of_combustion_kJ_per_kg": 40000,
+    "burning_rate_kg_per_s_m2": 0.02
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": null,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Малоактивен, горит при высоких температурах.",
+  "odor": "Характерный битумный запах.",
+  "corrosiveness": "Не корродирует металлы.",
+  "precautions": "Предотвращать перегрев и контакт с открытым пламенем.",
+  "impact": "При нагреве выделяет вредные пары; горячий гудрон вызывает тяжелейшие термические ожоги.",
+  "protection": "Термостойкая спецодежда, защитные щитки, рукавицы.",
+  "neutralization_methods": "Охлаждение водой до затвердевания, механический сбор.",
+  "first_aid": "При термических ожогах горячим гудроном — немедленно охлаждать проточной холодной водой не менее 20 минут (не пытаться застывший гудрон сдирать с кожи!), наложить стерильную салфетку и срочно доставить пострадавшего в ожоговый центр."
+}

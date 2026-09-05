@@ -1,0 +1,50 @@
+{
+  "id": 7,
+  "name": "Водородсодержащий газ",
+  "kind": 2,
+  "formula": "Смесь H2 и углеводородов (C1–C4)",
+  "composition": {
+    "components": [
+      {
+        "name": "Водород",
+        "mass_fraction": 0.8
+      },
+      {
+        "name": "Легкие углеводороды (метан, этан)",
+        "mass_fraction": 0.2
+      }
+    ]
+  },
+  "notes": "Технологический газ нефтепереработки. Чрезвычайно взрывоопасен.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.006,
+    "density_liquid_kg_per_m3": 120,
+    "density_gas_kg_per_m3": 0.25,
+    "evaporation_heat_J_per_kg": 450000,
+    "boiling_point_C": -190
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": null,
+    "lel_percent": 4.0,
+    "autoignition_temp_C": 480,
+    "energy_reserve_factor": 3,
+    "expansion_degree": 700,
+    "heat_of_combustion_kJ_per_kg": 90000,
+    "burning_rate_kg_per_s_m2": 0.07
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Огне- и взрывоопасен, вступает в реакции восстановительного характера.",
+  "odor": "Слабый углеводородный запах.",
+  "corrosiveness": "Может вызывать водородную хрупкость металла.",
+  "precautions": "Взрывозащита, контроль концентрации, искробезопасные системы.",
+  "impact": "Задушающее действие, наркотический эффект в высоких концентрациях.",
+  "protection": "Изолирующий противогаз, защитная антистатическая спецодежда.",
+  "neutralization_methods": "Перекрытие задвижек, продувка инертным газом (азотом).",
+  "first_aid": "Вынести пострадавшего из загазованной зоны. При ожогах от вспышки/пожара — обработать повязочным материалом, охлаждая поражения. При взрыве и поражении ударной волной — остановка кровотечения, противошоковые меры, иммобилизация при переломах, срочная транспортировка в больницу."
+}

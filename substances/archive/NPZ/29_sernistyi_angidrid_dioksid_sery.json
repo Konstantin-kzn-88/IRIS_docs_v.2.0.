@@ -1,0 +1,46 @@
+{
+  "id": 29,
+  "name": "Сернистый ангидрид (Диоксид серы)",
+  "kind": 8,
+  "formula": "SO2",
+  "composition": {
+    "components": [
+      {
+        "name": "Диоксид серы",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Бесцветный токсичный газ с резким запахом. Негорюч, но опасен для жизни.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.06406,
+    "density_liquid_kg_per_m3": 1460,
+    "density_gas_kg_per_m3": 2.92,
+    "evaporation_heat_J_per_kg": 390000,
+    "boiling_point_C": -10.0
+  },
+  "explosion": {
+    "explosion_hazard_class": null,
+    "flash_point_C": null,
+    "lel_percent": null,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": null,
+    "expansion_degree": null,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 10,
+    "lethal_tox_dose_mg_min_per_L": 240,
+    "threshold_tox_dose_mg_min_per_L": 20
+  },
+  "reactivity": "Взаимодействует с водой с образованием сернистой кислоты, реагирует со щелочами.",
+  "odor": "Резкий удушливый запах зажигаемой спички.",
+  "corrosiveness": "В присутствии влаги сильно корродирует большинство металлов.",
+  "precautions": "Герметизация систем, контроль газовой среды, СИЗ органов дыхания.",
+  "impact": "Кашель, охриплость, отек легких, химические ожоги слизистых.",
+  "protection": "Фильтрующий противогаз В или ВЗ, изолирующий костюм.",
+  "neutralization_methods": "Осаждение водяными завесами с добавлением соды или аммиака.",
+  "first_aid": "Вынести на свежий воздух, полоскать рот и нос 2% раствором соды, дать теплое молоко с содой или минеральную воду. Срочная медицинская помощь."
+}

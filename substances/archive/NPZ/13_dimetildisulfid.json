@@ -1,0 +1,46 @@
+{
+  "id": 13,
+  "name": "Диметилдисульфид",
+  "kind": 1,
+  "formula": "C2H6S2",
+  "composition": {
+    "components": [
+      {
+        "name": "Диметилдисульфид",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Легковоспламеняющаяся токсичная жидкость с резким неприятным запахом.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.0942,
+    "density_liquid_kg_per_m3": 1060,
+    "density_gas_kg_per_m3": 3.24,
+    "evaporation_heat_J_per_kg": 380000,
+    "boiling_point_C": 109.7
+  },
+  "explosion": {
+    "explosion_hazard_class": 2,
+    "flash_point_C": 16,
+    "lel_percent": 1.1,
+    "autoignition_temp_C": 300,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 7,
+    "heat_of_combustion_kJ_per_kg": 28000,
+    "burning_rate_kg_per_s_m2": 0.04
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Реагирует с сильными окислителями, при горении выделяет диоксид серы.",
+  "odor": "Тошнотворный сероорганический запах.",
+  "corrosiveness": "Умеренно корродирует металлы.",
+  "precautions": "Взрывозащита, полная герметичность, исключение искрообразования.",
+  "impact": "Токсичен, вызывает головную боль, тошноту, раздражение глаз и легких.",
+  "protection": "Противогаз марка А или БКФ, перчатки, химически стойкий костюм.",
+  "neutralization_methods": "Обработка щелочным раствором пероксида водорода, сбор сорбентом.",
+  "first_aid": "Вывести на свежий воздух. При ожогах во время пожара — прекратить воздействие огня, наложить стерильную повязку. При взрыве — оказать помощь при баротравмах и переломах, остановить кровотечение, обеспечивая покой, и срочно госпитализировать."
+}

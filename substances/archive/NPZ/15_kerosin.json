@@ -1,0 +1,46 @@
+{
+  "id": 15,
+  "name": "Керосин",
+  "kind": 0,
+  "formula": "Смесь углеводородов (C8–C16)",
+  "composition": {
+    "components": [
+      {
+        "name": "Керосиновая фракция",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Легковоспламеняющаяся / горючая жидкость. Пары образуют взрывоопасные смеси.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.14,
+    "density_liquid_kg_per_m3": 800,
+    "density_gas_kg_per_m3": 3.0,
+    "evaporation_heat_J_per_kg": 280000,
+    "boiling_point_C": 150
+  },
+  "explosion": {
+    "explosion_hazard_class": 3,
+    "flash_point_C": 38,
+    "lel_percent": 1.2,
+    "autoignition_temp_C": 220,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 7,
+    "heat_of_combustion_kJ_per_kg": 43000,
+    "burning_rate_kg_per_s_m2": 0.04
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горит, реагирует с сильными окислителями.",
+  "odor": "Характерный запах керосина.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Искробезопасное оборудование, заземление, запрет открытого огня.",
+  "impact": "Раздражение дыхательных путей, обезжиривание кожи.",
+  "protection": "Перчатки МБС, спецодежда, респиратор или противогаз А.",
+  "neutralization_methods": "Локализация сорбентами, пеной, утилизация.",
+  "first_aid": "Вынести на свежий воздух. При термических ожогах от пожара — погасить пламя, охлаждать кожу проточной водой, наложить асептическую повязку. При взрыве паров — остановить кровотечение, оказать противошоковую помощь, вызвать скорую помощь."
+}

@@ -1,0 +1,50 @@
+{
+  "id": 17,
+  "name": "Кислая вода (р-р сероводорода)",
+  "kind": 1,
+  "formula": "H2S в H2O",
+  "composition": {
+    "components": [
+      {
+        "name": "Вода",
+        "mass_fraction": 0.98
+      },
+      {
+        "name": "Сероводород",
+        "mass_fraction": 0.02
+      }
+    ]
+  },
+  "notes": "Сточная или технологическая вода, насыщенная сероводородом. Токсична и коррозионно активна.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.018,
+    "density_liquid_kg_per_m3": 1005,
+    "density_gas_kg_per_m3": 1.19,
+    "evaporation_heat_J_per_kg": 2260000,
+    "boiling_point_C": 100
+  },
+  "explosion": {
+    "explosion_hazard_class": 2,
+    "flash_point_C": null,
+    "lel_percent": 4.3,
+    "autoignition_temp_C": 260,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 1,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 2,
+    "pdk_mg_per_m3": 10,
+    "lethal_tox_dose_mg_min_per_L": 500,
+    "threshold_tox_dose_mg_min_per_L": 50
+  },
+  "reactivity": "Выделяет токсичный и взрывоопасный газ H2S при дегазации.",
+  "odor": "Запах тухлых яиц.",
+  "corrosiveness": "Высокая (сероводородное растрескивание сталей).",
+  "precautions": "Герметизация оборудования, контроль H2S в воздухе рабочей зоны.",
+  "impact": "Опасность отравления выделяющимся сероводородом, химические ожоги.",
+  "protection": "Противогаз БКФ или изолирующий, защитная спецодежда.",
+  "neutralization_methods": "Обработка нейтрализаторами H2S, связывание щелочью или окислителями.",
+  "first_aid": "Вывести из опасной зоны, дать кислород. Промыть глаза и кожу водой. При ожогах и травмах во время возможного взрыва дегазированного H2S — остановить кровотечение, оказать противошоковую помощь и госпитализировать."
+}

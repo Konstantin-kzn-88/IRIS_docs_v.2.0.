@@ -1,0 +1,46 @@
+{
+  "id": 24,
+  "name": "Нафта (Прямогонный бензин)",
+  "kind": 0,
+  "formula": "Смесь углеводородов (C5–C9)",
+  "composition": {
+    "components": [
+      {
+        "name": "Легкие бензиновые фракции",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Легковоспламеняющаяся жидкость, прямогонная бензиновая фракция. Взрывоопасна.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.09,
+    "density_liquid_kg_per_m3": 720,
+    "density_gas_kg_per_m3": 3.1,
+    "evaporation_heat_J_per_kg": 320000,
+    "boiling_point_C": 40
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": -20,
+    "lel_percent": 1.1,
+    "autoignition_temp_C": 260,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 9,
+    "heat_of_combustion_kJ_per_kg": 44500,
+    "burning_rate_kg_per_s_m2": 0.055
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 100,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Легко воспламеняется, реагирует с сильными окислителями.",
+  "odor": "Бензиновый запах.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Заземление, взрывозащита, запрет искрообразования.",
+  "impact": "Наркотическое действие паров, сухость кожи.",
+  "protection": "Противогаз марка А, перчатки МБС, очки.",
+  "neutralization_methods": "Засыпка сорбентами, песком, тушение воздушно-механической пеной.",
+  "first_aid": "Вынести на свежий воздух. При ожогах от огня — охлаждать водой, наложить стерильную повязку. При взрыве — оказать помощь при баротравме и переломах, остановить кровотечение и срочно вызвать врачей."
+}

@@ -1,0 +1,46 @@
+{
+  "id": 21,
+  "name": "Метан",
+  "kind": 2,
+  "formula": "CH4",
+  "composition": {
+    "components": [
+      {
+        "name": "Метан",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Бесцветный горючий газ без запаха. В смеси с воздухом взрывоопасен.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.01604,
+    "density_liquid_kg_per_m3": 422,
+    "density_gas_kg_per_m3": 0.717,
+    "evaporation_heat_J_per_kg": 510000,
+    "boiling_point_C": -161.6
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": null,
+    "lel_percent": 5.0,
+    "autoignition_temp_C": 537,
+    "energy_reserve_factor": 3,
+    "expansion_degree": 600,
+    "heat_of_combustion_kJ_per_kg": 50000,
+    "burning_rate_kg_per_s_m2": 0.05
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Реагирует с галогенами при освещении, горит с образованием CO2 и H2O.",
+  "odor": "Без запаха (в быту одорируется меркаптанами).",
+  "corrosiveness": "Не вызываeт коррозию.",
+  "precautions": "Приборный контроль утечек, искробезопасное оборудование, вентиляция.",
+  "impact": "Удушье при высоком содержании в воздухе (недостаток кислорода).",
+  "protection": "Изолирующий противогаз, спецодежда антистатическая.",
+  "neutralization_methods": "Прекращение подачи газа, проветривание помещения.",
+  "first_aid": "Вывести вынесшим на свежий воздух, дать кислород. При ожогах от вспышки/пожара — обработать раны стерильными салфетками. При взрыве метана — оказать срочную помощь при травмах и баротравмах: фиксация переломов, остановка кровотечения, противошоковая терапия и немедленный вызов скорой помощи."
+}

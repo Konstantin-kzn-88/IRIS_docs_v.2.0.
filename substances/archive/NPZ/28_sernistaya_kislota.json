@@ -1,0 +1,50 @@
+{
+  "id": 28,
+  "name": "Сернистая кислота",
+  "kind": 6,
+  "formula": "H2SO3",
+  "composition": {
+    "components": [
+      {
+        "name": "Раствор SO2 в H2O",
+        "mass_fraction": 0.06
+      },
+      {
+        "name": "Вода",
+        "mass_fraction": 0.94
+      }
+    ]
+  },
+  "notes": "Нестабильная двухосновная кислота среднего качества. Существует только в водном растворе.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.08207,
+    "density_liquid_kg_per_m3": 1030,
+    "density_gas_kg_per_m3": 3.66,
+    "evaporation_heat_J_per_kg": 2000000,
+    "boiling_point_C": 100
+  },
+  "explosion": {
+    "explosion_hazard_class": null,
+    "flash_point_C": null,
+    "lel_percent": null,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": null,
+    "expansion_degree": null,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 10,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Сильный восстановитель, разлагается с выделением токсичного сернистого ангидрида (SO2).",
+  "odor": "Резкий Запах горящей серы (из-за выделения SO2).",
+  "corrosiveness": "Высокая по отношению к металлам.",
+  "precautions": "Герметичное хранение в прохладном месте, работа под вытяжкой.",
+  "impact": "Химические ожоги кожи, раздражение и отек дыхательных путей паром SO2.",
+  "protection": "Противогаз марка В, кислотостойкие перчатки, фартук, очки.",
+  "neutralization_methods": "Нейтрализация щелочами (NaOH, сода, известь).",
+  "first_aid": "Вывести на свежий воздух. Промывать глаза и кожу обильным количеством воды не менее 15 минут, затем 2% раствором питьевой соды. При проглатывании — дать выпить известь или содовый раствор, не вызывать рвоту."
+}

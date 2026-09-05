@@ -1,0 +1,50 @@
+{
+  "id": 32,
+  "name": "Щелочь (Гидроксид натрия, NaOH)",
+  "kind": 6,
+  "formula": "NaOH",
+  "composition": {
+    "components": [
+      {
+        "name": "Гидроксид натрия",
+        "mass_fraction": 0.46
+      },
+      {
+        "name": "Вода",
+        "mass_fraction": 0.54
+      }
+    ]
+  },
+  "notes": "Едкое вещество. Раствор едкого натра. Негорюч, но вызывает тяжелейшие химические ожоги.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.03999,
+    "density_liquid_kg_per_m3": 1490,
+    "density_gas_kg_per_m3": 1.785,
+    "evaporation_heat_J_per_kg": 1800000,
+    "boiling_point_C": 140
+  },
+  "explosion": {
+    "explosion_hazard_class": null,
+    "flash_point_C": null,
+    "lel_percent": null,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": null,
+    "expansion_degree": null,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 2,
+    "pdk_mg_per_m3": 0.5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Энергично реагирует с кислотами с выделением тепла. Разрушает алюминий, цинк.",
+  "odor": "Без запаха.",
+  "corrosiveness": "Высокая по отношению к тканям человека, алюминию, цинку.",
+  "precautions": "Щелочестойкая емкость, перчатки, фартук, очки/щиток, аварийный душ.",
+  "impact": "Глубокие химические ожоги кожи и глаз (риск слепоты), разрушение тканей.",
+  "protection": "Щелочестойкий костюм, резиновые сапоги, перчатки из неопрена/нитрила, щиток.",
+  "neutralization_methods": "Нейтрализация слабым раствором соляной или уксусной кислоты, промывка водой.",
+  "first_aid": "При попадании на кожу немедленно промывать проточной водой 15–20 минут, затем 1–2% раствором борной или уксусной кислоты. При попадании в глаза — промыть водой не менее 20 минут и немедленно к офтальмологу. При попадании внутрь — не вызывать рвоту, пить воду с лимонным соком."
+}

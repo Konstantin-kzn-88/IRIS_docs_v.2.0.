@@ -1,0 +1,50 @@
+{
+  "id": 16,
+  "name": "Кислая вода",
+  "kind": 6,
+  "formula": "Водный раствор солей и кислот",
+  "composition": {
+    "components": [
+      {
+        "name": "Вода",
+        "mass_fraction": 0.95
+      },
+      {
+        "name": "Минеральные/органические кислоты",
+        "mass_fraction": 0.05
+      }
+    ]
+  },
+  "notes": "Технологическая вода с кислым pH, образующаяся на химических предприятиях.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.018,
+    "density_liquid_kg_per_m3": 1020,
+    "density_gas_kg_per_m3": 0.8,
+    "evaporation_heat_J_per_kg": 2260000,
+    "boiling_point_C": 100
+  },
+  "explosion": {
+    "explosion_hazard_class": null,
+    "flash_point_C": null,
+    "lel_percent": null,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": null,
+    "expansion_degree": null,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": null,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Нейтрализуется щелочами с выделением тепла.",
+  "odor": "Кислый или резкий химический запах.",
+  "corrosiveness": "Высокая коррозионная активность к углеродистым сталям.",
+  "precautions": "Применение коррозионностойких материалов (пластик, нерж. сталь), СИЗ.",
+  "impact": "Раздражение и ожоги кожи, слизистых.",
+  "protection": "Резиновые сапоги, перчатки, очки, химический фартук.",
+  "neutralization_methods": "Нейтрализация щелочью (известь, сода) до нейтрального pH.",
+  "first_aid": "Промыть пораженные участки обильным количеством воды, затем 2% раствором соды. Вызвать врача при сильных поражениях."
+}

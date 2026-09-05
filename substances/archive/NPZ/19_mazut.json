@@ -1,0 +1,46 @@
+{
+  "id": 19,
+  "name": "Мазут",
+  "kind": 9,
+  "formula": "Смесь углеводородов и асфальтосмолистых веществ",
+  "composition": {
+    "components": [
+      {
+        "name": "Остатки прямой перегонки нефти",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Тяжелая горючая жидкость, остаток перегонки нефти.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.35,
+    "density_liquid_kg_per_m3": 970,
+    "density_gas_kg_per_m3": 15.6,
+    "evaporation_heat_J_per_kg": 180000,
+    "boiling_point_C": 320
+  },
+  "explosion": {
+    "explosion_hazard_class": 4,
+    "flash_point_C": 115,
+    "lel_percent": 1.4,
+    "autoignition_temp_C": 350,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 2,
+    "heat_of_combustion_kJ_per_kg": 40000,
+    "burning_rate_kg_per_s_m2": 0.02
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Стабилен, горит при наличии устойчивого источника зажигания.",
+  "odor": "Запах мазута и нефтяных смол.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Предотвращать проливы, контролировать системы нагрева.",
+  "impact": "Загрязнение и поражение кожных покровов.",
+  "protection": "Костюм из плотной ткани, рукавицы МБС, очки.",
+  "neutralization_methods": "Сбор механическим путем, использование сорбентов.",
+  "first_aid": "Удалить мазут с кожи специальными очищающими средствами. При ожогах во время пожара — прекратить воздействие огня, охлаждать проточной водой, наложить стерильную салфетку, обратиться за врачебной помощью."
+}

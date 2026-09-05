@@ -1,0 +1,50 @@
+{
+  "id": 27,
+  "name": "СУГ (Сжиженные углеводородные газы)",
+  "kind": 4,
+  "formula": "Смесь C3H8 и C4H10",
+  "composition": {
+    "components": [
+      {
+        "name": "Пропан",
+        "mass_fraction": 0.5
+      },
+      {
+        "name": "Бутан",
+        "mass_fraction": 0.5
+      }
+    ]
+  },
+  "notes": "Сжиженная смесь пропана и бутана. Чрезвычайно пожаро- и взрывоопасна.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.05,
+    "density_liquid_kg_per_m3": 540,
+    "density_gas_kg_per_m3": 2.1,
+    "evaporation_heat_J_per_kg": 380000,
+    "boiling_point_C": -40
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": -60,
+    "lel_percent": 1.8,
+    "autoignition_temp_C": 430,
+    "energy_reserve_factor": 3,
+    "expansion_degree": 250,
+    "heat_of_combustion_kJ_per_kg": 46000,
+    "burning_rate_kg_per_s_m2": 0.06
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Образует взрывные смеси с воздухом, реагирует с галогенами.",
+  "odor": "Специфический (одорирован меркаптанами).",
+  "corrosiveness": "Не корродирует.",
+  "precautions": "Герметизация, отсутствие источников зажигания, приборы контроля газовоздушной среды.",
+  "impact": "Обморожение при контакте с жидкой фазой, удушье, наркотический эффект.",
+  "protection": "Изолирующий противогаз, термозащитные перчатки, антистатическая одежда.",
+  "neutralization_methods": "Прекращение подачи, рассеивание паров водяной завесой.",
+  "first_aid": "При попадании жидкой фазы — отогреть пораженное место водой 37–40°C. При ожогах от огня — наложить стерильную повязку. При взрыве — оказать первую помощь при травмах от ударной волны: остановка кровотечения, фиксация переломов, проведение противошоковых мер и экстренная госпитализация."
+}

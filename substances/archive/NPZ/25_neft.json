@@ -1,0 +1,50 @@
+{
+  "id": 25,
+  "name": "Нефть",
+  "kind": 0,
+  "formula": "Сложная смесь углеводородов и гетероатомных соединений",
+  "composition": {
+    "components": [
+      {
+        "name": "Углеводороды парафиновые, нафтеновые, ароматические",
+        "mass_fraction": 0.85
+      },
+      {
+        "name": "Смолы и асфальтены",
+        "mass_fraction": 0.15
+      }
+    ]
+  },
+  "notes": "Легковоспламеняющаяся/горючая жидкость от желто-коричневого до черного цвета.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.2,
+    "density_liquid_kg_per_m3": 850,
+    "density_gas_kg_per_m3": 3.5,
+    "evaporation_heat_J_per_kg": 290000,
+    "boiling_point_C": 30
+  },
+  "explosion": {
+    "explosion_hazard_class": 2,
+    "flash_point_C": -15,
+    "lel_percent": 1.0,
+    "autoignition_temp_C": 230,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 8,
+    "heat_of_combustion_kJ_per_kg": 43000,
+    "burning_rate_kg_per_s_m2": 0.04
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 100,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горит, пары с воздухом взрывоопасны.",
+  "odor": "Специфический нефтяной запах.",
+  "corrosiveness": "Зависит от содержания H2S и солей.",
+  "precautions": "Искробезопасный инструмент, заземление резервуаров, вентиляция.",
+  "impact": "Токсическое действие паров, загрязнение окружающей среды.",
+  "protection": "Костюм МБС, противогаз А, перчатки.",
+  "neutralization_methods": "Обвалование, сбор нефтесборщиками, обработка сорбентами.",
+  "first_aid": "Вывести из зоны поражения. При ожогах — прекратить тепловое воздействие, наложить стерильную повязку. При взрыве нефтяных паров — зафиксировать переломы, остановить кровотечение, оказать противошоковую помощь и госпитализировать."
+}

@@ -1,0 +1,50 @@
+{
+  "id": 20,
+  "name": "Масло (Минеральное / Смазочное)",
+  "kind": 9,
+  "formula": "Смесь тяжелых углеводородов (C20–C50)",
+  "composition": {
+    "components": [
+      {
+        "name": "Масляные фракции нефти",
+        "mass_fraction": 0.95
+      },
+      {
+        "name": "Присадки",
+        "mass_fraction": 0.05
+      }
+    ]
+  },
+  "notes": "Горючая жидкость с высокой температурой вспышки.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.4,
+    "density_liquid_kg_per_m3": 890,
+    "density_gas_kg_per_m3": 17.9,
+    "evaporation_heat_J_per_kg": 170000,
+    "boiling_point_C": 360
+  },
+  "explosion": {
+    "explosion_hazard_class": 4,
+    "flash_point_C": 180,
+    "lel_percent": null,
+    "autoignition_temp_C": 300,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 1,
+    "heat_of_combustion_kJ_per_kg": 41000,
+    "burning_rate_kg_per_s_m2": 0.015
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горит при нагревании, вступает в реакцию с сильными окислителями.",
+  "odor": "Слабый масляный запах.",
+  "corrosiveness": "Низкая (содержит антикоррозионные присадки).",
+  "precautions": "Удаление от источников открытого огня, предотвращение утечек.",
+  "impact": "Раздражение кожи при длительном контакте (масляные угри).",
+  "protection": "Перчатки МБС, спецодежда.",
+  "neutralization_methods": "Засыпка песком, опилками, применение сорбентов.",
+  "first_aid": "Промыть кожу с мылом. При пожаре и термических ожогах — потушить горящую одежду, охлаждать ожоговую поверхность холодной водой, наложить асептическую повязку, направить в медучреждение."
+}

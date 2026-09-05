@@ -1,0 +1,46 @@
+{
+  "id": 22,
+  "name": "Метилдиэтаноламин (МДЭА)",
+  "kind": 6,
+  "formula": "C5H13NO2",
+  "composition": {
+    "components": [
+      {
+        "name": "N-Метилдиэтаноламин",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Прозрачная горючая жидкость, используется в качестве поглотителя кислых газов.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.11916,
+    "density_liquid_kg_per_m3": 1038,
+    "density_gas_kg_per_m3": 4.11,
+    "evaporation_heat_J_per_kg": 520000,
+    "boiling_point_C": 247
+  },
+  "explosion": {
+    "explosion_hazard_class": 3,
+    "flash_point_C": 127,
+    "lel_percent": 0.9,
+    "autoignition_temp_C": 280,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 4,
+    "heat_of_combustion_kJ_per_kg": 27000,
+    "burning_rate_kg_per_s_m2": 0.018
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Реагирует с сильными кислотами и окислителями.",
+  "odor": "Слабый аминный запах.",
+  "corrosiveness": "Вызывает коррозию цветных металлов.",
+  "precautions": "Герметизация, защита от нагревания, применение СИЗ.",
+  "impact": "Раздражение кожи, слизистых оболочек глаз и дыхательных путей.",
+  "protection": "Очки, перчатки из нитрила, респиратор.",
+  "neutralization_methods": "Смыв водой, нейтрализация слабым раствором борной кислоты.",
+  "first_aid": "Промывать глаза и кожу водой не менее 15 минут. При пожаре и ожогах — потушить горящую одежду, охлаждать ожоги водой, наложить асептическую повязку, при необходимости дать обезболивающее и вызвать врача."
+}

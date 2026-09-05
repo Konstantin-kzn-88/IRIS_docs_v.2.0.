@@ -1,0 +1,46 @@
+{
+  "id": 23,
+  "name": "Морфолин",
+  "kind": 1,
+  "formula": "C4H9NO",
+  "composition": {
+    "components": [
+      {
+        "name": "Морфолин",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Бесцветная гигроскопичная горючая жидкость с аминным запахом.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.08712,
+    "density_liquid_kg_per_m3": 1000,
+    "density_gas_kg_per_m3": 3.0,
+    "evaporation_heat_J_per_kg": 460000,
+    "boiling_point_C": 128.9
+  },
+  "explosion": {
+    "explosion_hazard_class": 2,
+    "flash_point_C": 38,
+    "lel_percent": 1.8,
+    "autoignition_temp_C": 275,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 6,
+    "heat_of_combustion_kJ_per_kg": 29000,
+    "burning_rate_kg_per_s_m2": 0.03
+  },
+  "toxicity": {
+    "hazard_class": 2,
+    "pdk_mg_per_m3": 0.5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Основание, реагирует с кислотами, окислителями, корродирует сплавы меди.",
+  "odor": "Характерный аминный (рыбный) запах.",
+  "corrosiveness": "Агрессивен к меди, цинку и их сплавам.",
+  "precautions": "Взрывозащищенное оборудование, герметичность, хорошая вентиляция.",
+  "impact": "Вызывает ожоги кожи, поражение органов зрения и дыхания.",
+  "protection": "Изолирующий противогаз или фильтрующий КД, костюм химзащиты.",
+  "neutralization_methods": "Нейтрализация разбавленными кислотами, сбор сорбентами.",
+  "first_aid": "Вынести на свежий воздух. Смывать водой 15–20 минут. При ожогах от пожара — погасить пламя, наложить асептическую повязку. При взрыве паров — остановить кровотечение, провести противошоковую терапию и госпитализировать."
+}

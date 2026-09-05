@@ -1,0 +1,46 @@
+{
+  "id": 33,
+  "name": "Этиленгликоль",
+  "kind": 6,
+  "formula": "C2H6O2",
+  "composition": {
+    "components": [
+      {
+        "name": "Этиленгликоль",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Прозрачная горючая жидкость со сладковатым вкусом. Токсична при проглатывании.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.06207,
+    "density_liquid_kg_per_m3": 1113,
+    "density_gas_kg_per_m3": 2.14,
+    "evaporation_heat_J_per_kg": 800000,
+    "boiling_point_C": 197.3
+  },
+  "explosion": {
+    "explosion_hazard_class": 4,
+    "flash_point_C": 111,
+    "lel_percent": 3.2,
+    "autoignition_temp_C": 380,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 2,
+    "heat_of_combustion_kJ_per_kg": 19100,
+    "burning_rate_kg_per_s_m2": 0.015
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 5,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Реагирует с сильными окислителями, щелочными металлами.",
+  "odor": "Без запаха.",
+  "corrosiveness": "Малоагрессивен.",
+  "precautions": "Герметизация, исключение попадания внутрь организм и на кожу.",
+  "impact": "Токсичен: поражает ЦНС и почки, смертелен при приеме внутрь.",
+  "protection": "Резиновые перчатки, очки, спецодежда.",
+  "neutralization_methods": "Смыв водой, сбор сорбентом.",
+  "first_aid": "При попадании внутрь — немедленно промыть желудок, дать активированный уголь и вызвать скорую помощь. При ожогах от пожара — погасить пламя на одежде, охлаждать холодной водой, наложить асептическую повязку."
+}

@@ -1,0 +1,46 @@
+{
+  "id": 26,
+  "name": "Печное топливо (Бытовое)",
+  "kind": 0,
+  "formula": "Смесь жидких углеводородов",
+  "composition": {
+    "components": [
+      {
+        "name": "Средние фракции перегонки нефти",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Темная горючая жидкость, аналог дизельного топлива с более широким фракционным составом.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.19,
+    "density_liquid_kg_per_m3": 860,
+    "density_gas_kg_per_m3": 4.2,
+    "evaporation_heat_J_per_kg": 260000,
+    "boiling_point_C": 160
+  },
+  "explosion": {
+    "explosion_hazard_class": 3,
+    "flash_point_C": 55,
+    "lel_percent": 0.7,
+    "autoignition_temp_C": 240,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 5,
+    "heat_of_combustion_kJ_per_kg": 42000,
+    "burning_rate_kg_per_s_m2": 0.03
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горит, вступает в реакцию с окислителями.",
+  "odor": "Запах нефтепродуктов.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Удаление от источникова тепла и огня, вентиляция.",
+  "impact": "Раздражение кожи и слизистых глаз.",
+  "protection": "Перчатки, спецодежда, защитные очки.",
+  "neutralization_methods": "Локализация сорбентами, засыпка песком.",
+  "first_aid": "Промыть кожу с мылом. При ожогах от пожара — погасить пламя, охлаждать кожу холодной водой, наложить асептическую повязку, направить в больницу."
+}

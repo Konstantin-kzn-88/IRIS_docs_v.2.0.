@@ -1,0 +1,46 @@
+{
+  "id": 9,
+  "name": "Гидразин гидрат",
+  "kind": 1,
+  "formula": "N2H4 · H2O",
+  "composition": {
+    "components": [
+      {
+        "name": "Гидразин гидрат",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Прозрачная бесцветная жидкость. Сильный восстановитель, ядовит и горюч.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.05006,
+    "density_liquid_kg_per_m3": 1030,
+    "density_gas_kg_per_m3": 1.7,
+    "evaporation_heat_J_per_kg": 960000,
+    "boiling_point_C": 120.1
+  },
+  "explosion": {
+    "explosion_hazard_class": 2,
+    "flash_point_C": 73,
+    "lel_percent": 4.7,
+    "autoignition_temp_C": 270,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 5,
+    "heat_of_combustion_kJ_per_kg": 19000,
+    "burning_rate_kg_per_s_m2": 0.02
+  },
+  "toxicity": {
+    "hazard_class": 1,
+    "pdk_mg_per_m3": 0.1,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Энергично реагирует с окислителями, может самовозгораться на porous материалах.",
+  "odor": "Слабый аммиачный запах.",
+  "corrosiveness": "Разрушает большинство металлов и резину.",
+  "precautions": "Полная герметичность, работа в вытяжном шкафу, исключить контакт с окислителями.",
+  "impact": "Высокотоксичен: поражает ЦНС, печень, кровь, вызывает тяжелые химические ожоги.",
+  "protection": "Изолирующий костюм (типа ТАСК), изолирующий противогаз.",
+  "neutralization_methods": "Разбавление водой, обработка раствором хлорной извести или пероксида водорода.",
+  "first_aid": "Срочно вынести на свежий воздух. Кожу и глаза немедленно промывать водой не менее 20 минут. При ожогах от пожара — прекратить тепловое воздействие, наложить стерильные салфетки. При взрывном разложении — противошоковая терапия, фиксация травм, немедленная доставка в реанимацию."
+}

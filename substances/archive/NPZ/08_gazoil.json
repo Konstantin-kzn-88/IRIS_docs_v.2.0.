@@ -1,0 +1,46 @@
+{
+  "id": 8,
+  "name": "Газойль",
+  "kind": 9,
+  "formula": "Смесь углеводородов (C10–C20)",
+  "composition": {
+    "components": [
+      {
+        "name": "Фракции дизельного/газойлевого дистиллята",
+        "mass_fraction": 1.0
+      }
+    ]
+  },
+  "notes": "Горючая жидкость, фракция нефти между керосином и мазутом.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.17,
+    "density_liquid_kg_per_m3": 850,
+    "density_gas_kg_per_m3": 4.0,
+    "evaporation_heat_J_per_kg": 270000,
+    "boiling_point_C": 200
+  },
+  "explosion": {
+    "explosion_hazard_class": 3,
+    "flash_point_C": 62,
+    "lel_percent": 0.7,
+    "autoignition_temp_C": 230,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 6,
+    "heat_of_combustion_kJ_per_kg": 42500,
+    "burning_rate_kg_per_s_m2": 0.03
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 300,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Стабилен, горит при наличии открытого пламени.",
+  "odor": "Характерный нефтепродуктовый запах.",
+  "corrosiveness": "Низкая.",
+  "precautions": "Удаление источников зажигания, вентиляция.",
+  "impact": "Сухость кожи, дерматиты, раздражение при вдыхании масляного тумана.",
+  "protection": "Спецодежда, перчатки МБС, очки.",
+  "neutralization_methods": "Локализация, использование сорбентов, песка.",
+  "first_aid": "Промыть кожу с мылом. При ожогах во время пожара — тушение горящей одежды, охлаждение поражённых участков холодной водой в течение 10–15 минут, нанесение стерильной повязки, обезболивание и обращение за квалифицированной медицинской помощью."
+}

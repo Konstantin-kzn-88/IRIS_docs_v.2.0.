@@ -1,0 +1,50 @@
+{
+  "id": 14,
+  "name": "Ингибитор (Ингибитор коррозии)",
+  "kind": 1,
+  "formula": "Смесь аминов и поверхностно-активных веществ",
+  "composition": {
+    "components": [
+      {
+        "name": "Активная ингибирующая основа",
+        "mass_fraction": 0.4
+      },
+      {
+        "name": "Органический растворитель",
+        "mass_fraction": 0.6
+      }
+    ]
+  },
+  "notes": "Горючая или легковоспламеняющаяся жидкость, используемая для защиты оборудования.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.15,
+    "density_liquid_kg_per_m3": 920,
+    "density_gas_kg_per_m3": 6.7,
+    "evaporation_heat_J_per_kg": 300000,
+    "boiling_point_C": 150
+  },
+  "explosion": {
+    "explosion_hazard_class": 3,
+    "flash_point_C": 45,
+    "lel_percent": 1.0,
+    "autoignition_temp_C": 260,
+    "energy_reserve_factor": 2,
+    "expansion_degree": 6,
+    "heat_of_combustion_kJ_per_kg": 35000,
+    "burning_rate_kg_per_s_m2": 0.03
+  },
+  "toxicity": {
+    "hazard_class": 3,
+    "pdk_mg_per_m3": 10,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Стабилен, реагирует с сильными окислителями.",
+  "odor": "Специфический аминный/растворителевый запах.",
+  "corrosiveness": "Низкая (предназначен для ее предотвращения).",
+  "precautions": "Вентиляция, защита от источников зажигания и нагрева.",
+  "impact": "Раздражение слизистых оболочек и кожи.",
+  "protection": "Очки, перчатки, респиратор.",
+  "neutralization_methods": "Засыпка песком, использование сорбентов.",
+  "first_aid": "Промыть водой место контакта. При пожаре и ожогах — ликвидировать источник огня, охлаждать место ожога, наложить стерильную повязку, направить в лечебное учреждение."
+}
