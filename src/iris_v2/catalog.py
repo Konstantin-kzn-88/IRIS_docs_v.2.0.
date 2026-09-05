@@ -20,7 +20,15 @@ class Organization:
 
 
 def load_organizations(path: Path | str | None = None) -> tuple[Organization, ...]:
-    catalog_path = Path(path) if path else Path(__file__).parent / "data" / "organizations.json"
+    if path is not None:
+        catalog_path = Path(path)
+    else:
+        local_catalog = Path.cwd() / "organizations.local.json"
+        catalog_path = (
+            local_catalog
+            if local_catalog.is_file()
+            else Path(__file__).parent / "data" / "organizations.json"
+        )
     try:
         raw = json.loads(catalog_path.read_text(encoding="utf-8"))
         items = raw["organizations"]
@@ -49,4 +57,3 @@ def load_organizations(path: Path | str | None = None) -> tuple[Organization, ..
             if not facility.name or not facility.registration_number:
                 raise CatalogError("У ОПО должны быть название и регистрационный номер")
     return organizations
-

@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 
 import pytest
 
@@ -56,6 +57,35 @@ def test_organization_catalog_is_loaded() -> None:
 
     assert organizations[0].name == "АО Пример"
     assert organizations[0].facilities[0].registration_number == "А00-00000-0000"
+
+
+def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
+    local_catalog = tmp_path / "organizations.local.json"
+    local_catalog.write_text(
+        json.dumps(
+            {
+                "organizations": [
+                    {
+                        "name": "Локальная организация",
+                        "facilities": [
+                            {
+                                "name": "Локальный ОПО",
+                                "registration_number": "LOCAL-001",
+                            }
+                        ],
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    organizations = load_organizations()
+
+    assert organizations[0].name == "Локальная организация"
+    assert organizations[0].facilities[0].name == "Локальный ОПО"
 
 
 def test_minimal_window_starts() -> None:
