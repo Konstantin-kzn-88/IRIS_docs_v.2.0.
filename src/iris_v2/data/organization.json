@@ -1,0 +1,64 @@
+[
+  {
+    "id": 1,
+    "meta": {
+      "version": 1,
+      "updated_at": "2026-09-05",
+      "note": "Обезличенный пример организации"
+    },
+    "organization": {
+      "full_name": "Акционерное общество Пример",
+      "short_name": "АО Пример",
+      "ids": {
+        "ogrn": "0000000000000",
+        "inn": "0000000000",
+        "kpp": "000000000"
+      },
+      "address": "Адрес организации",
+      "contacts": {
+        "email": "example@example.ru",
+        "phone": "+7 000 000-00-00",
+        "fax": ""
+      },
+      "head": {
+        "position": "Генеральный директор",
+        "full_name": "Иванов Иван Иванович",
+        "short_name": "Иванов И.И."
+      }
+    },
+    "permits": {
+      "license_number": "Лицензия"
+    },
+    "management_docs": {
+      "industrial_safety_management_system": "Сведения о СУПБ",
+      "industrial_control_regulation": "Сведения о производственном контроле",
+      "accident_investigation_regulation": "Сведения о расследовании аварий"
+    },
+    "security_and_response": {
+      "opo_security": "Сведения об охране ОПО",
+      "nasf_information": "-",
+      "pasf_information": "-"
+    },
+    "reserves": {
+      "financial_reserve_order": "-",
+      "material_reserve_order": "-"
+    },
+    "sites": [
+      {
+        "site_id": "opo_0001",
+        "name": "Тестовый ОПО",
+        "reg_number": "А00-00000-0000",
+        "object_address": "Адрес ОПО",
+        "sanitary_protection_zone_m": 0,
+        "object_id": "III",
+        "description": "Краткое описание ОПО",
+        "area_characteristics": "Характеристика района расположения ОПО",
+        "personnel": {
+          "employees_count": 0,
+          "employees_other_opo_count": 0
+        },
+        "emergency_response_plan": "Сведения о ПМЛА"
+      }
+    ]
+  }
+]

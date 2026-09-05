@@ -58,7 +58,7 @@ def test_organization_catalog_is_loaded() -> None:
     assert organizations[0].name == "АО Пример"
     assert organizations[0].full_name == "Акционерное общество Пример"
     assert organizations[0].facilities[0].registration_number == "А00-00000-0000"
-    assert organizations[0].facilities[0].sanitary_protection_zone_m == 0
+    assert organizations[0].facilities[0].data["sanitary_protection_zone_m"] == 0
 
 
 def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
@@ -76,27 +76,34 @@ def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
 
     project = ProjectService().create(tmp_path / "snapshot_project", data)
 
-    assert project.organization_snapshot["inn"] == "0000000000"
+    assert project.organization_snapshot["organization"]["ids"]["inn"] == "0000000000"
+    assert "sites" not in project.organization_snapshot
     assert project.opo_snapshot["sanitary_protection_zone_m"] == 0
+    assert project.opo_snapshot["site_id"] == "opo_0001"
 
 
 def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
-    local_catalog = tmp_path / "organizations.local.json"
+    local_catalog = tmp_path / "organization.json"
     local_catalog.write_text(
         json.dumps(
-            {
-                "organizations": [
-                    {
-                        "name": "Локальная организация",
-                        "facilities": [
-                            {
-                                "name": "Локальный ОПО",
-                                "registration_number": "LOCAL-001",
-                            }
-                        ],
-                    }
-                ]
-            },
+            [
+                {
+                    "id": 77,
+                    "organization": {
+                        "short_name": "Локальная организация",
+                        "full_name": "Полное название",
+                    },
+                    "future_section": {"new_field": "сохранить без изменений"},
+                    "sites": [
+                        {
+                            "site_id": "opo_local",
+                            "name": "Локальный ОПО",
+                            "reg_number": "LOCAL-001",
+                            "future_opo_field": {"value": 123},
+                        }
+                    ],
+                }
+            ],
             ensure_ascii=False,
         ),
         encoding="utf-8",
@@ -107,6 +114,10 @@ def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
 
     assert organizations[0].name == "Локальная организация"
     assert organizations[0].facilities[0].name == "Локальный ОПО"
+    assert organizations[0].snapshot()["future_section"]["new_field"] == (
+        "сохранить без изменений"
+    )
+    assert organizations[0].facilities[0].snapshot()["future_opo_field"]["value"] == 123
 
 
 def test_minimal_window_starts() -> None:
