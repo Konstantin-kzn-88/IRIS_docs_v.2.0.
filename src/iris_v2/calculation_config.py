@@ -13,6 +13,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "bleve_fraction": 0.15,
     "partial_spill_fraction": 0.12,
     "wind_speed_m_s": 1.0,
+    "evaporation_coefficient": 1.0,
     "liquid_leak_hole_diameter_mm": 20.0,
     "gas_leak_hole_diameter_mm": 20.0,
     "damage_scale": 30.3,
@@ -107,6 +108,7 @@ class CalculationConfigService:
 
         for key, label in (
             ("wind_speed_m_s", "Скорость ветра"),
+            ("evaporation_coefficient", "Коэффициент испарения"),
             ("liquid_leak_hole_diameter_mm", "Отверстие истечения жидкости"),
             ("gas_leak_hole_diameter_mm", "Отверстие истечения газа"),
             ("damage_scale", "Масштаб ущерба"),

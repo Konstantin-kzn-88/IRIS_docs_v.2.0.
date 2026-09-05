@@ -212,5 +212,10 @@ def test_minimal_window_starts() -> None:
         spill_button = window.findChild(QPushButton, "spill_button")
         assert spill_button is not None
         assert not spill_button.isEnabled()
+        evaporation_button = window.findChild(
+            QPushButton, "evaporation_button"
+        )
+        assert evaporation_button is not None
+        assert not evaporation_button.isEnabled()
     finally:
         window.close()

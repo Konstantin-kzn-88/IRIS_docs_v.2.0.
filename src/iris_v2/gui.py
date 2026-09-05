@@ -37,6 +37,11 @@ from iris_v2.developer_catalog import (
     load_developers,
 )
 from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
+from iris_v2.evaporation_calculation import (
+    EvaporationCalculationError,
+    EvaporationCalculationResult,
+    EvaporationCalculationService,
+)
 from iris_v2.amount_calculation import (
     AmountCalculationError,
     AmountCalculationResult,
@@ -241,6 +246,11 @@ class CalculationConfigDialog(QDialog):
         model_form = QFormLayout()
         for key, label, maximum in (
             ("wind_speed_m_s", "Скорость ветра, м/с:", 100.0),
+            (
+                "evaporation_coefficient",
+                "Коэффициент испарения η:",
+                100.0,
+            ),
             (
                 "liquid_leak_hole_diameter_mm",
                 "Отверстие истечения жидкости, мм:",
@@ -835,6 +845,93 @@ class SpillCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class EvaporationCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: EvaporationCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Испарившаяся масса")
+        self.resize(1280, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Испарение рассчитано для: {result.evaporation_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 10)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Pнас, кПа",
+                "W, кг/(м²·с)",
+                "Площадь, м²",
+                "Время, с",
+                "Испарилось, т",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            9, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 180, 135, 180, 90, 110, 95, 80, 100)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            pressure = item_data["saturated_vapor_pressure_kpa"]
+            intensity = item_data["evaporation_intensity_kg_m2_s"]
+            area = item_data["spill_area_m2"]
+            duration = item_data["evaporation_time_s"]
+            mass = item_data["evaporated_mass_t"]
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["evaporation_status_name"],
+                "" if pressure is None else f"{pressure:.6g}",
+                "" if intensity is None else f"{intensity:.6g}",
+                "" if area is None else f"{area:.6g}",
+                "" if duration is None else f"{duration:g}",
+                "" if mass is None else f"{mass:.6g}",
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1203,6 +1300,11 @@ class MainWindow(QMainWindow):
         self.spill_button.setEnabled(False)
         self.spill_button.clicked.connect(self.calculate_spills)
 
+        self.evaporation_button = QPushButton("Испарение")
+        self.evaporation_button.setObjectName("evaporation_button")
+        self.evaporation_button.setEnabled(False)
+        self.evaporation_button.clicked.connect(self.calculate_evaporation)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1222,6 +1324,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.calculation_cases_button)
         calculation_button_layout.addWidget(self.release_button)
         calculation_button_layout.addWidget(self.spill_button)
+        calculation_button_layout.addWidget(self.evaporation_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1274,6 +1377,7 @@ class MainWindow(QMainWindow):
         self.calculation_cases_button.setEnabled(True)
         self.release_button.setEnabled(True)
         self.spill_button.setEnabled(True)
+        self.evaporation_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1500,6 +1604,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         SpillCalculationDialog(result, self).exec()
+
+    def calculate_evaporation(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = EvaporationCalculationService().calculate(
+                self.current_project_directory
+            )
+        except EvaporationCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        EvaporationCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

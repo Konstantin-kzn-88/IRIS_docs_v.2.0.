@@ -14,6 +14,7 @@ def test_defaults_are_returned_without_file(tmp_path: Path) -> None:
     config = CalculationConfigService().load(tmp_path)
 
     assert config["partial_release_fraction"] == 0.125
+    assert config["evaporation_coefficient"] == 1.0
     assert config["frequency_multipliers"] == {
         "standard": 1.0,
         "without_compensation": 1.25,
