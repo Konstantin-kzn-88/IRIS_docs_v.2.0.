@@ -195,5 +195,10 @@ def test_minimal_window_starts() -> None:
         )
         assert scenarios_button is not None
         assert scenarios_button.isEnabled()
+        cases_button = window.findChild(
+            QPushButton, "calculation_cases_button"
+        )
+        assert cases_button is not None
+        assert not cases_button.isEnabled()
     finally:
         window.close()

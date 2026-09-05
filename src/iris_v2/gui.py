@@ -37,6 +37,11 @@ from iris_v2.developer_catalog import (
     load_developers,
 )
 from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
+from iris_v2.calculation_cases import (
+    CalculationCasesError,
+    CalculationCasesResult,
+    CalculationCasesService,
+)
 from iris_v2.calculation_config import (
     CalculationConfigError,
     CalculationConfigService,
@@ -405,6 +410,80 @@ class TypicalScenariosDialog(QDialog):
         self.table.resizeRowsToContents()
 
 
+class CalculationCasesDialog(QDialog):
+    def __init__(
+        self,
+        result: CalculationCasesResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Расчётные сценарии проекта")
+        self.resize(1280, 720)
+
+        status = QLabel(
+            f"Оборудование: {result.equipment_count}. "
+            f"Сформировано сценариев: {result.case_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.cases), 8)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Составляющая ОПО",
+                "Режим",
+                "Расчёт",
+                "Типовая частота",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(True)
+        self.table.horizontalHeader().setSectionResizeMode(
+            7, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setColumnWidth(0, 60)
+        self.table.setColumnWidth(1, 210)
+        self.table.setColumnWidth(2, 140)
+        self.table.setColumnWidth(3, 190)
+        self.table.setColumnWidth(4, 85)
+        self.table.setColumnWidth(5, 150)
+        self.table.setColumnWidth(6, 120)
+
+        for row, case in enumerate(result.cases):
+            values = (
+                case["scenario_code"],
+                case["equipment_name"],
+                case["substance_name"],
+                case["hazard_component"],
+                case["frequency_mode_name"],
+                case["calc_name"],
+                f'{case["unit_scenario_frequency"]:.3e}',
+                case["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                self.table.setItem(row, column, QTableWidgetItem(str(value)))
+        self.table.resizeRowsToContents()
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -746,6 +825,13 @@ class MainWindow(QMainWindow):
         self.typical_scenarios_button.setObjectName("typical_scenarios_button")
         self.typical_scenarios_button.clicked.connect(self.show_typical_scenarios)
 
+        self.calculation_cases_button = QPushButton("Расчётные сценарии")
+        self.calculation_cases_button.setObjectName("calculation_cases_button")
+        self.calculation_cases_button.setEnabled(False)
+        self.calculation_cases_button.clicked.connect(
+            self.generate_calculation_cases
+        )
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -758,6 +844,7 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.substances_button)
         button_layout.addWidget(self.equipment_button)
         button_layout.addWidget(self.typical_scenarios_button)
+        button_layout.addWidget(self.calculation_cases_button)
         button_layout.addWidget(self.calculation_config_button)
         button_layout.addWidget(self.validation_button)
 
@@ -805,6 +892,7 @@ class MainWindow(QMainWindow):
         self.substances_button.setEnabled(True)
         self.equipment_button.setEnabled(True)
         self.calculation_config_button.setEnabled(True)
+        self.calculation_cases_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
@@ -965,6 +1053,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         TypicalScenariosDialog(catalog, self).exec()
+
+    def generate_calculation_cases(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = CalculationCasesService().generate(
+                self.current_project_directory
+            )
+        except CalculationCasesError as exc:
+            self._show_error(str(exc))
+            return
+        CalculationCasesDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
