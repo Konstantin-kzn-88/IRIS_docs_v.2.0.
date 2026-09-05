@@ -354,7 +354,12 @@ class TypicalScenariosDialog(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setWordWrap(True)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.horizontalHeader().setSectionResizeMode(
             1, QHeaderView.ResizeMode.Stretch
         )
@@ -406,8 +411,9 @@ class TypicalScenariosDialog(QDialog):
                 f"{self.catalog.calculation_types[scenario.calc_code]}",
             )
             for column, value in enumerate(values):
-                self.table.setItem(row, column, QTableWidgetItem(value))
-        self.table.resizeRowsToContents()
+                item = QTableWidgetItem(value)
+                item.setToolTip(value)
+                self.table.setItem(row, column, item)
 
 
 class CalculationCasesDialog(QDialog):
@@ -442,7 +448,12 @@ class CalculationCasesDialog(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setWordWrap(True)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.horizontalHeader().setSectionResizeMode(
             7, QHeaderView.ResizeMode.Stretch
         )
@@ -466,8 +477,10 @@ class CalculationCasesDialog(QDialog):
                 case["scenario_text"],
             )
             for column, value in enumerate(values):
-                self.table.setItem(row, column, QTableWidgetItem(str(value)))
-        self.table.resizeRowsToContents()
+                text = str(value)
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
+                self.table.setItem(row, column, item)
 
         path_label = QLabel(f"Файл: {result.path}")
         path_label.setTextInteractionFlags(
