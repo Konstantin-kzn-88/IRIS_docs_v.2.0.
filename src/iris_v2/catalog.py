@@ -92,8 +92,12 @@ def _validate(organizations: tuple[Organization, ...]) -> None:
             sanitary_zone = facility.data.get("sanitary_protection_zone_m", 0)
             personnel = facility.data.get("personnel", {})
             try:
-                if float(sanitary_zone) < 0:
+                if isinstance(sanitary_zone, (int, float)) and sanitary_zone < 0:
                     raise CatalogError("Размер СЗЗ не может быть отрицательным")
+                if isinstance(sanitary_zone, str) and not sanitary_zone.strip():
+                    raise CatalogError("Размер СЗЗ не может быть пустой строкой")
+                if sanitary_zone is None:
+                    raise CatalogError("Размер СЗЗ не заполнен")
                 if int(personnel.get("employees_count", 0)) < 0:
                     raise CatalogError("Численность работников не может быть отрицательной")
                 if int(personnel.get("employees_other_opo_count", 0)) < 0:

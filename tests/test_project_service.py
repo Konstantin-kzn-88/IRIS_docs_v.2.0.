@@ -127,6 +127,7 @@ def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
                             "site_id": "opo_second",
                             "name": "Второй ОПО",
                             "reg_number": "SECOND-001",
+                            "sanitary_protection_zone_m": "89-196",
                         }
                     ],
                 }
@@ -147,6 +148,10 @@ def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
     )
     assert organizations[0].facilities[0].snapshot()["future_opo_field"]["value"] == 123
     assert organizations[1].name == "Вторая организация"
+    assert (
+        organizations[1].facilities[0].snapshot()["sanitary_protection_zone_m"]
+        == "89-196"
+    )
 
 
 def test_minimal_window_starts() -> None:
