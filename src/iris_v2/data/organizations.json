@@ -1,0 +1,13 @@
+{
+  "organizations": [
+    {
+      "name": "АО Пример",
+      "facilities": [
+        {
+          "name": "Тестовый ОПО",
+          "registration_number": "А00-00000-0000"
+        }
+      ]
+    }
+  ]
+}

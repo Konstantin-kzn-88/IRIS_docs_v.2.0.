@@ -4,6 +4,7 @@ import os
 import pytest
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectService
+from iris_v2.catalog import load_organizations
 
 
 def project_data() -> CreateProjectData:
@@ -48,6 +49,13 @@ def test_empty_field_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ProjectError):
         ProjectService().create(tmp_path / "project", data)
+
+
+def test_organization_catalog_is_loaded() -> None:
+    organizations = load_organizations()
+
+    assert organizations[0].name == "АО Пример"
+    assert organizations[0].facilities[0].registration_number == "А00-00000-0000"
 
 
 def test_minimal_window_starts() -> None:

@@ -24,7 +24,7 @@ iris-v2-gui = "iris_v2.gui:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-iris_v2 = ["migrations/script.py.mako", "migrations/versions/*.py"]
+iris_v2 = ["data/*.json", "migrations/script.py.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
