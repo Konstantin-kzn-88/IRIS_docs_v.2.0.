@@ -225,5 +225,8 @@ def test_minimal_window_starts() -> None:
         pool_fire_button = window.findChild(QPushButton, "pool_fire_button")
         assert pool_fire_button is not None
         assert not pool_fire_button.isEnabled()
+        explosion_button = window.findChild(QPushButton, "explosion_button")
+        assert explosion_button is not None
+        assert not explosion_button.isEnabled()
     finally:
         window.close()
