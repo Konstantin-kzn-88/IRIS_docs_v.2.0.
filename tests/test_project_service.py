@@ -209,5 +209,8 @@ def test_minimal_window_starts() -> None:
         release_button = window.findChild(QPushButton, "release_button")
         assert release_button is not None
         assert not release_button.isEnabled()
+        spill_button = window.findChild(QPushButton, "spill_button")
+        assert spill_button is not None
+        assert not spill_button.isEnabled()
     finally:
         window.close()

@@ -61,6 +61,11 @@ from iris_v2.release_calculation import (
     ReleaseCalculationResult,
     ReleaseCalculationService,
 )
+from iris_v2.spill_calculation import (
+    SpillCalculationError,
+    SpillCalculationResult,
+    SpillCalculationService,
+)
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 from iris_v2.project_validation import ProjectValidationService, ValidationReport
 from iris_v2.substances import (
@@ -748,6 +753,88 @@ class ReleaseCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class SpillCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: SpillCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Площадь пролива")
+        self.resize(1280, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Пролив рассчитан для: {result.spill_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 9)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Масса, т",
+                "Пролив",
+                "Источник площади",
+                "Коэффициент",
+                "Площадь, м²",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 190, 140, 90, 75, 190, 100, 105)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            area = item_data["spill_area_m2"]
+            coefficient = item_data["spill_coefficient"]
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                f'{item_data["ov_in_accident_t"]:.6g}',
+                "Да" if item_data["spill_applicable"] else "Нет",
+                item_data["spill_source_name"],
+                "" if coefficient is None else f"{coefficient:g}",
+                "" if area is None else f"{area:.6g}",
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1111,6 +1198,11 @@ class MainWindow(QMainWindow):
         self.release_button.setEnabled(False)
         self.release_button.clicked.connect(self.calculate_releases)
 
+        self.spill_button = QPushButton("Площадь пролива")
+        self.spill_button.setObjectName("spill_button")
+        self.spill_button.setEnabled(False)
+        self.spill_button.clicked.connect(self.calculate_spills)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1129,6 +1221,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.calculation_config_button)
         calculation_button_layout.addWidget(self.calculation_cases_button)
         calculation_button_layout.addWidget(self.release_button)
+        calculation_button_layout.addWidget(self.spill_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1180,6 +1273,7 @@ class MainWindow(QMainWindow):
         self.calculation_config_button.setEnabled(True)
         self.calculation_cases_button.setEnabled(True)
         self.release_button.setEnabled(True)
+        self.spill_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1393,6 +1487,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ReleaseCalculationDialog(result, self).exec()
+
+    def calculate_spills(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = SpillCalculationService().calculate(
+                self.current_project_directory
+            )
+        except SpillCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        SpillCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
