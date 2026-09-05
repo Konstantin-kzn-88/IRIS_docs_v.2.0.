@@ -56,7 +56,28 @@ def test_organization_catalog_is_loaded() -> None:
     organizations = load_organizations()
 
     assert organizations[0].name == "АО Пример"
+    assert organizations[0].full_name == "Акционерное общество Пример"
     assert organizations[0].facilities[0].registration_number == "А00-00000-0000"
+    assert organizations[0].facilities[0].sanitary_protection_zone_m == 0
+
+
+def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
+    organization = load_organizations()[0]
+    facility = organization.facilities[0]
+    data = CreateProjectData(
+        name="Проект со снимком",
+        code="SNAPSHOT-001",
+        organization_name=organization.name,
+        opo_name=facility.name,
+        opo_registration_number=facility.registration_number,
+        organization_snapshot=organization.snapshot(),
+        opo_snapshot=facility.snapshot(),
+    )
+
+    project = ProjectService().create(tmp_path / "snapshot_project", data)
+
+    assert project.organization_snapshot["inn"] == "0000000000"
+    assert project.opo_snapshot["sanitary_protection_zone_m"] == 0
 
 
 def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:

@@ -48,3 +48,7 @@ Copy-Item .\src\iris_v2\data\organizations.json .\organizations.local.json
 
 Локальный справочник исключён из Git. Если его нет, программа использует
 обезличенный пример `src/iris_v2/data/organizations.json`.
+
+Значение `sanitary_protection_zone_m: 0` означает, что санитарно-защитная
+зона у ОПО отсутствует. `employees_other_opo_count` — суммарная численность
+людей на соседних ОПО в возможной зоне воздействия.

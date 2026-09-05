@@ -1,7 +1,7 @@
 import json
 import shutil
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -28,9 +28,18 @@ class CreateProjectData:
     organization_name: str
     opo_name: str
     opo_registration_number: str
+    organization_snapshot: dict | None = None
+    opo_snapshot: dict | None = None
 
     def validate(self) -> None:
-        for field_name, value in asdict(self).items():
+        for field_name in (
+            "name",
+            "code",
+            "organization_name",
+            "opo_name",
+            "opo_registration_number",
+        ):
+            value = getattr(self, field_name)
             if not value.strip():
                 raise ProjectError(f"Не заполнено поле: {field_name}")
 
@@ -44,6 +53,8 @@ class ProjectInfo:
     opo_name: str
     opo_registration_number: str
     created_at: str
+    organization_snapshot: dict
+    opo_snapshot: dict
 
 
 class ProjectService:
@@ -61,6 +72,13 @@ class ProjectService:
 
             project_id = str(uuid4())
             created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            organization_snapshot = data.organization_snapshot or {
+                "short_name": data.organization_name.strip()
+            }
+            opo_snapshot = data.opo_snapshot or {
+                "name": data.opo_name.strip(),
+                "registration_number": data.opo_registration_number.strip(),
+            }
             database_path = temporary / DATABASE_NAME
             upgrade_database(database_path)
 
@@ -75,6 +93,12 @@ class ProjectService:
                             organization_name=data.organization_name.strip(),
                             opo_name=data.opo_name.strip(),
                             opo_registration_number=data.opo_registration_number.strip(),
+                            organization_snapshot_json=json.dumps(
+                                organization_snapshot, ensure_ascii=False
+                            ),
+                            opo_snapshot_json=json.dumps(
+                                opo_snapshot, ensure_ascii=False
+                            ),
                             created_at=created_at,
                         )
                     )
@@ -119,7 +143,10 @@ class ProjectService:
                     opo_name=project.opo_name,
                     opo_registration_number=project.opo_registration_number,
                     created_at=project.created_at,
+                    organization_snapshot=json.loads(
+                        project.organization_snapshot_json
+                    ),
+                    opo_snapshot=json.loads(project.opo_snapshot_json),
                 )
         finally:
             engine.dispose()
-

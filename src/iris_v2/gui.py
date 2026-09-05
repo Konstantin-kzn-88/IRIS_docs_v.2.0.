@@ -110,6 +110,10 @@ class CreateProjectDialog(QDialog):
             opo_registration_number=(
                 facility.registration_number if facility else ""
             ),
+            organization_snapshot=(
+                organization.snapshot() if organization else None
+            ),
+            opo_snapshot=facility.snapshot() if facility else None,
         )
 
 
