@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from iris_v2.equipment import HEADERS, EquipmentError, EquipmentService
 
@@ -62,6 +62,23 @@ def test_template_is_copied_to_project(tmp_path: Path) -> None:
 
     assert template == project / "input" / "equipment_data.xlsx"
     assert template.read_bytes().startswith(b"PK")
+    workbook = load_workbook(template, read_only=True, data_only=True)
+    try:
+        rows = [
+            row
+            for row in workbook["Equipment Data"].iter_rows(
+                min_row=2, max_col=len(HEADERS), values_only=True
+            )
+            if any(value is not None for value in row)
+        ]
+    finally:
+        workbook.close()
+    assert len(rows) == 10
+    assert [row[3] for row in rows] == list(range(10))
+    result = EquipmentService().import_excel(project, template)
+    imported = json.loads(result.json_path.read_text(encoding="utf-8"))
+    assert result.count == 10
+    assert [item["equipment_type"] for item in imported] == list(range(10))
 
 
 def test_pipeline_excel_is_imported(tmp_path: Path) -> None:
