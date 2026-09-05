@@ -2,7 +2,8 @@ import sys
 import copy
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -36,6 +37,7 @@ from iris_v2.developer_catalog import (
 )
 from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+from iris_v2.project_validation import ProjectValidationService, ValidationReport
 from iris_v2.substances import (
     KIND_NAMES,
     Substance,
@@ -277,6 +279,85 @@ class SubstanceDialog(QDialog):
         self.accept()
 
 
+class ProjectValidationDialog(QDialog):
+    def __init__(
+        self, report: ValidationReport, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.report = report
+        self.setWindowTitle("Проверка исходных данных")
+        self.resize(900, 440)
+
+        self.table = QTableWidget(len(report.items), 3)
+        self.table.setHorizontalHeaderLabels(["Статус", "Раздел", "Результат"])
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setColumnWidth(0, 90)
+        self.table.setColumnWidth(1, 170)
+
+        for row, item in enumerate(report.items):
+            color = QColor("#16803A" if item.ok else "#B42318")
+            status = QTableWidgetItem("Готово" if item.ok else "Ошибка")
+            section = QTableWidgetItem(item.section)
+            message = QTableWidgetItem(item.message)
+            for cell in (status, section, message):
+                cell.setForeground(color)
+            self.table.setItem(row, 0, status)
+            self.table.setItem(row, 1, section)
+            self.table.setItem(row, 2, message)
+            self.table.setRowHeight(row, max(32, 20 * (item.message.count("\n") + 1)))
+
+        result_label = QLabel(
+            "Проект готов к расчёту"
+            if report.ready
+            else "Расчёт невозможен: исправьте отмеченные ошибки"
+        )
+        result_label.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: "
+            + ("#16803A;" if report.ready else "#B42318;")
+        )
+
+        self.open_button = QPushButton("Открыть файл или папку")
+        self.open_button.setEnabled(False)
+        self.open_button.clicked.connect(self._open_selected)
+        self.table.itemSelectionChanged.connect(self._update_open_button)
+
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(result_label)
+        layout.addWidget(self.table)
+        layout.addLayout(button_layout)
+
+    def _selected_path(self) -> Path | None:
+        row = self.table.currentRow()
+        if row < 0:
+            return None
+        return self.report.items[row].path
+
+    def _update_open_button(self) -> None:
+        path = self._selected_path()
+        self.open_button.setEnabled(path is not None and path.parent.exists())
+
+    def _open_selected(self) -> None:
+        path = self._selected_path()
+        if path is None:
+            return
+        target = path if path.exists() else path.parent
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.resolve())))
+
+
 class CreateProjectDialog(QDialog):
     def __init__(
         self,
@@ -392,7 +473,7 @@ class MainWindow(QMainWindow):
             self.developers = ()
             QMessageBox.warning(self, "Ошибка справочника разработчиков", str(exc))
         self.setWindowTitle("IRIS v2")
-        self.resize(720, 360)
+        self.resize(930, 360)
 
         title = QLabel("IRIS v2")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -427,12 +508,18 @@ class MainWindow(QMainWindow):
         self.equipment_button.setEnabled(False)
         self.equipment_button.clicked.connect(self.import_equipment)
 
+        self.validation_button = QPushButton("Проверка данных")
+        self.validation_button.setObjectName("validation_button")
+        self.validation_button.setEnabled(False)
+        self.validation_button.clicked.connect(self.validate_project)
+
         button_layout = QHBoxLayout()
         button_layout.addWidget(create_button)
         button_layout.addWidget(open_button)
         button_layout.addWidget(self.project_common_button)
         button_layout.addWidget(self.substances_button)
         button_layout.addWidget(self.equipment_button)
+        button_layout.addWidget(self.validation_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -477,6 +564,7 @@ class MainWindow(QMainWindow):
         self.project_common_button.setEnabled(True)
         self.substances_button.setEnabled(True)
         self.equipment_button.setEnabled(True)
+        self.validation_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -557,6 +645,15 @@ class MainWindow(QMainWindow):
             "Импорт завершён",
             f"Импортировано строк оборудования: {result.count}\n{result.json_path}",
         )
+
+    def validate_project(self) -> None:
+        if self.current_project is None or self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        report = ProjectValidationService().check(
+            self.current_project_directory, self.current_project
+        )
+        ProjectValidationDialog(report, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
