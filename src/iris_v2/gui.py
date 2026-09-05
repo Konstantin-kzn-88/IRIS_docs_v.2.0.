@@ -25,6 +25,11 @@ from PySide6.QtWidgets import (
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectInfo, ProjectService
 from iris_v2.catalog import CatalogError, Organization, load_organizations
+from iris_v2.developer_catalog import (
+    Developer,
+    DeveloperCatalogError,
+    load_developers,
+)
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 
 
@@ -47,6 +52,7 @@ class ProjectCommonDialog(QDialog):
         self,
         project_directory: Path,
         project: ProjectInfo,
+        developers: tuple[Developer, ...],
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -80,6 +86,11 @@ class ProjectCommonDialog(QDialog):
         executor = self.data["executor"]
         self.executor_edits: dict[str, QLineEdit | QPlainTextEdit] = {}
         executor_form = QFormLayout()
+        self.developer_combo = QComboBox()
+        self.developer_combo.addItem("— Ввести вручную —", None)
+        for developer in developers:
+            self.developer_combo.addItem(developer.name, developer)
+        executor_form.addRow("Постоянный разработчик:", self.developer_combo)
         for key, label in self.EXECUTOR_FIELDS:
             if key in {"address", "specialist_info"}:
                 edit = QPlainTextEdit(str(executor.get(key, "")))
@@ -88,6 +99,13 @@ class ProjectCommonDialog(QDialog):
                 edit = QLineEdit(str(executor.get(key, "")))
             self.executor_edits[key] = edit
             executor_form.addRow(f"{label}:", edit)
+        self.developer_combo.currentIndexChanged.connect(self._fill_executor)
+        for index, developer in enumerate(developers, start=1):
+            if developer.name == str(executor.get("name", "")).strip():
+                self.developer_combo.blockSignals(True)
+                self.developer_combo.setCurrentIndex(index)
+                self.developer_combo.blockSignals(False)
+                break
         executor_page = QWidget()
         executor_page.setLayout(executor_form)
 
@@ -108,6 +126,18 @@ class ProjectCommonDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(tabs)
         layout.addWidget(buttons)
+
+    def _fill_executor(self) -> None:
+        developer = self.developer_combo.currentData()
+        if developer is None:
+            return
+        values = developer.snapshot()
+        for key, edit in self.executor_edits.items():
+            value = str(values.get(key, ""))
+            if isinstance(edit, QPlainTextEdit):
+                edit.setPlainText(value)
+            else:
+                edit.setText(value)
 
     def _save(self) -> None:
         data = copy.deepcopy(self.data)
@@ -243,6 +273,11 @@ class MainWindow(QMainWindow):
         except CatalogError as exc:
             self.organizations = ()
             QMessageBox.critical(self, "Ошибка справочника", str(exc))
+        try:
+            self.developers = load_developers()
+        except DeveloperCatalogError as exc:
+            self.developers = ()
+            QMessageBox.warning(self, "Ошибка справочника разработчиков", str(exc))
         self.setWindowTitle("IRIS v2")
         self.resize(720, 360)
 
@@ -329,7 +364,10 @@ class MainWindow(QMainWindow):
             return
         try:
             dialog = ProjectCommonDialog(
-                self.current_project_directory, self.current_project, self
+                self.current_project_directory,
+                self.current_project,
+                self.developers,
+                self,
             )
         except ProjectCommonError as exc:
             self._show_error(str(exc))
