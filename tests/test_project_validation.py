@@ -82,8 +82,9 @@ def test_ready_project_passes_all_checks(tmp_path: Path) -> None:
     report = ProjectValidationService().check(project, project_info())
 
     assert report.ready
-    assert len(report.items) == 5
+    assert len(report.items) == 6
     assert all(item.ok for item in report.items)
+    assert "370 сценариев" in report.items[4].message
 
 
 def test_missing_files_block_calculation(tmp_path: Path) -> None:
@@ -94,11 +95,12 @@ def test_missing_files_block_calculation(tmp_path: Path) -> None:
 
     assert not report.ready
     assert report.items[0].ok
-    assert [item.ok for item in report.items[1:]] == [False, False, False, False]
+    assert [item.ok for item in report.items[1:]] == [False, False, False, False, False]
     assert "project_common.json" in report.items[1].message
     assert "substances.json" in report.items[2].message
     assert "equipments.json" in report.items[3].message
-    assert "calculation_config.json" in report.items[4].message
+    assert "equipments.json" in report.items[4].message
+    assert "calculation_config.json" in report.items[5].message
 
 
 def test_all_equipment_rows_are_checked(tmp_path: Path) -> None:
@@ -134,3 +136,28 @@ def test_compensation_marks_are_checked(tmp_path: Path) -> None:
 
     assert not report.ready
     assert "отметка (с КМ) должна быть в конце" in report.items[3].message
+
+
+def test_forbidden_equipment_and_kind_pair_is_reported(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_ready_project(project)
+    write_json(
+        project / "substances.json",
+        [{"id": 1, "name": "Горючий газ", "kind": 2}],
+    )
+    equipment = valid_equipment()
+    equipment.update(
+        {
+            "equipment_type": 1,
+            "phase_state": "г.ф.",
+            "equipment_count": 1.0,
+            "volume_m3": 10.0,
+        }
+    )
+    write_json(project / "equipments.json", [equipment])
+
+    report = ProjectValidationService().check(project, project_info())
+
+    scenarios = report.items[4]
+    assert not scenarios.ok
+    assert "equipment_type=1, kind=2 запрещено" in scenarios.message

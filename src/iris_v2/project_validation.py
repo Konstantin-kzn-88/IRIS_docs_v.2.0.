@@ -10,6 +10,10 @@ from iris_v2.calculation_config import (
     CalculationConfigService,
 )
 from iris_v2.service import ProjectInfo
+from iris_v2.typical_scenarios import (
+    TypicalScenarioError,
+    TypicalScenarioService,
+)
 
 
 PHASE_STATES = {"ж.ф.", "г.ф.", "ж.ф.+г.ф."}
@@ -71,6 +75,9 @@ class ProjectValidationService:
         equipment_item = self._check_equipment(
             root / "equipments.json", substance_ids
         )
+        typical_scenarios_item = self._check_typical_scenarios(
+            root / "equipments.json", root / "substances.json"
+        )
         calculation_config_item = self._check_calculation_config(
             root / CALCULATION_CONFIG_FILE_NAME
         )
@@ -80,8 +87,84 @@ class ProjectValidationService:
                 common_item,
                 substances_item,
                 equipment_item,
+                typical_scenarios_item,
                 calculation_config_item,
             )
+        )
+
+    @staticmethod
+    def _check_typical_scenarios(
+        equipment_path: Path, substances_path: Path
+    ) -> ValidationItem:
+        errors: list[str] = []
+        service = TypicalScenarioService()
+        catalog = None
+        source_path = (
+            service.external_path()
+            if service.external_path().is_file()
+            else service.bundled_path()
+        )
+        try:
+            catalog = service.load()
+            source_path = catalog.source_path
+        except TypicalScenarioError as exc:
+            errors.append(str(exc))
+
+        substances, substances_error = _read_json(substances_path)
+        equipment, equipment_error = _read_json(equipment_path)
+        if substances_error:
+            errors.append(substances_error)
+        if equipment_error:
+            errors.append(equipment_error)
+
+        checked = 0
+        if (
+            catalog is not None
+            and isinstance(substances, list)
+            and isinstance(equipment, list)
+        ):
+            substance_kinds = {
+                item.get("id"): item.get("kind")
+                for item in substances
+                if isinstance(item, dict)
+                and isinstance(item.get("id"), int)
+                and isinstance(item.get("kind"), int)
+            }
+            for index, item in enumerate(equipment, start=1):
+                if not isinstance(item, dict):
+                    continue
+                equipment_type = item.get("equipment_type")
+                kind = substance_kinds.get(item.get("substance_id"))
+                if (
+                    isinstance(equipment_type, int)
+                    and equipment_type in catalog.equipment_types
+                    and isinstance(kind, int)
+                    and kind in catalog.kinds
+                ):
+                    checked += 1
+                    reason = catalog.forbidden_reason(equipment_type, kind)
+                    if reason is not None:
+                        errors.append(
+                            f"оборудование {index}: сочетание "
+                            f"equipment_type={equipment_type}, kind={kind} запрещено — {reason}"
+                        )
+                    elif not catalog.scenarios_for(equipment_type, kind):
+                        errors.append(
+                            f"оборудование {index}: отсутствуют типовые сценарии "
+                            f"для equipment_type={equipment_type}, kind={kind}"
+                        )
+
+        success = (
+            f"Справочник: {catalog.pair_count} сочетания, "
+            f"{catalog.scenario_count} сценариев; проверено строк: {checked}"
+            if catalog is not None
+            else ""
+        )
+        return ValidationItem(
+            "Типовые сценарии",
+            not errors,
+            _message(errors, success),
+            source_path,
         )
 
     @staticmethod

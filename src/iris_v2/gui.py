@@ -50,6 +50,11 @@ from iris_v2.substances import (
     SubstanceService,
     substance_fingerprint,
 )
+from iris_v2.typical_scenarios import (
+    TypicalScenarioCatalog,
+    TypicalScenarioError,
+    TypicalScenarioService,
+)
 
 
 class ProjectCommonDialog(QDialog):
@@ -304,6 +309,100 @@ class CalculationConfigDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", str(exc))
             return
         self.accept()
+
+
+class TypicalScenariosDialog(QDialog):
+    def __init__(
+        self,
+        catalog: TypicalScenarioCatalog,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.catalog = catalog
+        self.setWindowTitle("Типовые сценарии аварий")
+        self.resize(1180, 680)
+
+        self.equipment_combo = QComboBox()
+        for code, name in sorted(catalog.equipment_types.items()):
+            self.equipment_combo.addItem(f"{code} — {name}", code)
+        self.kind_combo = QComboBox()
+        for code, name in sorted(catalog.kinds.items()):
+            self.kind_combo.addItem(f"{code} — {name}", code)
+
+        filters = QFormLayout()
+        filters.addRow("Тип оборудования:", self.equipment_combo)
+        filters.addRow("Вид опасного вещества:", self.kind_combo)
+
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        self.table = QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "№",
+                "Сценарий",
+                "Базовая частота",
+                "Вероятность",
+                "Частота сценария",
+                "Расчёт",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(True)
+        self.table.horizontalHeader().setSectionResizeMode(
+            1, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setColumnWidth(0, 50)
+        self.table.setColumnWidth(2, 125)
+        self.table.setColumnWidth(3, 100)
+        self.table.setColumnWidth(4, 135)
+        self.table.setColumnWidth(5, 180)
+
+        source_label = QLabel(f"Источник: {catalog.source_path}")
+        source_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addLayout(filters)
+        layout.addWidget(self.status_label)
+        layout.addWidget(self.table)
+        layout.addWidget(source_label)
+        layout.addWidget(close_buttons)
+
+        self.equipment_combo.currentIndexChanged.connect(self._refresh)
+        self.kind_combo.currentIndexChanged.connect(self._refresh)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        equipment_type = self.equipment_combo.currentData()
+        kind = self.kind_combo.currentData()
+        scenarios = self.catalog.scenarios_for(equipment_type, kind)
+        reason = self.catalog.forbidden_reason(equipment_type, kind)
+        self.table.setRowCount(len(scenarios))
+        if reason is not None:
+            self.status_label.setText(f"Сочетание запрещено: {reason}")
+            self.status_label.setStyleSheet("color: #B42318; font-weight: bold;")
+        else:
+            self.status_label.setText(f"Найдено сценариев: {len(scenarios)}")
+            self.status_label.setStyleSheet("color: #16803A; font-weight: bold;")
+        for row, scenario in enumerate(scenarios):
+            values = (
+                str(scenario.line),
+                scenario.text,
+                f"{scenario.base_frequency:.3e}",
+                f"{scenario.event_probability:.6g}",
+                f"{scenario.frequency:.3e}",
+                f"{scenario.calc_code} — "
+                f"{self.catalog.calculation_types[scenario.calc_code]}",
+            )
+            for column, value in enumerate(values):
+                self.table.setItem(row, column, QTableWidgetItem(value))
+        self.table.resizeRowsToContents()
 
 
 class SubstanceDialog(QDialog):
@@ -643,6 +742,10 @@ class MainWindow(QMainWindow):
             self.edit_calculation_config
         )
 
+        self.typical_scenarios_button = QPushButton("Типовые сценарии")
+        self.typical_scenarios_button.setObjectName("typical_scenarios_button")
+        self.typical_scenarios_button.clicked.connect(self.show_typical_scenarios)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -654,6 +757,7 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.project_common_button)
         button_layout.addWidget(self.substances_button)
         button_layout.addWidget(self.equipment_button)
+        button_layout.addWidget(self.typical_scenarios_button)
         button_layout.addWidget(self.calculation_config_button)
         button_layout.addWidget(self.validation_button)
 
@@ -804,6 +908,14 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         dialog.exec()
+
+    def show_typical_scenarios(self) -> None:
+        try:
+            catalog = TypicalScenarioService().load()
+        except TypicalScenarioError as exc:
+            self._show_error(str(exc))
+            return
+        TypicalScenariosDialog(catalog, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

@@ -190,5 +190,10 @@ def test_minimal_window_starts() -> None:
         )
         assert config_button is not None
         assert not config_button.isEnabled()
+        scenarios_button = window.findChild(
+            QPushButton, "typical_scenarios_button"
+        )
+        assert scenarios_button is not None
+        assert scenarios_button.isEnabled()
     finally:
         window.close()
