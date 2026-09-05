@@ -56,6 +56,11 @@ from iris_v2.frequency_calculation import (
     FrequencyCalculationResult,
     FrequencyCalculationService,
 )
+from iris_v2.release_calculation import (
+    ReleaseCalculationError,
+    ReleaseCalculationResult,
+    ReleaseCalculationService,
+)
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 from iris_v2.project_validation import ProjectValidationService, ValidationReport
 from iris_v2.substances import (
@@ -666,6 +671,83 @@ class FrequencyCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class ReleaseCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: ReleaseCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Масса вещества в аварии")
+        self.resize(1280, 720)
+
+        status = QLabel(f"Рассчитано сценариев: {result.case_count}.")
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 9)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Строка",
+                "Режим выброса",
+                "В оборудовании, т",
+                "Расход, кг/с",
+                "В аварии, т",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 190, 140, 60, 230, 110, 105, 105)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["typical_scenario_line"],
+                item_data["release_mode_name"],
+                f'{item_data["amount_t"]:.6g}',
+                f'{item_data["flow_kg_s"]:.6g}',
+                f'{item_data["ov_in_accident_t"]:.6g}',
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1024,6 +1106,11 @@ class MainWindow(QMainWindow):
         self.frequency_button.setEnabled(False)
         self.frequency_button.clicked.connect(self.calculate_frequencies)
 
+        self.release_button = QPushButton("Масса в аварии")
+        self.release_button.setObjectName("release_button")
+        self.release_button.setEnabled(False)
+        self.release_button.clicked.connect(self.calculate_releases)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1041,6 +1128,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.typical_scenarios_button)
         calculation_button_layout.addWidget(self.calculation_config_button)
         calculation_button_layout.addWidget(self.calculation_cases_button)
+        calculation_button_layout.addWidget(self.release_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1091,6 +1179,7 @@ class MainWindow(QMainWindow):
         self.amount_button.setEnabled(True)
         self.calculation_config_button.setEnabled(True)
         self.calculation_cases_button.setEnabled(True)
+        self.release_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1291,6 +1380,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         FrequencyCalculationDialog(result, self).exec()
+
+    def calculate_releases(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ReleaseCalculationService().calculate(
+                self.current_project_directory
+            )
+        except ReleaseCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        ReleaseCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

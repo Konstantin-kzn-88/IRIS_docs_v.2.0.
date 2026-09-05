@@ -206,5 +206,8 @@ def test_minimal_window_starts() -> None:
         frequency_button = window.findChild(QPushButton, "frequency_button")
         assert frequency_button is not None
         assert not frequency_button.isEnabled()
+        release_button = window.findChild(QPushButton, "release_button")
+        assert release_button is not None
+        assert not release_button.isEnabled()
     finally:
         window.close()
