@@ -853,6 +853,55 @@ class MainWindow(QMainWindow):
             self.current_project_directory / "input" / EXCEL_FILE_NAME
         )
         template_existed = expected_template.is_file()
+
+        if template_existed:
+            choice = QMessageBox(self)
+            choice.setIcon(QMessageBox.Icon.Question)
+            choice.setWindowTitle("Оборудование")
+            choice.setText("Файл equipment_data.xlsx уже существует")
+            choice.setInformativeText("Выберите, что с ним сделать.")
+            import_button = choice.addButton(
+                "Импортировать существующий",
+                QMessageBox.ButtonRole.AcceptRole,
+            )
+            create_button = choice.addButton(
+                "Создать новый шаблон",
+                QMessageBox.ButtonRole.DestructiveRole,
+            )
+            choice.addButton(QMessageBox.StandardButton.Cancel)
+            choice.exec()
+
+            if choice.clickedButton() is create_button:
+                confirmation = QMessageBox.warning(
+                    self,
+                    "Замена шаблона",
+                    "Текущее содержимое input/equipment_data.xlsx будет "
+                    "полностью заменено новым типовым заполнением.\n\n"
+                    "Продолжить?",
+                    QMessageBox.StandardButton.Yes
+                    | QMessageBox.StandardButton.Cancel,
+                    QMessageBox.StandardButton.Cancel,
+                )
+                if confirmation != QMessageBox.StandardButton.Yes:
+                    return
+                try:
+                    template_path = service.ensure_template(
+                        self.current_project_directory,
+                        replace_existing=True,
+                    )
+                except EquipmentError as exc:
+                    self._show_error(str(exc))
+                    return
+                QMessageBox.information(
+                    self,
+                    "Шаблон создан заново",
+                    f"Новый файл готов:\n{template_path}",
+                )
+                return
+
+            if choice.clickedButton() is not import_button:
+                return
+
         try:
             template_path = service.ensure_template(self.current_project_directory)
         except EquipmentError as exc:

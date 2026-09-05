@@ -8,7 +8,7 @@ from iris_v2.equipment import HEADERS, EquipmentError, EquipmentService
 
 
 def write_project(project: Path, substances: list[dict] | None = None) -> None:
-    (project / "input").mkdir(parents=True)
+    (project / "input").mkdir(parents=True, exist_ok=True)
     (project / "substances.json").write_text(
         json.dumps(
             substances or [{"id": 1, "name": "Нефть", "kind": 0}],
@@ -116,6 +116,44 @@ def test_template_uses_every_selected_substance(tmp_path: Path) -> None:
     assert all(row[4] == "г.ф." for row in rows if row[1] == 3)
     assert "Нефть" in rows[0][2]
     assert "Бензин" in rows[9][2]
+
+
+def test_existing_template_is_not_replaced_by_default(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_project(project)
+    template = project / "input" / "equipment_data.xlsx"
+    template.write_bytes(b"user data")
+
+    result = EquipmentService().ensure_template(project)
+
+    assert result == template
+    assert template.read_bytes() == b"user data"
+
+
+def test_existing_template_can_be_created_again(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_project(project)
+    service = EquipmentService()
+    template = service.ensure_template(project)
+
+    write_project(project, [{"id": 7, "name": "Газ", "kind": 2}])
+    result = service.ensure_template(project, replace_existing=True)
+
+    workbook = load_workbook(result, read_only=True, data_only=True)
+    try:
+        rows = [
+            row
+            for row in workbook["Equipment Data"].iter_rows(
+                min_row=2, max_col=len(HEADERS), values_only=True
+            )
+            if any(value is not None for value in row)
+        ]
+    finally:
+        workbook.close()
+    assert result == template
+    assert len(rows) == 6
+    assert [row[3] for row in rows] == [0, 2, 3, 5, 6, 8]
+    assert all(row[1] == 7 for row in rows)
 
 
 def test_pipeline_excel_is_imported(tmp_path: Path) -> None:

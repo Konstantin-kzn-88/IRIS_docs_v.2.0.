@@ -148,13 +148,18 @@ def _coordinates(value: Any, errors: list[str], row: int) -> list[float]:
 
 
 class EquipmentService:
-    def ensure_template(self, project_directory: Path | str) -> Path:
+    def ensure_template(
+        self,
+        project_directory: Path | str,
+        *,
+        replace_existing: bool = False,
+    ) -> Path:
         project = Path(project_directory)
         input_directory = project / "input"
         if not input_directory.is_dir():
             raise EquipmentError(f"Папка input не найдена: {input_directory}")
         destination = input_directory / EXCEL_FILE_NAME
-        if not destination.exists():
+        if replace_existing or not destination.exists():
             source = Path(__file__).parent / "data" / EXCEL_FILE_NAME
             if not source.is_file():
                 raise EquipmentError("Встроенный шаблон equipment_data.xlsx не найден")
