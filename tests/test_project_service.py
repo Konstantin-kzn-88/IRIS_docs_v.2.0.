@@ -83,7 +83,9 @@ def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
 
 
 def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
-    local_catalog = tmp_path / "organization.json"
+    first_directory = tmp_path / "organizations" / "first"
+    first_directory.mkdir(parents=True)
+    local_catalog = first_directory / "organization.json"
     local_catalog.write_text(
         json.dumps(
             [
@@ -108,16 +110,43 @@ def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
         ),
         encoding="utf-8",
     )
+
+    second_directory = tmp_path / "organizations" / "second"
+    second_directory.mkdir()
+    (second_directory / "organization.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": 78,
+                    "organization": {
+                        "short_name": "Вторая организация",
+                        "full_name": "Вторая организация",
+                    },
+                    "sites": [
+                        {
+                            "site_id": "opo_second",
+                            "name": "Второй ОПО",
+                            "reg_number": "SECOND-001",
+                        }
+                    ],
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.chdir(tmp_path)
 
     organizations = load_organizations()
 
+    assert len(organizations) == 2
     assert organizations[0].name == "Локальная организация"
     assert organizations[0].facilities[0].name == "Локальный ОПО"
     assert organizations[0].snapshot()["future_section"]["new_field"] == (
         "сохранить без изменений"
     )
     assert organizations[0].facilities[0].snapshot()["future_opo_field"]["value"] == 123
+    assert organizations[1].name == "Вторая организация"
 
 
 def test_minimal_window_starts() -> None:

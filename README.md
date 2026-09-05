@@ -41,17 +41,29 @@ python main.py
 
 ## Организации и ОПО
 
-Создайте в корне проекта локальную копию справочника:
+Для каждой организации создайте отдельную папку и скопируйте в неё справочник:
 
 ```powershell
-Copy-Item .\src\iris_v2\data\organization.json .\organization.json
+New-Item -ItemType Directory .\organizations\Example
+Copy-Item .\src\iris_v2\data\organization.json `
+  .\organizations\Example\organization.json
 ```
 
-Заполняйте `organization.json` реальными данными. Используется исходная
-вложенная структура: сведения об организации находятся в `organization`,
-а список её ОПО — в `sites`. После изменения файла перезапустите программу.
+Структура справочников:
 
-Локальный справочник исключён из Git. Если его нет, программа использует
+```text
+organizations/
+├─ Orenburgneft/organization.json
+├─ Tatneft/organization.json
+└─ Другие организации/organization.json
+```
+
+Программа автоматически загружает все файлы `organizations/*/organization.json`.
+В каждом файле используется исходная вложенная структура: сведения об
+организации находятся в `organization`, а список её ОПО — в `sites`.
+После изменения файлов перезапустите программу.
+
+Папка `organizations` исключена из Git. Если в ней нет справочников, программа использует
 обезличенный пример `src/iris_v2/data/organization.json`.
 
 При создании проекта в его базу копируются все разделы организации и все поля

@@ -106,28 +106,38 @@ def _validate(organizations: tuple[Organization, ...]) -> None:
                 ) from exc
 
 
-def load_organizations(path: Path | str | None = None) -> tuple[Organization, ...]:
-    if path is not None:
-        catalog_path = Path(path)
-    else:
-        local_catalog = Path.cwd() / "organization.json"
-        catalog_path = (
-            local_catalog
-            if local_catalog.is_file()
-            else Path(__file__).parent / "data" / "organization.json"
-        )
-
+def _read_catalog_file(catalog_path: Path) -> tuple[Organization, ...]:
     try:
         raw = json.loads(catalog_path.read_text(encoding="utf-8"))
         if not isinstance(raw, list):
             raise CatalogError("Корневой элемент organization.json должен быть списком")
-        organizations = tuple(
+        return tuple(
             _organization_from_dict(item) for item in raw if isinstance(item, dict)
         )
-        _validate(organizations)
-    except CatalogError:
-        raise
+    except CatalogError as exc:
+        raise CatalogError(f"Ошибка в справочнике {catalog_path}: {exc}") from exc
     except (OSError, json.JSONDecodeError, TypeError, KeyError) as exc:
         raise CatalogError(f"Не удалось прочитать справочник: {catalog_path}") from exc
 
+
+def load_organizations(path: Path | str | None = None) -> tuple[Organization, ...]:
+    if path is not None:
+        source = Path(path)
+        catalog_paths = (
+            sorted(source.glob("*/organization.json"))
+            if source.is_dir()
+            else [source]
+        )
+    else:
+        organizations_directory = Path.cwd() / "organizations"
+        catalog_paths = sorted(organizations_directory.glob("*/organization.json"))
+        if not catalog_paths:
+            catalog_paths = [Path(__file__).parent / "data" / "organization.json"]
+
+    organizations = tuple(
+        organization
+        for catalog_path in catalog_paths
+        for organization in _read_catalog_file(catalog_path)
+    )
+    _validate(organizations)
     return organizations
