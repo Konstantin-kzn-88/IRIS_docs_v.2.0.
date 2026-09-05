@@ -182,6 +182,9 @@ def test_minimal_window_starts() -> None:
         equipment_button = window.findChild(QPushButton, "equipment_button")
         assert equipment_button is not None
         assert not equipment_button.isEnabled()
+        amount_button = window.findChild(QPushButton, "amount_button")
+        assert amount_button is not None
+        assert not amount_button.isEnabled()
         validation_button = window.findChild(QPushButton, "validation_button")
         assert validation_button is not None
         assert not validation_button.isEnabled()

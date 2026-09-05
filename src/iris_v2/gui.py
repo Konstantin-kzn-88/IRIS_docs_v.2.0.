@@ -37,6 +37,11 @@ from iris_v2.developer_catalog import (
     load_developers,
 )
 from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
+from iris_v2.amount_calculation import (
+    AmountCalculationError,
+    AmountCalculationResult,
+    AmountCalculationService,
+)
 from iris_v2.calculation_cases import (
     CalculationCasesError,
     CalculationCasesResult,
@@ -502,6 +507,82 @@ class CalculationCasesDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class AmountCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: AmountCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Количество опасного вещества")
+        self.resize(1180, 680)
+
+        status = QLabel(f"Рассчитано строк оборудования: {result.equipment_count}.")
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 9)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Оборудование",
+                "Вещество",
+                "Тип",
+                "Объём, м³",
+                "Dвн, мм",
+                "Жидкость, т",
+                "Газ, т",
+                "Всего, т",
+                "Формула",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((210, 150, 165, 90, 80, 90, 80, 90)):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            internal_diameter = item_data["internal_diameter_mm"]
+            values = (
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["equipment_type_name"],
+                f'{item_data["volume_m3"]:.6g}',
+                "" if internal_diameter is None else f"{internal_diameter:.6g}",
+                f'{item_data["liquid_mass_t"]:.6g}',
+                f'{item_data["gas_mass_t"]:.6g}',
+                f'{item_data["amount_t"]:.6g}',
+                item_data["formula"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class FrequencyCalculationDialog(QDialog):
     def __init__(
         self,
@@ -915,6 +996,11 @@ class MainWindow(QMainWindow):
         self.equipment_button.setEnabled(False)
         self.equipment_button.clicked.connect(self.import_equipment)
 
+        self.amount_button = QPushButton("Количество ОВ")
+        self.amount_button.setObjectName("amount_button")
+        self.amount_button.setEnabled(False)
+        self.amount_button.clicked.connect(self.calculate_amounts)
+
         self.calculation_config_button = QPushButton("Настройки расчёта")
         self.calculation_config_button.setObjectName("calculation_config_button")
         self.calculation_config_button.setEnabled(False)
@@ -943,21 +1029,25 @@ class MainWindow(QMainWindow):
         self.validation_button.setEnabled(False)
         self.validation_button.clicked.connect(self.validate_project)
 
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(create_button)
-        button_layout.addWidget(open_button)
-        button_layout.addWidget(self.project_common_button)
-        button_layout.addWidget(self.substances_button)
-        button_layout.addWidget(self.equipment_button)
-        button_layout.addWidget(self.typical_scenarios_button)
-        button_layout.addWidget(self.calculation_cases_button)
-        button_layout.addWidget(self.frequency_button)
-        button_layout.addWidget(self.calculation_config_button)
-        button_layout.addWidget(self.validation_button)
+        data_button_layout = QHBoxLayout()
+        data_button_layout.addWidget(create_button)
+        data_button_layout.addWidget(open_button)
+        data_button_layout.addWidget(self.project_common_button)
+        data_button_layout.addWidget(self.substances_button)
+        data_button_layout.addWidget(self.equipment_button)
+        data_button_layout.addWidget(self.amount_button)
+
+        calculation_button_layout = QHBoxLayout()
+        calculation_button_layout.addWidget(self.typical_scenarios_button)
+        calculation_button_layout.addWidget(self.calculation_config_button)
+        calculation_button_layout.addWidget(self.calculation_cases_button)
+        calculation_button_layout.addWidget(self.frequency_button)
+        calculation_button_layout.addWidget(self.validation_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
-        layout.addLayout(button_layout)
+        layout.addLayout(data_button_layout)
+        layout.addLayout(calculation_button_layout)
         layout.addWidget(self.project_label, 1)
 
         container = QWidget()
@@ -998,6 +1088,7 @@ class MainWindow(QMainWindow):
         self.project_common_button.setEnabled(True)
         self.substances_button.setEnabled(True)
         self.equipment_button.setEnabled(True)
+        self.amount_button.setEnabled(True)
         self.calculation_config_button.setEnabled(True)
         self.calculation_cases_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
@@ -1131,6 +1222,19 @@ class MainWindow(QMainWindow):
             "Импорт завершён",
             f"Импортировано строк оборудования: {result.count}\n{result.json_path}",
         )
+
+    def calculate_amounts(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = AmountCalculationService().calculate(
+                self.current_project_directory
+            )
+        except AmountCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        AmountCalculationDialog(result, self).exec()
 
     def validate_project(self) -> None:
         if self.current_project is None or self.current_project_directory is None:
