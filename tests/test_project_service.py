@@ -217,5 +217,10 @@ def test_minimal_window_starts() -> None:
         )
         assert evaporation_button is not None
         assert not evaporation_button.isEnabled()
+        hazard_factor_button = window.findChild(
+            QPushButton, "hazard_factor_button"
+        )
+        assert hazard_factor_button is not None
+        assert not hazard_factor_button.isEnabled()
     finally:
         window.close()

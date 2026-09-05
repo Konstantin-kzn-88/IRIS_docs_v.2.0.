@@ -42,6 +42,11 @@ from iris_v2.evaporation_calculation import (
     EvaporationCalculationResult,
     EvaporationCalculationService,
 )
+from iris_v2.hazard_factor_calculation import (
+    HazardFactorCalculationError,
+    HazardFactorCalculationResult,
+    HazardFactorCalculationService,
+)
 from iris_v2.amount_calculation import (
     AmountCalculationError,
     AmountCalculationResult,
@@ -932,6 +937,90 @@ class EvaporationCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class HazardFactorCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: HazardFactorCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Масса вещества в поражающем факторе")
+        self.resize(1320, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"С поражающим фактором: {result.active_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 10)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Расчёт",
+                "Источник массы",
+                "В аварии, т",
+                "Испарилось, т",
+                "В факторе, т",
+                "Расход, кг/с",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            9, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 175, 135, 135, 190, 90, 95, 95, 100)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            evaporated = item_data["evaporated_mass_t"]
+            factor_flow = item_data["hazard_factor_flow_kg_s"]
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["calc_name"],
+                item_data["hazard_factor_source_name"],
+                f'{item_data["ov_in_accident_t"]:.6g}',
+                "" if evaporated is None else f"{evaporated:.6g}",
+                f'{item_data["ov_in_hazard_factor_t"]:.6g}',
+                "" if factor_flow is None else f"{factor_flow:.6g}",
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1305,6 +1394,11 @@ class MainWindow(QMainWindow):
         self.evaporation_button.setEnabled(False)
         self.evaporation_button.clicked.connect(self.calculate_evaporation)
 
+        self.hazard_factor_button = QPushButton("Масса ПФ")
+        self.hazard_factor_button.setObjectName("hazard_factor_button")
+        self.hazard_factor_button.setEnabled(False)
+        self.hazard_factor_button.clicked.connect(self.calculate_hazard_factors)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1325,6 +1419,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.release_button)
         calculation_button_layout.addWidget(self.spill_button)
         calculation_button_layout.addWidget(self.evaporation_button)
+        calculation_button_layout.addWidget(self.hazard_factor_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1378,6 +1473,7 @@ class MainWindow(QMainWindow):
         self.release_button.setEnabled(True)
         self.spill_button.setEnabled(True)
         self.evaporation_button.setEnabled(True)
+        self.hazard_factor_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1617,6 +1713,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         EvaporationCalculationDialog(result, self).exec()
+
+    def calculate_hazard_factors(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = HazardFactorCalculationService().calculate(
+                self.current_project_directory
+            )
+        except HazardFactorCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        HazardFactorCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
