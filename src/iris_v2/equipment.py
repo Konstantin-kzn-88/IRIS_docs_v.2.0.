@@ -1,11 +1,13 @@
 import json
 import math
 import shutil
+from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from iris_v2.substances import SubstanceError, SubstanceService
+from iris_v2.typical_scenarios import TypicalScenarioError, TypicalScenarioService
 
 
 EXCEL_FILE_NAME = "equipment_data.xlsx"
@@ -14,6 +16,18 @@ ERROR_FILE_NAME = "equipment_import_errors.txt"
 SHEET_NAME = "Equipment Data"
 PIPELINE_TYPES = {0, 9}
 PHASE_STATES = {"ж.ф.", "г.ф.", "ж.ф.+г.ф."}
+PHASE_STATE_BY_KIND = {
+    0: "ж.ф.",
+    1: "ж.ф.",
+    2: "г.ф.",
+    3: "г.ф.",
+    4: "ж.ф.+г.ф.",
+    5: "ж.ф.+г.ф.",
+    6: "ж.ф.",
+    7: "г.ф.",
+    8: "ж.ф.+г.ф.",
+    9: "ж.ф.",
+}
 HEADERS = (
     "source_id",
     "substance_id",
@@ -144,7 +158,113 @@ class EquipmentService:
             source = Path(__file__).parent / "data" / EXCEL_FILE_NAME
             if not source.is_file():
                 raise EquipmentError("Встроенный шаблон equipment_data.xlsx не найден")
-            shutil.copy2(source, destination)
+            try:
+                substances = SubstanceService().load_project(project)
+            except SubstanceError as exc:
+                raise EquipmentError(str(exc)) from exc
+            if not substances:
+                raise EquipmentError("Сначала выберите и сохраните вещества проекта")
+            try:
+                catalog = TypicalScenarioService().load()
+            except TypicalScenarioError as exc:
+                raise EquipmentError(str(exc)) from exc
+
+            try:
+                from openpyxl import load_workbook
+            except ImportError as exc:
+                raise EquipmentError("Не установлена зависимость openpyxl") from exc
+            workbook = None
+            temporary = destination.with_name(f".{destination.stem}.tmp.xlsx")
+            try:
+                workbook = load_workbook(source)
+                sheet = workbook[SHEET_NAME]
+                base_rows = {
+                    int(sheet.cell(row, 4).value): [
+                        sheet.cell(row, column).value
+                        for column in range(1, len(HEADERS) + 1)
+                    ]
+                    for row in range(2, 12)
+                }
+                generated_rows: list[list[Any]] = []
+                source_id = 1
+                substance_ids: set[int] = set()
+                for substance in substances:
+                    substance_id = substance.get("id")
+                    substance_name = str(substance.get("name", "")).strip()
+                    kind = substance.get("kind")
+                    if (
+                        isinstance(substance_id, bool)
+                        or not isinstance(substance_id, int)
+                        or substance_id <= 0
+                        or substance_id in substance_ids
+                    ):
+                        raise EquipmentError(
+                            "В substances.json обнаружен недопустимый или повторяющийся id"
+                        )
+                    if not substance_name:
+                        raise EquipmentError("В substances.json не заполнено название вещества")
+                    if (
+                        isinstance(kind, bool)
+                        or not isinstance(kind, int)
+                        or kind not in PHASE_STATE_BY_KIND
+                    ):
+                        raise EquipmentError(
+                            f"Вещество {substance_id}: kind должен быть от 0 до 9"
+                        )
+                    substance_ids.add(substance_id)
+                    for equipment_type in sorted(catalog.equipment_types):
+                        if not catalog.scenarios_for(equipment_type, kind):
+                            continue
+                        values = list(base_rows[equipment_type])
+                        values[0] = source_id
+                        values[1] = substance_id
+                        values[2] = (
+                            f"{catalog.equipment_types[equipment_type]} — "
+                            f"{substance_name}"
+                        )
+                        values[4] = PHASE_STATE_BY_KIND[kind]
+                        generated_rows.append(values)
+                        source_id += 1
+
+                last_data_row = len(generated_rows) + 1
+                for row in range(2, max(11, last_data_row) + 1):
+                    for column in range(1, len(HEADERS) + 1):
+                        sheet.cell(row, column).value = None
+                for row_number, values in enumerate(generated_rows, start=2):
+                    for column, value in enumerate(values, start=1):
+                        sheet.cell(row_number, column).value = value
+                for table in sheet.tables.values():
+                    table.ref = f"A1:X{last_data_row}"
+
+                instruction = workbook["Инструкция"]
+                for column in range(1, 4):
+                    instruction.cell(25, column)._style = copy(
+                        instruction.cell(24, column)._style
+                    )
+                instruction.cell(25, 1).value = "Типовое заполнение"
+                instruction.cell(25, 2).value = "Автоматически"
+                instruction.cell(25, 3).value = (
+                    "Для каждого substance_id созданы только разрешённые пары "
+                    "equipment_type × kind."
+                )
+                alignment = copy(instruction.cell(24, 3).alignment)
+                alignment.wrap_text = True
+                alignment.vertical = "top"
+                instruction.cell(25, 3).alignment = alignment
+                instruction.row_dimensions[25].height = 30
+                workbook.save(temporary)
+            except EquipmentError:
+                temporary.unlink(missing_ok=True)
+                raise
+            except Exception as exc:
+                temporary.unlink(missing_ok=True)
+                raise EquipmentError(
+                    f"Не удалось создать типовой шаблон {destination}"
+                ) from exc
+            finally:
+                if workbook is not None:
+                    workbook.close()
+            temporary.replace(destination)
         return destination
 
     def import_excel(
