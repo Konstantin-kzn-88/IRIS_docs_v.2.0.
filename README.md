@@ -5,8 +5,12 @@
 ## Установка
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
 ```
+
+Первая команда устанавливает зависимости, вторая подключает сам проект в
+режиме разработки без повторной загрузки пакетов.
 
 ## Создание проекта
 
