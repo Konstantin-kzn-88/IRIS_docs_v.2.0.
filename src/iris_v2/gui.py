@@ -4,12 +4,14 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QDialog,
     QDialogButtonBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -19,6 +21,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -31,6 +35,13 @@ from iris_v2.developer_catalog import (
     load_developers,
 )
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+from iris_v2.substances import (
+    KIND_NAMES,
+    Substance,
+    SubstanceError,
+    SubstanceService,
+    substance_fingerprint,
+)
 
 
 class ProjectCommonDialog(QDialog):
@@ -159,6 +170,107 @@ class ProjectCommonDialog(QDialog):
         try:
             self.service.save(self.project_directory, data)
         except ProjectCommonError as exc:
+            QMessageBox.critical(self, "Ошибка", str(exc))
+            return
+        self.accept()
+
+
+class SubstanceDialog(QDialog):
+    def __init__(
+        self,
+        project_directory: Path,
+        substances: tuple[Substance, ...],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.project_directory = project_directory
+        self.substances = substances
+        self.service = SubstanceService()
+        selected_fingerprints = {
+            substance_fingerprint(item)
+            for item in self.service.load_project(project_directory)
+        }
+        self.setWindowTitle("Вещества проекта")
+        self.resize(980, 650)
+
+        self.filter_edit = QLineEdit()
+        self.filter_edit.setPlaceholderText("Поиск по группе, названию или виду вещества")
+        self.filter_edit.textChanged.connect(self._apply_filter)
+
+        self.table = QTableWidget(len(substances), 5)
+        self.table.setHorizontalHeaderLabels(
+            ["Выбрать", "Группа", "Исходный ID", "Название", "Вид вещества"]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+
+        remaining = set(selected_fingerprints)
+        for row, substance in enumerate(substances):
+            selected = substance.fingerprint in remaining
+            if selected:
+                remaining.remove(substance.fingerprint)
+            check_item = QTableWidgetItem()
+            check_item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable
+            )
+            check_item.setCheckState(
+                Qt.CheckState.Checked if selected else Qt.CheckState.Unchecked
+            )
+            self.table.setItem(row, 0, check_item)
+            self.table.setItem(row, 1, QTableWidgetItem(substance.group))
+            self.table.setItem(row, 2, QTableWidgetItem(str(substance.source_id)))
+            self.table.setItem(row, 3, QTableWidgetItem(substance.name))
+            self.table.setItem(row, 4, QTableWidgetItem(KIND_NAMES[substance.kind]))
+
+        select_all_button = QPushButton("Выбрать все")
+        select_all_button.clicked.connect(lambda: self._set_visible_checked(True))
+        clear_button = QPushButton("Снять выделение")
+        clear_button.clicked.connect(lambda: self._set_visible_checked(False))
+        selection_layout = QHBoxLayout()
+        selection_layout.addWidget(select_all_button)
+        selection_layout.addWidget(clear_button)
+        selection_layout.addStretch()
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Сохранить")
+        buttons.button(QDialogButtonBox.StandardButton.Save).clicked.connect(self._save)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.filter_edit)
+        layout.addLayout(selection_layout)
+        layout.addWidget(self.table)
+        layout.addWidget(buttons)
+
+    def _apply_filter(self, text: str) -> None:
+        search = text.strip().lower()
+        for row in range(self.table.rowCount()):
+            row_text = " ".join(
+                self.table.item(row, column).text()
+                for column in range(1, self.table.columnCount())
+            ).lower()
+            self.table.setRowHidden(row, search not in row_text)
+
+    def _set_visible_checked(self, checked: bool) -> None:
+        state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+        for row in range(self.table.rowCount()):
+            if not self.table.isRowHidden(row):
+                self.table.item(row, 0).setCheckState(state)
+
+    def _save(self) -> None:
+        selected = [
+            substance
+            for row, substance in enumerate(self.substances)
+            if self.table.item(row, 0).checkState() == Qt.CheckState.Checked
+        ]
+        try:
+            self.service.save_project(self.project_directory, selected)
+        except SubstanceError as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))
             return
         self.accept()
@@ -304,10 +416,16 @@ class MainWindow(QMainWindow):
         self.project_common_button.setEnabled(False)
         self.project_common_button.clicked.connect(self.edit_project_common)
 
+        self.substances_button = QPushButton("Вещества")
+        self.substances_button.setObjectName("substances_button")
+        self.substances_button.setEnabled(False)
+        self.substances_button.clicked.connect(self.edit_substances)
+
         button_layout = QHBoxLayout()
         button_layout.addWidget(create_button)
         button_layout.addWidget(open_button)
         button_layout.addWidget(self.project_common_button)
+        button_layout.addWidget(self.substances_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -350,6 +468,7 @@ class MainWindow(QMainWindow):
         self.current_project = project
         self.current_project_directory = directory
         self.project_common_button.setEnabled(True)
+        self.substances_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -370,6 +489,20 @@ class MainWindow(QMainWindow):
                 self,
             )
         except ProjectCommonError as exc:
+            self._show_error(str(exc))
+            return
+        dialog.exec()
+
+    def edit_substances(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            substances = SubstanceService().load_archive()
+            dialog = SubstanceDialog(
+                self.current_project_directory, substances, self
+            )
+        except SubstanceError as exc:
             self._show_error(str(exc))
             return
         dialog.exec()

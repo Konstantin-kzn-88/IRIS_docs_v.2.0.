@@ -1,0 +1,41 @@
+{
+  "id": 0,
+  "name": "Нефть (пример)",
+  "kind": 0,
+  "formula": "Смесь углеводородов",
+  "composition": {
+    "components": []
+  },
+  "notes": "Обезличенный пример вещества",
+  "physical": {
+    "molar_mass_kg_per_mol": null,
+    "density_liquid_kg_per_m3": null,
+    "density_gas_kg_per_m3": null,
+    "evaporation_heat_J_per_kg": null,
+    "boiling_point_C": null
+  },
+  "explosion": {
+    "explosion_hazard_class": null,
+    "flash_point_C": null,
+    "lel_percent": null,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": null,
+    "expansion_degree": null,
+    "heat_of_combustion_kJ_per_kg": null,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": null,
+    "pdk_mg_per_m3": null,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "",
+  "odor": "",
+  "corrosiveness": "",
+  "precautions": "",
+  "impact": "",
+  "protection": "",
+  "neutralization_methods": "",
+  "first_aid": ""
+}
