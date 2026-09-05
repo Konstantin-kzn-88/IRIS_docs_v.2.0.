@@ -185,5 +185,10 @@ def test_minimal_window_starts() -> None:
         validation_button = window.findChild(QPushButton, "validation_button")
         assert validation_button is not None
         assert not validation_button.isEnabled()
+        config_button = window.findChild(
+            QPushButton, "calculation_config_button"
+        )
+        assert config_button is not None
+        assert not config_button.isEnabled()
     finally:
         window.close()

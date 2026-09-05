@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 
+from iris_v2.calculation_config import (
+    CalculationConfigService,
+    new_calculation_config,
+)
 from iris_v2.project_validation import ProjectValidationService
 from iris_v2.service import ProjectInfo
 
@@ -68,6 +72,7 @@ def write_ready_project(directory: Path) -> None:
         [{"id": 1, "name": "Нефть", "kind": 0}],
     )
     write_json(directory / "equipments.json", [valid_equipment()])
+    CalculationConfigService().save(directory, new_calculation_config())
 
 
 def test_ready_project_passes_all_checks(tmp_path: Path) -> None:
@@ -77,7 +82,7 @@ def test_ready_project_passes_all_checks(tmp_path: Path) -> None:
     report = ProjectValidationService().check(project, project_info())
 
     assert report.ready
-    assert len(report.items) == 4
+    assert len(report.items) == 5
     assert all(item.ok for item in report.items)
 
 
@@ -89,10 +94,11 @@ def test_missing_files_block_calculation(tmp_path: Path) -> None:
 
     assert not report.ready
     assert report.items[0].ok
-    assert [item.ok for item in report.items[1:]] == [False, False, False]
+    assert [item.ok for item in report.items[1:]] == [False, False, False, False]
     assert "project_common.json" in report.items[1].message
     assert "substances.json" in report.items[2].message
     assert "equipments.json" in report.items[3].message
+    assert "calculation_config.json" in report.items[4].message
 
 
 def test_all_equipment_rows_are_checked(tmp_path: Path) -> None:
@@ -115,3 +121,16 @@ def test_all_equipment_rows_are_checked(tmp_path: Path) -> None:
     assert "оборудование 1: coordinates" in equipment.message
     assert "оборудование 2: substance_id" in equipment.message
     assert "оборудование 2: не заполнена составляющая ОПО" in equipment.message
+
+
+def test_compensation_marks_are_checked(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_ready_project(project)
+    equipment = valid_equipment()
+    equipment["hazard_component"] = "Участок (с КМ) трубопроводов"
+    write_json(project / "equipments.json", [equipment])
+
+    report = ProjectValidationService().check(project, project_info())
+
+    assert not report.ready
+    assert "отметка (с КМ) должна быть в конце" in report.items[3].message

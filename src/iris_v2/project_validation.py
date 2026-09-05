@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from iris_v2.calculation_config import (
+    FILE_NAME as CALCULATION_CONFIG_FILE_NAME,
+    CalculationConfigError,
+    CalculationConfigService,
+)
 from iris_v2.service import ProjectInfo
 
 
@@ -66,8 +71,34 @@ class ProjectValidationService:
         equipment_item = self._check_equipment(
             root / "equipments.json", substance_ids
         )
+        calculation_config_item = self._check_calculation_config(
+            root / CALCULATION_CONFIG_FILE_NAME
+        )
         return ValidationReport(
-            (project_item, common_item, substances_item, equipment_item)
+            (
+                project_item,
+                common_item,
+                substances_item,
+                equipment_item,
+                calculation_config_item,
+            )
+        )
+
+    @staticmethod
+    def _check_calculation_config(path: Path) -> ValidationItem:
+        errors: list[str] = []
+        if not path.is_file():
+            errors.append(f"Файл не найден: {path.name}")
+        else:
+            try:
+                CalculationConfigService().load(path.parent)
+            except CalculationConfigError as exc:
+                errors.append(str(exc))
+        return ValidationItem(
+            "Настройки расчёта",
+            not errors,
+            _message(errors, "Настройки расчёта заполнены"),
+            path,
         )
 
     @staticmethod
@@ -174,8 +205,21 @@ class ProjectValidationService:
                         errors.append(f"{prefix}: невозможно проверить substance_id — вещества не готовы")
                     elif substance_id not in substance_ids:
                         errors.append(f"{prefix}: substance_id {substance_id!r} отсутствует в substances.json")
-                    if not str(equipment.get("hazard_component", "")).strip():
+                    hazard_component = str(
+                        equipment.get("hazard_component", "")
+                    ).strip()
+                    if not hazard_component:
                         errors.append(f"{prefix}: не заполнена составляющая ОПО")
+                    has_without = "(без КМ)" in hazard_component
+                    has_with = "(с КМ)" in hazard_component
+                    if has_without and has_with:
+                        errors.append(
+                            f"{prefix}: одновременно указаны (без КМ) и (с КМ)"
+                        )
+                    elif has_without and not hazard_component.endswith("(без КМ)"):
+                        errors.append(f"{prefix}: отметка (без КМ) должна быть в конце")
+                    elif has_with and not hazard_component.endswith("(с КМ)"):
+                        errors.append(f"{prefix}: отметка (с КМ) должна быть в конце")
                     if equipment.get("phase_state") not in PHASE_STATES:
                         errors.append(f"{prefix}: недопустимое phase_state")
                     pressure = equipment.get("pressure_mpa")

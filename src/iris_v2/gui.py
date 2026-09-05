@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QHeaderView,
@@ -36,6 +37,10 @@ from iris_v2.developer_catalog import (
     load_developers,
 )
 from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
+from iris_v2.calculation_config import (
+    CalculationConfigError,
+    CalculationConfigService,
+)
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 from iris_v2.project_validation import ProjectValidationService, ValidationReport
 from iris_v2.substances import (
@@ -173,6 +178,129 @@ class ProjectCommonDialog(QDialog):
         try:
             self.service.save(self.project_directory, data)
         except ProjectCommonError as exc:
+            QMessageBox.critical(self, "Ошибка", str(exc))
+            return
+        self.accept()
+
+
+class CalculationConfigDialog(QDialog):
+    def __init__(
+        self, project_directory: Path, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        self.project_directory = project_directory
+        self.service = CalculationConfigService()
+        self.data = self.service.load(project_directory)
+        self.setWindowTitle("Настройки расчёта")
+        self.resize(720, 480)
+
+        self.edits: dict[str, QDoubleSpinBox] = {}
+        fractions_form = QFormLayout()
+        for key, label in (
+            ("partial_release_fraction", "Доля частичной разгерметизации:"),
+            ("flammable_cloud_fraction", "Доля вещества в облаке:"),
+            ("bleve_fraction", "Доля вещества в огненном шаре:"),
+            ("partial_spill_fraction", "Доля частичного пролива:"),
+        ):
+            edit = self._spin(self.data[key], 1.0, 0.005)
+            self.edits[key] = edit
+            fractions_form.addRow(label, edit)
+        fractions_page = QWidget()
+        fractions_page.setLayout(fractions_form)
+
+        model_form = QFormLayout()
+        for key, label, maximum in (
+            ("wind_speed_m_s", "Скорость ветра, м/с:", 100.0),
+            (
+                "liquid_leak_hole_diameter_mm",
+                "Отверстие истечения жидкости, мм:",
+                10000.0,
+            ),
+            (
+                "gas_leak_hole_diameter_mm",
+                "Отверстие истечения газа, мм:",
+                10000.0,
+            ),
+            ("damage_scale", "Масштаб ущерба:", 1000000.0),
+        ):
+            edit = self._spin(self.data[key], maximum, 0.1)
+            self.edits[key] = edit
+            model_form.addRow(label, edit)
+        model_page = QWidget()
+        model_page.setLayout(model_form)
+
+        multipliers = self.data["frequency_multipliers"]
+        frequency_form = QFormLayout()
+        frequency_form.addRow("Стандартный расчёт:", QLabel("1,0"))
+        self.without_compensation_edit = self._spin(
+            multipliers["without_compensation"], 10.0, 0.05
+        )
+        self.with_compensation_edit = self._spin(
+            multipliers["with_compensation"], 10.0, 0.05
+        )
+        frequency_form.addRow(
+            "Расчёт без компенсирующих мероприятий:",
+            self.without_compensation_edit,
+        )
+        frequency_form.addRow(
+            "Расчёт с компенсирующими мероприятиями:",
+            self.with_compensation_edit,
+        )
+        example = QLabel(
+            "Множитель определяется отдельно для каждой строки по окончанию "
+            "hazard_component:\n\n"
+            "Участок трубопроводов — стандартный расчёт (×1,0)\n"
+            "Участок трубопроводов (без КМ) — расчёт без КМ\n"
+            "Участок трубопроводов (с КМ) — расчёт с КМ"
+        )
+        example.setWordWrap(True)
+        frequency_layout = QVBoxLayout()
+        frequency_layout.addLayout(frequency_form)
+        frequency_layout.addWidget(example)
+        frequency_layout.addStretch()
+        frequency_page = QWidget()
+        frequency_page.setLayout(frequency_layout)
+
+        tabs = QTabWidget()
+        tabs.addTab(fractions_page, "Масса и пролив")
+        tabs.addTab(model_page, "Истечение и ущерб")
+        tabs.addTab(frequency_page, "Частота и КМ")
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Сохранить")
+        buttons.button(QDialogButtonBox.StandardButton.Save).clicked.connect(
+            self._save
+        )
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(tabs)
+        layout.addWidget(buttons)
+
+    @staticmethod
+    def _spin(value: float, maximum: float, step: float) -> QDoubleSpinBox:
+        edit = QDoubleSpinBox()
+        edit.setDecimals(3)
+        edit.setRange(0.001, maximum)
+        edit.setSingleStep(step)
+        edit.setValue(float(value))
+        return edit
+
+    def _save(self) -> None:
+        data = copy.deepcopy(self.data)
+        for key, edit in self.edits.items():
+            data[key] = edit.value()
+        data["frequency_multipliers"] = {
+            "standard": 1.0,
+            "without_compensation": self.without_compensation_edit.value(),
+            "with_compensation": self.with_compensation_edit.value(),
+        }
+        try:
+            self.service.save(self.project_directory, data)
+        except CalculationConfigError as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))
             return
         self.accept()
@@ -473,7 +601,7 @@ class MainWindow(QMainWindow):
             self.developers = ()
             QMessageBox.warning(self, "Ошибка справочника разработчиков", str(exc))
         self.setWindowTitle("IRIS v2")
-        self.resize(930, 360)
+        self.resize(1080, 360)
 
         title = QLabel("IRIS v2")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -508,6 +636,13 @@ class MainWindow(QMainWindow):
         self.equipment_button.setEnabled(False)
         self.equipment_button.clicked.connect(self.import_equipment)
 
+        self.calculation_config_button = QPushButton("Настройки расчёта")
+        self.calculation_config_button.setObjectName("calculation_config_button")
+        self.calculation_config_button.setEnabled(False)
+        self.calculation_config_button.clicked.connect(
+            self.edit_calculation_config
+        )
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -519,6 +654,7 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.project_common_button)
         button_layout.addWidget(self.substances_button)
         button_layout.addWidget(self.equipment_button)
+        button_layout.addWidget(self.calculation_config_button)
         button_layout.addWidget(self.validation_button)
 
         layout = QVBoxLayout()
@@ -564,6 +700,7 @@ class MainWindow(QMainWindow):
         self.project_common_button.setEnabled(True)
         self.substances_button.setEnabled(True)
         self.equipment_button.setEnabled(True)
+        self.calculation_config_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
@@ -654,6 +791,19 @@ class MainWindow(QMainWindow):
             self.current_project_directory, self.current_project
         )
         ProjectValidationDialog(report, self).exec()
+
+    def edit_calculation_config(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            dialog = CalculationConfigDialog(
+                self.current_project_directory, self
+            )
+        except CalculationConfigError as exc:
+            self._show_error(str(exc))
+            return
+        dialog.exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
