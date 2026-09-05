@@ -8,6 +8,11 @@ from iris_v2.service import CreateProjectData, ProjectError, ProjectService
 from iris_v2.catalog import load_organizations
 
 
+EXAMPLE_CATALOG = (
+    Path(__file__).parents[1] / "src" / "iris_v2" / "data" / "organization.json"
+)
+
+
 def project_data() -> CreateProjectData:
     return CreateProjectData(
         name="Тестовый проект",
@@ -53,7 +58,7 @@ def test_empty_field_is_rejected(tmp_path: Path) -> None:
 
 
 def test_organization_catalog_is_loaded() -> None:
-    organizations = load_organizations()
+    organizations = load_organizations(EXAMPLE_CATALOG)
 
     assert organizations[0].name == "АО Пример"
     assert organizations[0].full_name == "Акционерное общество Пример"
@@ -62,7 +67,7 @@ def test_organization_catalog_is_loaded() -> None:
 
 
 def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
-    organization = load_organizations()[0]
+    organization = load_organizations(EXAMPLE_CATALOG)[0]
     facility = organization.facilities[0]
     data = CreateProjectData(
         name="Проект со снимком",
