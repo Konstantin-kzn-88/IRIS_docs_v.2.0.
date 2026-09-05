@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "SQLAlchemy>=2.0,<2.1",
     "alembic>=1.13,<2.0",
+    "PySide6>=6.7,<7.0",
 ]
 
 [project.optional-dependencies]
@@ -17,6 +18,7 @@ dev = ["pytest>=7,<9"]
 
 [project.scripts]
 iris-v2 = "iris_v2.cli:main"
+iris-v2-gui = "iris_v2.gui:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

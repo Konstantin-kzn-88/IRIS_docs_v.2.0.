@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import pytest
 
@@ -47,3 +48,21 @@ def test_empty_field_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ProjectError):
         ProjectService().create(tmp_path / "project", data)
+
+
+def test_minimal_window_starts() -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    try:
+        from PySide6.QtWidgets import QApplication, QPushButton
+        from iris_v2.gui import MainWindow
+    except ImportError as exc:
+        pytest.skip(f"Qt недоступен в текущей системе: {exc}")
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    try:
+        assert window.windowTitle() == "IRIS v2"
+        assert window.findChild(QPushButton, "create_project_button") is not None
+        assert window.findChild(QPushButton, "open_project_button") is not None
+    finally:
+        window.close()

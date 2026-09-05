@@ -26,3 +26,11 @@ iris-v2 open "D:\IRIS_projects\Test"
 ```
 
 Папка проекта содержит `project.sqlite3`, `project.json`, `input` и `output`.
+
+## Окно программы
+
+```powershell
+python main.py
+```
+
+Также окно можно запустить командой `iris-v2-gui`.
