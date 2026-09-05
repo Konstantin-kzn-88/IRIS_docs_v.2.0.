@@ -47,6 +47,11 @@ from iris_v2.hazard_factor_calculation import (
     HazardFactorCalculationResult,
     HazardFactorCalculationService,
 )
+from iris_v2.pool_fire_calculation import (
+    PoolFireCalculationError,
+    PoolFireCalculationResult,
+    PoolFireCalculationService,
+)
 from iris_v2.amount_calculation import (
     AmountCalculationError,
     AmountCalculationResult,
@@ -1021,6 +1026,97 @@ class HazardFactorCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class PoolFireCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: PoolFireCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Пожар пролива")
+        self.resize(1320, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Пожаров пролива рассчитано: {result.pool_fire_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 11)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Площадь, м²",
+                "mсг, кг/(м²·с)",
+                "Ветер, м/с",
+                "10,5 кВт/м²",
+                "7,0 кВт/м²",
+                "4,2 кВт/м²",
+                "1,4 кВт/м²",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            3, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 180, 135, 190, 95, 115, 85, 100, 100, 100, 100)
+        ):
+            if column != 3:
+                self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            applicable = item_data["pool_fire_applicable"]
+
+            def formatted(key: str) -> str:
+                value = item_data[key]
+                return "" if value is None else f"{value:.6g}"
+
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["pool_fire_status_name"],
+                formatted("pool_fire_spill_area_m2"),
+                formatted("pool_fire_burning_rate_kg_m2_s"),
+                formatted("pool_fire_wind_speed_m_s") if applicable else "",
+                formatted("q_10_5_m"),
+                formatted("q_7_0_m"),
+                formatted("q_4_2_m"),
+                formatted("q_1_4_m"),
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1399,6 +1495,11 @@ class MainWindow(QMainWindow):
         self.hazard_factor_button.setEnabled(False)
         self.hazard_factor_button.clicked.connect(self.calculate_hazard_factors)
 
+        self.pool_fire_button = QPushButton("Пожар пролива")
+        self.pool_fire_button.setObjectName("pool_fire_button")
+        self.pool_fire_button.setEnabled(False)
+        self.pool_fire_button.clicked.connect(self.calculate_pool_fires)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1420,6 +1521,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.spill_button)
         calculation_button_layout.addWidget(self.evaporation_button)
         calculation_button_layout.addWidget(self.hazard_factor_button)
+        calculation_button_layout.addWidget(self.pool_fire_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1474,6 +1576,7 @@ class MainWindow(QMainWindow):
         self.spill_button.setEnabled(True)
         self.evaporation_button.setEnabled(True)
         self.hazard_factor_button.setEnabled(True)
+        self.pool_fire_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1726,6 +1829,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         HazardFactorCalculationDialog(result, self).exec()
+
+    def calculate_pool_fires(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = PoolFireCalculationService().calculate(
+                self.current_project_directory
+            )
+        except PoolFireCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        PoolFireCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
