@@ -168,5 +168,8 @@ def test_minimal_window_starts() -> None:
         assert window.windowTitle() == "IRIS v2"
         assert window.findChild(QPushButton, "create_project_button") is not None
         assert window.findChild(QPushButton, "open_project_button") is not None
+        common_button = window.findChild(QPushButton, "project_common_button")
+        assert common_button is not None
+        assert not common_button.isEnabled()
     finally:
         window.close()

@@ -1,4 +1,5 @@
 import sys
+import copy
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -14,13 +15,123 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
+    QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectInfo, ProjectService
 from iris_v2.catalog import CatalogError, Organization, load_organizations
+from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+
+
+class ProjectCommonDialog(QDialog):
+    EXECUTOR_FIELDS = (
+        ("name", "Наименование разработчика"),
+        ("address", "Адрес"),
+        ("sro", "СРО"),
+        ("inn", "ИНН"),
+        ("ogrn", "ОГРН"),
+        ("tel", "Телефон"),
+        ("head_position", "Должность руководителя"),
+        ("head_full_name", "Ф.И.О. руководителя"),
+        ("specialist_info", "Сведения о специалисте"),
+        ("email", "Электронная почта"),
+        ("website", "Сайт"),
+    )
+
+    def __init__(
+        self,
+        project_directory: Path,
+        project: ProjectInfo,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.project_directory = project_directory
+        self.service = ProjectCommonService()
+        self.data = self.service.load(
+            project_directory, project.name, project.code
+        )
+        self.setWindowTitle("Данные проекта")
+        self.resize(760, 620)
+
+        self.year_edit = QSpinBox()
+        self.year_edit.setRange(2000, 2100)
+        self.year_edit.setValue(int(self.data["year"]))
+        self.project_name_edit = QLineEdit(str(self.data["project_name"]))
+        self.project_code_edit = QLineEdit(str(self.data["project_code"]))
+        self.dpb_code_edit = QLineEdit(str(self.data["dpb_code"]))
+        self.gochs_code_edit = QLineEdit(str(self.data["gochs_code"]))
+        self.pb_code_edit = QLineEdit(str(self.data["pb_code"]))
+
+        project_form = QFormLayout()
+        project_form.addRow("Год:", self.year_edit)
+        project_form.addRow("Название проекта:", self.project_name_edit)
+        project_form.addRow("Шифр проекта:", self.project_code_edit)
+        project_form.addRow("Шифр ДПБ:", self.dpb_code_edit)
+        project_form.addRow("Шифр ГОЧС:", self.gochs_code_edit)
+        project_form.addRow("Шифр ПБ:", self.pb_code_edit)
+        project_page = QWidget()
+        project_page.setLayout(project_form)
+
+        executor = self.data["executor"]
+        self.executor_edits: dict[str, QLineEdit | QPlainTextEdit] = {}
+        executor_form = QFormLayout()
+        for key, label in self.EXECUTOR_FIELDS:
+            if key in {"address", "specialist_info"}:
+                edit = QPlainTextEdit(str(executor.get(key, "")))
+                edit.setMaximumHeight(100)
+            else:
+                edit = QLineEdit(str(executor.get(key, "")))
+            self.executor_edits[key] = edit
+            executor_form.addRow(f"{label}:", edit)
+        executor_page = QWidget()
+        executor_page.setLayout(executor_form)
+
+        tabs = QTabWidget()
+        tabs.addTab(project_page, "Проект и шифры")
+        tabs.addTab(executor_page, "Разработчик")
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Сохранить")
+        buttons.button(QDialogButtonBox.StandardButton.Save).clicked.connect(
+            self._save
+        )
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(tabs)
+        layout.addWidget(buttons)
+
+    def _save(self) -> None:
+        data = copy.deepcopy(self.data)
+        data.update(
+            {
+                "year": self.year_edit.value(),
+                "project_name": self.project_name_edit.text().strip(),
+                "project_code": self.project_code_edit.text().strip(),
+                "dpb_code": self.dpb_code_edit.text().strip(),
+                "gochs_code": self.gochs_code_edit.text().strip(),
+                "pb_code": self.pb_code_edit.text().strip(),
+            }
+        )
+        executor = dict(data.get("executor", {}))
+        for key, edit in self.executor_edits.items():
+            value = edit.toPlainText() if isinstance(edit, QPlainTextEdit) else edit.text()
+            executor[key] = value.strip()
+        data["executor"] = executor
+        try:
+            self.service.save(self.project_directory, data)
+        except ProjectCommonError as exc:
+            QMessageBox.critical(self, "Ошибка", str(exc))
+            return
+        self.accept()
 
 
 class CreateProjectDialog(QDialog):
@@ -125,6 +236,8 @@ class MainWindow(QMainWindow):
     ) -> None:
         super().__init__()
         self.service = service or ProjectService()
+        self.current_project: ProjectInfo | None = None
+        self.current_project_directory: Path | None = None
         try:
             self.organizations = organizations or load_organizations()
         except CatalogError as exc:
@@ -151,9 +264,15 @@ class MainWindow(QMainWindow):
         open_button.setObjectName("open_project_button")
         open_button.clicked.connect(self.open_project)
 
+        self.project_common_button = QPushButton("Данные проекта")
+        self.project_common_button.setObjectName("project_common_button")
+        self.project_common_button.setEnabled(False)
+        self.project_common_button.clicked.connect(self.edit_project_common)
+
         button_layout = QHBoxLayout()
         button_layout.addWidget(create_button)
         button_layout.addWidget(open_button)
+        button_layout.addWidget(self.project_common_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -179,7 +298,7 @@ class MainWindow(QMainWindow):
         except (ProjectError, OSError) as exc:
             self._show_error(str(exc))
             return
-        self.show_project(project)
+        self.show_project(project, Path(dialog.project_path()).resolve())
 
     def open_project(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "Открыть проект IRIS v2")
@@ -190,9 +309,12 @@ class MainWindow(QMainWindow):
         except (ProjectError, OSError) as exc:
             self._show_error(str(exc))
             return
-        self.show_project(project)
+        self.show_project(project, Path(directory).resolve())
 
-    def show_project(self, project: ProjectInfo) -> None:
+    def show_project(self, project: ProjectInfo, directory: Path) -> None:
+        self.current_project = project
+        self.current_project_directory = directory
+        self.project_common_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -200,6 +322,19 @@ class MainWindow(QMainWindow):
             f"ОПО: {project.opo_name}\n"
             f"Регистрационный номер: {project.opo_registration_number}"
         )
+
+    def edit_project_common(self) -> None:
+        if self.current_project is None or self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            dialog = ProjectCommonDialog(
+                self.current_project_directory, self.current_project, self
+            )
+        except ProjectCommonError as exc:
+            self._show_error(str(exc))
+            return
+        dialog.exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
