@@ -11,6 +11,7 @@ dependencies = [
     "SQLAlchemy>=2.0,<2.1",
     "alembic>=1.13,<2.0",
     "PySide6>=6.7,<7.0",
+    "openpyxl>=3.1,<4.0",
 ]
 
 [project.optional-dependencies]
@@ -24,7 +25,7 @@ iris-v2-gui = "iris_v2.gui:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-iris_v2 = ["data/*.json", "migrations/script.py.mako", "migrations/versions/*.py"]
+iris_v2 = ["data/*.json", "data/*.xlsx", "migrations/script.py.mako", "migrations/versions/*.py"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

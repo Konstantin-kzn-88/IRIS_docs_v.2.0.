@@ -179,5 +179,8 @@ def test_minimal_window_starts() -> None:
         substances_button = window.findChild(QPushButton, "substances_button")
         assert substances_button is not None
         assert not substances_button.isEnabled()
+        equipment_button = window.findChild(QPushButton, "equipment_button")
+        assert equipment_button is not None
+        assert not equipment_button.isEnabled()
     finally:
         window.close()

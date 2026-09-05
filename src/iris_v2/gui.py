@@ -34,6 +34,7 @@ from iris_v2.developer_catalog import (
     DeveloperCatalogError,
     load_developers,
 )
+from iris_v2.equipment import EXCEL_FILE_NAME, EquipmentError, EquipmentService
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 from iris_v2.substances import (
     KIND_NAMES,
@@ -421,11 +422,17 @@ class MainWindow(QMainWindow):
         self.substances_button.setEnabled(False)
         self.substances_button.clicked.connect(self.edit_substances)
 
+        self.equipment_button = QPushButton("Оборудование")
+        self.equipment_button.setObjectName("equipment_button")
+        self.equipment_button.setEnabled(False)
+        self.equipment_button.clicked.connect(self.import_equipment)
+
         button_layout = QHBoxLayout()
         button_layout.addWidget(create_button)
         button_layout.addWidget(open_button)
         button_layout.addWidget(self.project_common_button)
         button_layout.addWidget(self.substances_button)
+        button_layout.addWidget(self.equipment_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -469,6 +476,7 @@ class MainWindow(QMainWindow):
         self.current_project_directory = directory
         self.project_common_button.setEnabled(True)
         self.substances_button.setEnabled(True)
+        self.equipment_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -506,6 +514,49 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         dialog.exec()
+
+    def import_equipment(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        service = EquipmentService()
+        expected_template = (
+            self.current_project_directory / "input" / EXCEL_FILE_NAME
+        )
+        template_existed = expected_template.is_file()
+        try:
+            template_path = service.ensure_template(self.current_project_directory)
+        except EquipmentError as exc:
+            self._show_error(str(exc))
+            return
+        if not template_existed:
+            QMessageBox.information(
+                self,
+                "Шаблон создан",
+                f"Заполните файл Excel и повторно нажмите «Оборудование»:\n{template_path}",
+            )
+            return
+
+        excel_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выберите заполненный equipment_data.xlsx",
+            str(template_path),
+            "Excel (*.xlsx)",
+        )
+        if not excel_path:
+            return
+        try:
+            result = service.import_excel(
+                self.current_project_directory, excel_path
+            )
+        except EquipmentError as exc:
+            self._show_error(str(exc))
+            return
+        QMessageBox.information(
+            self,
+            "Импорт завершён",
+            f"Импортировано строк оборудования: {result.count}\n{result.json_path}",
+        )
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

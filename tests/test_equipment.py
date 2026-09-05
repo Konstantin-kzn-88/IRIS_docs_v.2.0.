@@ -1,0 +1,98 @@
+import json
+from pathlib import Path
+
+import pytest
+from openpyxl import Workbook
+
+from iris_v2.equipment import HEADERS, EquipmentError, EquipmentService
+
+
+def write_project(project: Path) -> None:
+    (project / "input").mkdir(parents=True)
+    (project / "substances.json").write_text(
+        json.dumps([{"id": 1, "name": "Нефть", "kind": 0}], ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def write_excel(path: Path, values: list) -> None:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Equipment Data"
+    sheet.append(list(HEADERS))
+    sheet.append(values)
+    workbook.save(path)
+
+
+def pipeline_row(substance_id: int = 1, accident_length: float = 100) -> list:
+    return [
+        17,
+        substance_id,
+        "Нефтепровод",
+        9,
+        "ж.ф.",
+        1000,
+        None,
+        accident_length,
+        219,
+        8,
+        None,
+        0.8,
+        1.6,
+        20,
+        0,
+        20,
+        12,
+        3600,
+        "Участок трубопроводов",
+        2,
+        1,
+        10.5,
+        20.5,
+        2,
+        4,
+    ]
+
+
+def test_template_is_copied_to_project(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_project(project)
+
+    template = EquipmentService().ensure_template(project)
+
+    assert template == project / "input" / "equipment_data.xlsx"
+    assert template.read_bytes().startswith(b"PK")
+
+
+def test_pipeline_excel_is_imported(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_project(project)
+    source = tmp_path / "source.xlsx"
+    write_excel(source, pipeline_row())
+
+    result = EquipmentService().import_excel(project, source)
+    equipment = json.loads(result.json_path.read_text(encoding="utf-8"))
+
+    assert result.count == 1
+    assert result.excel_path == project / "input" / "equipment_data.xlsx"
+    assert equipment[0]["id"] == 1
+    assert equipment[0]["source_id"] == 17
+    assert equipment[0]["total_length_m"] == 1000.0
+    assert equipment[0]["accident_section_length_m"] == 100.0
+    assert equipment[0]["equipment_count"] is None
+    assert equipment[0]["coordinates"] == [10.5, 20.5]
+
+
+def test_errors_block_import_and_create_report(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    write_project(project)
+    source = tmp_path / "source.xlsx"
+    write_excel(source, pipeline_row(substance_id=999, accident_length=1100))
+
+    with pytest.raises(EquipmentError, match="Импорт остановлен"):
+        EquipmentService().import_excel(project, source)
+
+    assert not (project / "equipments.json").exists()
+    report = (project / "equipment_import_errors.txt").read_text(encoding="utf-8")
+    assert "substance_id: ID 999 отсутствует" in report
+    assert "аварийный участок больше полной длины" in report
