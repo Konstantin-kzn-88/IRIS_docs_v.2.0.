@@ -6,6 +6,7 @@ from typing import Any, Iterable
 
 
 FILE_NAME = "substances.json"
+INFO_FILE_NAME = "info.txt"
 REQUIRED_FIELDS = {
     "id",
     "name",
@@ -144,13 +145,26 @@ class SubstanceService:
             raise SubstanceError(f"Папка проекта не найдена: {directory}")
         data = [item.snapshot(index) for index, item in enumerate(substances, start=1)]
         path = directory / FILE_NAME
+        info_path = directory / INFO_FILE_NAME
         temporary_path = directory / f".{FILE_NAME}.tmp"
+        temporary_info_path = directory / f".{INFO_FILE_NAME}.tmp"
         try:
             temporary_path.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8",
             )
+            temporary_info_path.write_text(
+                "id\tname\tkind\n"
+                + "".join(
+                    f"{item['id']}\t{item['name']}\t{item['kind']}\n"
+                    for item in data
+                ),
+                encoding="utf-8",
+            )
             temporary_path.replace(path)
+            temporary_info_path.replace(info_path)
         except OSError as exc:
-            raise SubstanceError(f"Не удалось сохранить {path}") from exc
+            raise SubstanceError(
+                f"Не удалось сохранить {path} и {info_path}"
+            ) from exc
         return path
