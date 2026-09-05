@@ -46,9 +46,8 @@ def pipeline_row(substance_id: int = 1, accident_length: float = 100) -> list:
         3600,
         "Участок трубопроводов",
         2,
-        1,
-        10.5,
-        20.5,
+        0,
+        "[10.5, 20.5, 30]",
         2,
         4,
     ]
@@ -97,14 +96,17 @@ def test_pipeline_excel_is_imported(tmp_path: Path) -> None:
     assert equipment[0]["total_length_m"] == 1000.0
     assert equipment[0]["accident_section_length_m"] == 100.0
     assert equipment[0]["equipment_count"] is None
-    assert equipment[0]["coordinates"] == [10.5, 20.5]
+    assert equipment[0]["coordinates"] == [10.5, 20.5, 30.0]
 
 
 def test_errors_block_import_and_create_report(tmp_path: Path) -> None:
     project = tmp_path / "project"
     write_project(project)
     source = tmp_path / "source.xlsx"
-    write_excel(source, pipeline_row(substance_id=999, accident_length=1100))
+    row = pipeline_row(substance_id=999, accident_length=1100)
+    row[12] = 0
+    row[21] = "0, 0"
+    write_excel(source, row)
 
     with pytest.raises(EquipmentError, match="Импорт остановлен"):
         EquipmentService().import_excel(project, source)
@@ -113,3 +115,5 @@ def test_errors_block_import_and_create_report(tmp_path: Path) -> None:
     report = (project / "equipment_import_errors.txt").read_text(encoding="utf-8")
     assert "substance_id: ID 999 отсутствует" in report
     assert "аварийный участок больше полной длины" in report
+    assert "pressure_mpa: значение должно быть не меньше 0,1" in report
+    assert "coordinates: ожидается список чисел" in report

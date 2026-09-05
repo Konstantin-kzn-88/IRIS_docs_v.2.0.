@@ -1,4 +1,5 @@
 import json
+import math
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +13,7 @@ JSON_FILE_NAME = "equipments.json"
 ERROR_FILE_NAME = "equipment_import_errors.txt"
 SHEET_NAME = "Equipment Data"
 PIPELINE_TYPES = {0, 9}
-PHASE_STATES = {"ж.ф.", "г.ф.", "г.ф.+ж.ф."}
+PHASE_STATES = {"ж.ф.", "г.ф.", "ж.ф.+г.ф."}
 HEADERS = (
     "source_id",
     "substance_id",
@@ -35,8 +36,7 @@ HEADERS = (
     "hazard_component",
     "clutter_degree",
     "coord_type",
-    "coordinate_x",
-    "coordinate_y",
+    "coordinates",
     "possible_dead",
     "possible_injured",
 )
@@ -109,6 +109,28 @@ def _non_negative(
 ) -> None:
     if value is not None and value < 0:
         errors.append(f"строка {row}, {field}: значение не может быть отрицательным")
+
+
+def _coordinates(value: Any, errors: list[str], row: int) -> list[float]:
+    try:
+        parsed = json.loads(value) if isinstance(value, str) else value
+    except json.JSONDecodeError:
+        parsed = None
+    if (
+        not isinstance(parsed, list)
+        or len(parsed) < 2
+        or any(
+            isinstance(item, bool)
+            or not isinstance(item, (int, float))
+            or not math.isfinite(float(item))
+            for item in parsed
+        )
+    ):
+        errors.append(
+            f"строка {row}, coordinates: ожидается список чисел, например [0, 0]"
+        )
+        return []
+    return [float(item) for item in parsed]
 
 
 class EquipmentService:
@@ -339,6 +361,10 @@ class EquipmentService:
                     f"строка {row_number}, fill_fraction: ожидается значение больше 0 и не больше 1"
                 )
             pressure = _number(row["pressure_mpa"], "pressure_mpa", errors, row_number)
+            if pressure is not None and pressure < 0.1:
+                errors.append(
+                    f"строка {row_number}, pressure_mpa: значение должно быть не меньше 0,1"
+                )
             spill_coefficient = _number(
                 row["spill_coefficient"], "spill_coefficient", errors, row_number
             )
@@ -358,7 +384,6 @@ class EquipmentService:
                 row["evaporation_time_s"], "evaporation_time_s", errors, row_number
             )
             for value, field in (
-                (pressure, "pressure_mpa"),
                 (spill_coefficient, "spill_coefficient"),
                 (spill_area, "spill_area_m2"),
                 (shutdown_time, "shutdown_time_s"),
@@ -379,13 +404,11 @@ class EquipmentService:
             coord_type = _integer(
                 row["coord_type"], "coord_type", errors, row_number
             )
-            _non_negative(coord_type, "coord_type", errors, row_number)
-            coordinate_x = _number(
-                row["coordinate_x"], "coordinate_x", errors, row_number
-            )
-            coordinate_y = _number(
-                row["coordinate_y"], "coordinate_y", errors, row_number
-            )
+            if coord_type is not None and coord_type not in (0, 1, 2):
+                errors.append(
+                    f"строка {row_number}, coord_type: ожидается код 0, 1 или 2"
+                )
+            coordinates = _coordinates(row["coordinates"], errors, row_number)
             possible_dead = _integer(
                 row["possible_dead"], "possible_dead", errors, row_number
             )
@@ -419,7 +442,7 @@ class EquipmentService:
                     "hazard_component": hazard_component,
                     "clutter_degree": clutter_degree,
                     "coord_type": coord_type,
-                    "coordinates": [coordinate_x, coordinate_y],
+                    "coordinates": coordinates,
                     "possible_dead": possible_dead,
                     "possible_injured": possible_injured,
                 }
