@@ -109,6 +109,11 @@ from iris_v2.risk_charts import (
     RiskChartsResult,
     RiskChartsService,
 )
+from iris_v2.risk_matrices import (
+    RiskMatricesError,
+    RiskMatricesResult,
+    RiskMatricesService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2228,6 +2233,52 @@ class RiskChartsDialog(QDialog):
         return area
 
 
+class RiskMatricesDialog(QDialog):
+    def __init__(
+        self,
+        result: RiskMatricesResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Матрицы риска")
+        self.resize(1180, 760)
+
+        status = QLabel(
+            f"Матрица по погибшим: {result.people_point_count} точек. "
+            f"Матрица по ущербу: {result.damage_point_count} точек."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        tabs = QTabWidget()
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.people_path),
+            "Частота × погибшие",
+        )
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.damage_path),
+            "Частота × ущерб",
+        )
+
+        path_label = QLabel(f"Папка: {result.directory}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        open_button = QPushButton("Открыть папку")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.directory)))
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(tabs)
+        layout.addWidget(path_label)
+        layout.addLayout(button_layout)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2523,7 +2574,7 @@ class MainWindow(QMainWindow):
             self.developers = ()
             QMessageBox.warning(self, "Ошибка справочника разработчиков", str(exc))
         self.setWindowTitle("IRIS v2")
-        self.resize(1320, 360)
+        self.resize(1320, 420)
 
         title = QLabel("IRIS v2")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2673,6 +2724,11 @@ class MainWindow(QMainWindow):
         self.risk_charts_button.setEnabled(False)
         self.risk_charts_button.clicked.connect(self.calculate_risk_charts)
 
+        self.risk_matrices_button = QPushButton("Матрицы риска")
+        self.risk_matrices_button.setObjectName("risk_matrices_button")
+        self.risk_matrices_button.setEnabled(False)
+        self.risk_matrices_button.clicked.connect(self.calculate_risk_matrices)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2710,9 +2766,12 @@ class MainWindow(QMainWindow):
         effect_button_layout_2.addWidget(self.impact_zones_button)
         effect_button_layout_2.addWidget(self.people_button)
         effect_button_layout_2.addWidget(self.damage_button)
-        effect_button_layout_2.addWidget(self.risk_button)
-        effect_button_layout_2.addWidget(self.risk_summary_button)
-        effect_button_layout_2.addWidget(self.risk_charts_button)
+
+        risk_button_layout = QHBoxLayout()
+        risk_button_layout.addWidget(self.risk_button)
+        risk_button_layout.addWidget(self.risk_summary_button)
+        risk_button_layout.addWidget(self.risk_charts_button)
+        risk_button_layout.addWidget(self.risk_matrices_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2720,6 +2779,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(calculation_button_layout)
         layout.addLayout(effect_button_layout_1)
         layout.addLayout(effect_button_layout_2)
+        layout.addLayout(risk_button_layout)
         layout.addWidget(self.project_label, 1)
 
         container = QWidget()
@@ -2780,6 +2840,7 @@ class MainWindow(QMainWindow):
         self.risk_button.setEnabled(True)
         self.risk_summary_button.setEnabled(True)
         self.risk_charts_button.setEnabled(True)
+        self.risk_matrices_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -3201,6 +3262,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         RiskChartsDialog(result, self).exec()
+
+    def calculate_risk_matrices(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = RiskMatricesService().calculate(
+                self.current_project_directory
+            )
+        except RiskMatricesError as exc:
+            self._show_error(str(exc))
+            return
+        RiskMatricesDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
