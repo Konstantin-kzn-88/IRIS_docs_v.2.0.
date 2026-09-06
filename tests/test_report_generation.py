@@ -64,6 +64,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{DISTRIBUTION_SECTION}}")
     document.add_paragraph("{{SCENARIOS_SECTION}}")
     document.add_paragraph("{{OV_AMOUNT_SECTION}}")
+    document.add_paragraph("{{IMPACT_ZONES_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -236,10 +237,27 @@ def write_scenario_results(project: Path) -> None:
         encoding="utf-8",
     )
     factor = dict(release)
+    factor["calc_code"] = 1
     factor["ov_in_hazard_factor_t"] = 1.234
     (project / "hazard_factor_results.json").write_text(
         json.dumps(
             {"format_version": 1, "case_count": 1, "results": [factor]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    impact = dict(factor)
+    impact["calc_code"] = 1
+    impact["impact_values"] = {
+        "q_10_5_m": 10.04,
+        "q_7_0_m": 20.05,
+        "q_4_2_m": 30.06,
+        "q_1_4_m": 40.07,
+    }
+    impact["spill_area_m2"] = 125.55
+    (project / "impact_zones.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [impact]},
             ensure_ascii=False,
         ),
         encoding="utf-8",
@@ -316,6 +334,11 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Количество ОВ, участвующего в аварии, т" in text
     assert "4,321" in text
     assert "1,234" in text
+    assert "{{IMPACT_ZONES_SECTION}}" not in text
+    assert "q=10,5" in text
+    assert "10,0" in text
+    assert "125,5" in text
+    assert "интенсивность теплового излучения" in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -330,6 +353,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
+        "IMPACT_ZONES_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -389,12 +413,14 @@ def test_builtin_default_template_contains_only_supported_markers(
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
+        "IMPACT_ZONES_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
     assert "DISTRIBUTION_SECTION" not in result.deferred_markers
     assert "SCENARIOS_SECTION" not in result.deferred_markers
     assert "OV_AMOUNT_SECTION" not in result.deferred_markers
+    assert "IMPACT_ZONES_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
@@ -446,6 +472,25 @@ def test_missing_hazard_factor_results_does_not_replace_existing_report(
     output.write_bytes(b"previous report")
 
     with pytest.raises(ReportGenerationError, match="поражающем факторе"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
+def test_missing_impact_zones_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    (project / "impact_zones.json").unlink()
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Зоны поражающих факторов"):
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"
