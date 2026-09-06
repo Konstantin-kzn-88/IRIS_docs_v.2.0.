@@ -52,6 +52,11 @@ from iris_v2.explosion_calculation import (
     ExplosionCalculationResult,
     ExplosionCalculationService,
 )
+from iris_v2.flash_fire_calculation import (
+    FlashFireCalculationError,
+    FlashFireCalculationResult,
+    FlashFireCalculationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1217,6 +1222,92 @@ class ExplosionCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class FlashFireCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: FlashFireCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Пожар-вспышка")
+        self.resize(1280, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Пожаров-вспышек рассчитано: {result.flash_fire_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 10)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Масса, кг",
+                "Плотность пара, кг/м³",
+                "НКПР, % об.",
+                "R НКПР, м",
+                "R вспышки, м",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            9, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 175, 135, 190, 90, 145, 100, 95, 100)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            def formatted(key: str) -> str:
+                value = item_data[key]
+                return "" if value is None else f"{value:.6g}"
+
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["flash_fire_status_name"],
+                formatted("flash_fire_mass_kg"),
+                formatted("vapor_density_kg_m3"),
+                formatted("flash_fire_lel_percent"),
+                formatted("lel_radius_m"),
+                formatted("flash_fire_radius_m"),
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1605,6 +1696,11 @@ class MainWindow(QMainWindow):
         self.explosion_button.setEnabled(False)
         self.explosion_button.clicked.connect(self.calculate_explosions)
 
+        self.flash_fire_button = QPushButton("Пожар-вспышка")
+        self.flash_fire_button.setObjectName("flash_fire_button")
+        self.flash_fire_button.setEnabled(False)
+        self.flash_fire_button.clicked.connect(self.calculate_flash_fires)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1628,6 +1724,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.hazard_factor_button)
         calculation_button_layout.addWidget(self.pool_fire_button)
         calculation_button_layout.addWidget(self.explosion_button)
+        calculation_button_layout.addWidget(self.flash_fire_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1684,6 +1781,7 @@ class MainWindow(QMainWindow):
         self.hazard_factor_button.setEnabled(True)
         self.pool_fire_button.setEnabled(True)
         self.explosion_button.setEnabled(True)
+        self.flash_fire_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -1962,6 +2060,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ExplosionCalculationDialog(result, self).exec()
+
+    def calculate_flash_fires(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = FlashFireCalculationService().calculate(
+                self.current_project_directory
+            )
+        except FlashFireCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        FlashFireCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
