@@ -71,6 +71,8 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{COLLECTIVE_RISK_SECTION}}")
     document.add_paragraph("{{INDIVIDUAL_RISK_SECTION}}")
     document.add_paragraph("{{MAX_DAMAGE_BY_COMPONENT_SECTION}}")
+    document.add_paragraph("{{FN_CHART}}")
+    document.add_paragraph("{{FG_CHART}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -340,6 +342,15 @@ def write_scenario_results(project: Path) -> None:
                 "total_individual_risk_injured": 1.2e-5,
                 "risk_unit": "1/год",
                 "damage_unit": "тыс. руб.",
+                "fg_damage_unit": "млн руб.",
+                "fn_points": [
+                    {"fatalities_count": 0, "cumulative_frequency": 6.0e-5},
+                    {"fatalities_count": 1, "cumulative_frequency": 6.0e-5},
+                ],
+                "fg_points": [
+                    {"damage_million_rub": 0.0, "cumulative_frequency": 6.0e-5},
+                    {"damage_million_rub": 3.8938, "cumulative_frequency": 6.0e-5},
+                ],
                 "components": [
                     {
                         "hazard_component": "Участок трубопроводов",
@@ -520,6 +531,9 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "23,6",
         "3893,8",
     ]
+    assert "{{FN_CHART}}" not in text
+    assert "{{FG_CHART}}" not in text
+    assert len(Document(result.output_path).inline_shapes) == 2
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -541,6 +555,8 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
+        "FN_CHART",
+        "FG_CHART",
     )
     assert result.deferred_markers == ()
 
@@ -607,6 +623,8 @@ def test_builtin_default_template_contains_only_supported_markers(
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
+        "FN_CHART",
+        "FG_CHART",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -620,6 +638,8 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "COLLECTIVE_RISK_SECTION" not in result.deferred_markers
     assert "INDIVIDUAL_RISK_SECTION" not in result.deferred_markers
     assert "MAX_DAMAGE_BY_COMPONENT_SECTION" not in result.deferred_markers
+    assert "FN_CHART" not in result.deferred_markers
+    assert "FG_CHART" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(

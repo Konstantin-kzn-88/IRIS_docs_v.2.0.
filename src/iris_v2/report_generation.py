@@ -61,6 +61,15 @@ from iris_v2.report_ov_amount import (
     load_ov_amount_rows,
     render_ov_amount_section,
 )
+from iris_v2.report_risk_charts import (
+    FG_EMPTY_TEXT,
+    FG_MARKER,
+    FN_EMPTY_TEXT,
+    FN_MARKER,
+    ReportRiskChartsError,
+    prepare_risk_charts,
+    render_risk_chart,
+)
 from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
@@ -91,6 +100,8 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
+        "FN_CHART",
+        "FG_CHART",
     }
 )
 
@@ -99,8 +110,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "FN_CHART",
-        "FG_CHART",
         "PARETO_FATALITIES_CHART",
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
@@ -466,6 +475,19 @@ class ReportGenerationService:
                 if render_max_damage_section(document, rows):
                     filled_sections.append("MAX_DAMAGE_BY_COMPONENT_SECTION")
             except ReportMaxDamageError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if {"FN_CHART", "FG_CHART"} & marker_names:
+            try:
+                charts = prepare_risk_charts(project_root)
+                if "FN_CHART" in marker_names and render_risk_chart(
+                    document, FN_MARKER, charts.fn_path, FN_EMPTY_TEXT
+                ):
+                    filled_sections.append("FN_CHART")
+                if "FG_CHART" in marker_names and render_risk_chart(
+                    document, FG_MARKER, charts.fg_path, FG_EMPTY_TEXT
+                ):
+                    filled_sections.append("FG_CHART")
+            except ReportRiskChartsError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
