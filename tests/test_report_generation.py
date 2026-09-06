@@ -60,6 +60,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("Дата: {{ generated_at }}")
     document.add_paragraph("СЗЗ: {{ SITE_SANITARY_PROTECTION_ZONE_M }}")
     document.add_paragraph("{{SUBSTANCES_SECTION}}")
+    document.add_paragraph("{{EQUIPMENT_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -114,9 +115,71 @@ def write_substances(project: Path) -> None:
             "protection": "Спецодежда и средства защиты органов дыхания",
             "neutralization_methods": "Сбор механическим способом",
             "first_aid": "Вывести пострадавшего на свежий воздух",
-        }
+        },
     ]
     (project / "substances.json").write_text(
+        json.dumps(data, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def write_equipment(project: Path) -> None:
+    data = [
+        {
+            "id": 1,
+            "source_id": 17,
+            "substance_id": 1,
+            "equipment_name": "Нефтепровод от скважины № 1",
+            "equipment_type": 9,
+            "phase_state": "ж.ф.",
+            "total_length_m": 1000.0,
+            "equipment_count": None,
+            "accident_section_length_m": 100.0,
+            "diameter_mm": 219.0,
+            "wall_thickness_mm": 8.0,
+            "volume_m3": None,
+            "fill_fraction": 0.8,
+            "pressure_mpa": 1.6,
+            "spill_coefficient": 20.0,
+            "spill_area_m2": 0.0,
+            "substance_temperature_c": 20.0,
+            "shutdown_time_s": 12.0,
+            "evaporation_time_s": 3600.0,
+            "hazard_component": "Участок трубопроводов",
+            "clutter_degree": 2,
+            "coord_type": 0,
+            "coordinates": [10.5, 20.5, 30.0],
+            "possible_dead": 2,
+            "possible_injured": 4,
+        },
+        {
+            "id": 2,
+            "source_id": 18,
+            "substance_id": 1,
+            "equipment_name": "Резервуар нефти РВС-5000",
+            "equipment_type": 1,
+            "phase_state": "ж.ф.",
+            "total_length_m": None,
+            "equipment_count": 2,
+            "accident_section_length_m": None,
+            "diameter_mm": None,
+            "wall_thickness_mm": None,
+            "volume_m3": 5000.0,
+            "fill_fraction": 0.85,
+            "pressure_mpa": 0.1,
+            "spill_coefficient": 20.0,
+            "spill_area_m2": 1200.0,
+            "substance_temperature_c": 15.0,
+            "shutdown_time_s": 12.0,
+            "evaporation_time_s": 3600.0,
+            "hazard_component": "Резервуарный парк",
+            "clutter_degree": 2,
+            "coord_type": 1,
+            "coordinates": [50.0, 60.0],
+            "possible_dead": 3,
+            "possible_injured": 7,
+        },
+    ]
+    (project / "equipments.json").write_text(
         json.dumps(data, ensure_ascii=False), encoding="utf-8"
     )
 
@@ -136,6 +199,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     project = make_project(tmp_path)
     install_template(project)
     write_substances(project)
+    write_equipment(project)
 
     result = ReportGenerationService().generate(
         project, generated_at=datetime(2026, 9, 6, 12, 30)
@@ -154,14 +218,37 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Плотность жидкости" in text
     assert "850 кг/м³" in text
     assert "Температура кипения" not in text
+    assert "{{EQUIPMENT_SECTION}}" not in text
+    assert "Нефтепровод от скважины № 1" in text
+    assert "Общая протяжённость для расчёта частоты" in text
+    assert "1000 м" in text
+    assert "Длина аварийного участка" in text
+    assert "100 м" in text
+    assert "Наружный диаметр" in text
+    assert "219 мм" in text
+    assert "Опасное вещество" in text
+    assert "Нефть" in text
+    assert "Резервуар нефти РВС-5000" in text
+    assert "Количество оборудования для расчёта частоты" in text
+    assert "2 шт." in text
+    assert "Объём оборудования" in text
+    assert "5000 м³" in text
+    assert "Степень заполнения" in text
+    assert "0,85" in text
+    assert "Координаты" not in text
+    assert "Возможные погибшие" not in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
         ) is not None
-        for row in Document(result.output_path).tables[0].rows
+        for table in Document(result.output_path).tables[:2]
+        for row in table.rows
     )
     assert result.replaced_count == 7
-    assert result.filled_sections == ("SUBSTANCES_SECTION",)
+    assert result.filled_sections == (
+        "SUBSTANCES_SECTION",
+        "EQUIPMENT_SECTION",
+    )
     assert result.deferred_markers == ()
 
 
@@ -186,6 +273,19 @@ def test_changed_template_is_rejected(tmp_path: Path) -> None:
         ReportGenerationService().generate(project)
 
 
+def test_missing_equipment_does_not_replace_existing_report(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="не импортировано"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
 def test_builtin_default_template_contains_only_supported_markers(
     tmp_path: Path,
     monkeypatch,
@@ -193,10 +293,15 @@ def test_builtin_default_template_contains_only_supported_markers(
     monkeypatch.chdir(tmp_path)
     project = make_project(tmp_path)
     write_substances(project)
+    write_equipment(project)
 
     result = ReportGenerationService().generate(project)
 
     assert result.output_path.is_file()
     assert result.replaced_count > 0
-    assert result.filled_sections == ("SUBSTANCES_SECTION",)
+    assert result.filled_sections == (
+        "SUBSTANCES_SECTION",
+        "EQUIPMENT_SECTION",
+    )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
+    assert "EQUIPMENT_SECTION" not in result.deferred_markers

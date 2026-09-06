@@ -11,6 +11,11 @@ from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
 
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+from iris_v2.report_equipment import (
+    ReportEquipmentError,
+    load_project_equipment,
+    render_equipment_section,
+)
 from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
@@ -22,14 +27,15 @@ from iris_v2.template_catalog import CONFIG_FILE_NAME
 
 OUTPUT_FILE_NAME = "template_report_out.docx"
 MARKER_RE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
-SUPPORTED_SECTION_MARKERS = frozenset({"SUBSTANCES_SECTION"})
+SUPPORTED_SECTION_MARKERS = frozenset(
+    {"SUBSTANCES_SECTION", "EQUIPMENT_SECTION"}
+)
 
 # Эти блоки заполняются отдельными модулями формирования таблиц, выводов и
 # диаграмм. На первом этапе их нельзя удалять из документа.
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
@@ -318,6 +324,17 @@ class ReportGenerationService:
                 if render_substances_section(document, substances):
                     filled_sections.append("SUBSTANCES_SECTION")
             except (SubstanceError, ReportSubstancesError) as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "EQUIPMENT_SECTION" in marker_names:
+            try:
+                substances = SubstanceService().load_project(project_root)
+                equipment = load_project_equipment(project_root)
+                if render_equipment_section(document, equipment, substances):
+                    filled_sections.append("EQUIPMENT_SECTION")
+            except (
+                SubstanceError,
+                ReportEquipmentError,
+            ) as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
