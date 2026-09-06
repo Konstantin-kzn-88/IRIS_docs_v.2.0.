@@ -92,6 +92,11 @@ from iris_v2.damage_calculation import (
     DamageCalculationResult,
     DamageCalculationService,
 )
+from iris_v2.risk_calculation import (
+    RiskCalculationError,
+    RiskCalculationResult,
+    RiskCalculationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1921,6 +1926,104 @@ class DamageCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class RiskCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: RiskCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Коллективный и индивидуальный риск")
+        self.resize(1480, 720)
+
+        if result.people_count > 0:
+            individual_text = (
+                f"Индивидуальный риск гибели: "
+                f"{result.total_individual_risk_fatalities:.3e} 1/год."
+            )
+            color = "#16803A"
+        else:
+            individual_text = (
+                "Индивидуальный риск не рассчитан: численность людей равна нулю."
+            )
+            color = "#B26A00"
+        status = QLabel(
+            f"Сценариев: {result.case_count}. Людей: {result.people_count}. "
+            f"Коллективный риск гибели: "
+            f"{result.total_collective_risk_fatalities:.3e} чел./год. "
+            f"{individual_text}"
+        )
+        status.setWordWrap(True)
+        status.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 10)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Частота, 1/год",
+                "Погибших",
+                "Коллективный риск гибели",
+                "Индивидуальный риск гибели",
+                "Пострадавших",
+                "Коллективный риск пострадавших",
+                "Ожидаемый ущерб",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            9, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (55, 165, 105, 80, 145, 155, 100, 175, 125)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            individual = item_data["individual_risk_fatalities"]
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                f"{item_data['scenario_frequency']:.3e}",
+                item_data["fatalities_count"],
+                f"{item_data['collective_risk_fatalities']:.3e}",
+                "" if individual is None else f"{individual:.3e}",
+                item_data["injured_count"],
+                f"{item_data['collective_risk_injured']:.3e}",
+                f"{item_data['expected_damage']:.3e}",
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        unit_label = QLabel(
+            "Коллективный риск — чел./год; индивидуальный риск — 1/год; "
+            "ожидаемый ущерб — тыс. руб./год."
+        )
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(unit_label)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2351,6 +2454,11 @@ class MainWindow(QMainWindow):
         self.damage_button.setEnabled(False)
         self.damage_button.clicked.connect(self.calculate_damage)
 
+        self.risk_button = QPushButton("Риски")
+        self.risk_button.setObjectName("risk_button")
+        self.risk_button.setEnabled(False)
+        self.risk_button.clicked.connect(self.calculate_risks)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2388,6 +2496,7 @@ class MainWindow(QMainWindow):
         effect_button_layout_2.addWidget(self.impact_zones_button)
         effect_button_layout_2.addWidget(self.people_button)
         effect_button_layout_2.addWidget(self.damage_button)
+        effect_button_layout_2.addWidget(self.risk_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2452,6 +2561,7 @@ class MainWindow(QMainWindow):
         self.impact_zones_button.setEnabled(True)
         self.people_button.setEnabled(True)
         self.damage_button.setEnabled(True)
+        self.risk_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2834,6 +2944,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         DamageCalculationDialog(result, self).exec()
+
+    def calculate_risks(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = RiskCalculationService().calculate(
+                self.current_project_directory
+            )
+        except RiskCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        RiskCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
