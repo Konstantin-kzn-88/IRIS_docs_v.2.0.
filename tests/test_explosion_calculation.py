@@ -100,6 +100,7 @@ def test_old_pressure_and_impulse_formula_is_preserved() -> None:
 def test_zone_radii_use_real_two_kpa_boundary() -> None:
     zones = calculate_explosion_zones(3, 2, 1980.0, 44_000.0, 7, 2)
 
+    assert zones["p_100_m"] <= zones["p_70_m"]
     assert zones["p_70_m"] <= zones["p_28_m"]
     assert zones["p_28_m"] <= zones["p_14_m"]
     assert zones["p_14_m"] <= zones["p_5_m"]
@@ -118,7 +119,14 @@ def test_service_calculates_only_explosion_scenarios(tmp_path: Path) -> None:
     assert result.results[1]["explosion_status"] == "not_applicable"
     assert result.results[1]["p_70_m"] is None
     saved = json.loads(result.path.read_text(encoding="utf-8"))
-    assert saved["pressure_levels_kpa"] == [70.0, 28.0, 14.0, 5.0, 2.0]
+    assert saved["pressure_levels_kpa"] == [
+        100.0,
+        70.0,
+        28.0,
+        14.0,
+        5.0,
+        2.0,
+    ]
 
 
 def test_missing_hazard_class_preserves_old_result(tmp_path: Path) -> None:

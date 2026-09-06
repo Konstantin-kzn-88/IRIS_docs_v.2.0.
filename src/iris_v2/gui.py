@@ -1138,7 +1138,7 @@ class ExplosionCalculationDialog(QDialog):
         )
         status.setStyleSheet("color: #16803A; font-weight: bold;")
 
-        self.table = QTableWidget(len(result.results), 13)
+        self.table = QTableWidget(len(result.results), 14)
         self.table.setHorizontalHeaderLabels(
             [
                 "Код",
@@ -1149,6 +1149,7 @@ class ExplosionCalculationDialog(QDialog):
                 "Класс",
                 "Загром.",
                 "Скорость, м/с",
+                "100 кПа, м",
                 "70 кПа, м",
                 "28 кПа, м",
                 "14 кПа, м",
@@ -1169,7 +1170,7 @@ class ExplosionCalculationDialog(QDialog):
             3, QHeaderView.ResizeMode.Stretch
         )
         for column, width in enumerate(
-            (60, 175, 135, 190, 90, 65, 75, 100, 85, 85, 85, 85, 85)
+            (60, 175, 135, 190, 90, 65, 75, 100, 85, 85, 85, 85, 85, 85)
         ):
             if column != 3:
                 self.table.setColumnWidth(column, width)
@@ -1188,6 +1189,7 @@ class ExplosionCalculationDialog(QDialog):
                 formatted("explosion_hazard_class"),
                 formatted("explosion_clutter_degree"),
                 formatted("explosion_flame_speed_m_s"),
+                formatted("p_100_m"),
                 formatted("p_70_m"),
                 formatted("p_28_m"),
                 formatted("p_14_m"),

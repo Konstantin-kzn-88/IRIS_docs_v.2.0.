@@ -9,7 +9,7 @@ from iris_v2.hazard_factor_calculation import FILE_NAME as HAZARD_FACTOR_FILE_NA
 
 FILE_NAME = "explosion_results.json"
 EXPLOSION_CALC_CODE = 2
-PRESSURE_LEVELS_KPA = (70.0, 28.0, 14.0, 5.0, 2.0)
+PRESSURE_LEVELS_KPA = (100.0, 70.0, 28.0, 14.0, 5.0, 2.0)
 ATMOSPHERIC_PRESSURE_KPA = 101.3
 ATMOSPHERIC_PRESSURE_PA = 101_325.0
 SOUND_SPEED_M_S = 340.0
@@ -209,7 +209,7 @@ def calculate_explosion_zones(
     ]
     return dict(
         zip(
-            ("p_70_m", "p_28_m", "p_14_m", "p_5_m", "p_2_m"),
+            ("p_100_m", "p_70_m", "p_28_m", "p_14_m", "p_5_m", "p_2_m"),
             radii,
         )
     )
@@ -394,6 +394,7 @@ class ExplosionCalculationService:
                 peak_pressure = None
                 peak_impulse = None
                 zones = {
+                    "p_100_m": None,
                     "p_70_m": None,
                     "p_28_m": None,
                     "p_14_m": None,
