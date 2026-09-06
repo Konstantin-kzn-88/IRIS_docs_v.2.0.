@@ -72,6 +72,11 @@ from iris_v2.chemical_spill_calculation import (
     ChemicalSpillCalculationResult,
     ChemicalSpillCalculationService,
 )
+from iris_v2.toxic_fake_calculation import (
+    ToxicCalculationError,
+    ToxicCalculationResult,
+    ToxicCalculationService,
+)
 from iris_v2.impact_zones import (
     ImpactZonesError,
     ImpactZonesResult,
@@ -1590,6 +1595,89 @@ class ChemicalSpillCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class ToxicCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: ToxicCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Токсическое поражение — временная оценка")
+        self.resize(1240, 720)
+
+        warning = QLabel(
+            "ВНИМАНИЕ: результат рассчитан по временной зависимости от массы, "
+            "без моделирования рассеивания токсичного облака."
+        )
+        warning.setWordWrap(True)
+        warning.setStyleSheet("color: #B26A00; font-weight: bold;")
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Временных оценок: {result.toxic_count}."
+        )
+        status.setStyleSheet("color: #B26A00; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 8)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Масса ПФ, кг",
+                "Смертельная, м",
+                "Пороговая, м",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            7, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((60, 180, 145, 210, 110, 110, 110)):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            def formatted(key: str) -> str:
+                value = item_data[key]
+                return "" if value is None else f"{value:.6g}"
+
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["toxic_status_name"],
+                formatted("toxic_mass_kg"),
+                formatted("lethal_radius_m"),
+                formatted("threshold_radius_m"),
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(warning)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class ImpactZonesDialog(QDialog):
     def __init__(
         self,
@@ -2059,6 +2147,11 @@ class MainWindow(QMainWindow):
         self.flash_fire_button.setEnabled(False)
         self.flash_fire_button.clicked.connect(self.calculate_flash_fires)
 
+        self.toxic_button = QPushButton("Токсическое поражение")
+        self.toxic_button.setObjectName("toxic_button")
+        self.toxic_button.setEnabled(False)
+        self.toxic_button.clicked.connect(self.calculate_toxic_effects)
+
         self.jet_fire_button = QPushButton("Факельное горение")
         self.jet_fire_button.setObjectName("jet_fire_button")
         self.jet_fire_button.setEnabled(False)
@@ -2105,20 +2198,24 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
-        effect_button_layout = QHBoxLayout()
-        effect_button_layout.addWidget(self.pool_fire_button)
-        effect_button_layout.addWidget(self.explosion_button)
-        effect_button_layout.addWidget(self.flash_fire_button)
-        effect_button_layout.addWidget(self.jet_fire_button)
-        effect_button_layout.addWidget(self.fireball_button)
-        effect_button_layout.addWidget(self.chemical_spill_button)
-        effect_button_layout.addWidget(self.impact_zones_button)
+        effect_button_layout_1 = QHBoxLayout()
+        effect_button_layout_1.addWidget(self.pool_fire_button)
+        effect_button_layout_1.addWidget(self.explosion_button)
+        effect_button_layout_1.addWidget(self.flash_fire_button)
+        effect_button_layout_1.addWidget(self.toxic_button)
+
+        effect_button_layout_2 = QHBoxLayout()
+        effect_button_layout_2.addWidget(self.jet_fire_button)
+        effect_button_layout_2.addWidget(self.fireball_button)
+        effect_button_layout_2.addWidget(self.chemical_spill_button)
+        effect_button_layout_2.addWidget(self.impact_zones_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
         layout.addLayout(data_button_layout)
         layout.addLayout(calculation_button_layout)
-        layout.addLayout(effect_button_layout)
+        layout.addLayout(effect_button_layout_1)
+        layout.addLayout(effect_button_layout_2)
         layout.addWidget(self.project_label, 1)
 
         container = QWidget()
@@ -2169,6 +2266,7 @@ class MainWindow(QMainWindow):
         self.pool_fire_button.setEnabled(True)
         self.explosion_button.setEnabled(True)
         self.flash_fire_button.setEnabled(True)
+        self.toxic_button.setEnabled(True)
         self.jet_fire_button.setEnabled(True)
         self.fireball_button.setEnabled(True)
         self.chemical_spill_button.setEnabled(True)
@@ -2464,6 +2562,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         FlashFireCalculationDialog(result, self).exec()
+
+    def calculate_toxic_effects(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ToxicCalculationService().calculate(
+                self.current_project_directory
+            )
+        except ToxicCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        ToxicCalculationDialog(result, self).exec()
 
     def calculate_jet_fires(self) -> None:
         if self.current_project_directory is None:

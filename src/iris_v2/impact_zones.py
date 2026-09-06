@@ -12,6 +12,7 @@ from iris_v2.flash_fire_calculation import FILE_NAME as FLASH_FIRE_FILE_NAME
 from iris_v2.hazard_factor_calculation import FILE_NAME as HAZARD_FACTOR_FILE_NAME
 from iris_v2.jet_fire_calculation import FILE_NAME as JET_FIRE_FILE_NAME
 from iris_v2.pool_fire_calculation import FILE_NAME as POOL_FIRE_FILE_NAME
+from iris_v2.toxic_fake_calculation import FILE_NAME as TOXIC_FILE_NAME
 
 
 FILE_NAME = "impact_zones.json"
@@ -40,6 +41,11 @@ MODULES = {
         FLASH_FIRE_FILE_NAME,
         "flash_fire_status",
         ("lel_radius_m", "flash_fire_radius_m"),
+    ),
+    4: (
+        TOXIC_FILE_NAME,
+        "toxic_status",
+        ("lethal_radius_m", "threshold_radius_m"),
     ),
     5: (
         JET_FIRE_FILE_NAME,
@@ -70,6 +76,8 @@ FIELD_LABELS = {
     "p_2_m": "2 кПа",
     "lel_radius_m": "НКПР",
     "flash_fire_radius_m": "пожар-вспышка",
+    "lethal_radius_m": "смертельная токсодоза",
+    "threshold_radius_m": "пороговая токсодоза",
     "jet_fire_length_m": "длина факела",
     "jet_fire_diameter_m": "диаметр факела",
     "dose_600_m": "600 кДж/м²",
@@ -203,11 +211,6 @@ class ImpactZonesService:
                 status = "none"
                 status_name = "Поражающий фактор отсутствует"
                 impact_values: dict[str, Any] = {}
-            elif calc_code == 4:
-                status = "unavailable"
-                status_name = "Требуется модель рассеивания токсичного облака"
-                impact_values = {}
-                unavailable_count += 1
             else:
                 file_name, status_field, fields = MODULES[calc_code]
                 module_item = module_results[calc_code].get(case_id)
@@ -219,7 +222,10 @@ class ImpactZonesService:
                     raise ImpactZonesError(
                         f"Сценарий {scenario_code}: устаревшие данные в {file_name}"
                     )
-                if module_item.get(status_field) != "calculated":
+                expected_status = (
+                    "calculated_temporary" if calc_code == 4 else "calculated"
+                )
+                if module_item.get(status_field) != expected_status:
                     raise ImpactZonesError(
                         f"Сценарий {scenario_code} не рассчитан в {file_name}"
                     )
@@ -228,8 +234,14 @@ class ImpactZonesService:
                     raise ImpactZonesError(
                         f"Сценарий {scenario_code}: неполные зоны в {file_name}"
                     )
-                status = "calculated"
-                status_name = "Результат рассчитан"
+                status = (
+                    "calculated_temporary" if calc_code == 4 else "calculated"
+                )
+                status_name = (
+                    "Временная оценка по массе"
+                    if calc_code == 4
+                    else "Результат рассчитан"
+                )
                 calculated_count += 1
 
             result = dict(source)
