@@ -57,6 +57,11 @@ from iris_v2.flash_fire_calculation import (
     FlashFireCalculationResult,
     FlashFireCalculationService,
 )
+from iris_v2.jet_fire_calculation import (
+    JetFireCalculationError,
+    JetFireCalculationResult,
+    JetFireCalculationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1308,6 +1313,95 @@ class FlashFireCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class JetFireCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: JetFireCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Факельное горение")
+        self.resize(1180, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Факелов рассчитано: {result.jet_fire_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 9)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Расход, кг/с",
+                "Тип факела",
+                "Длина, м",
+                "Диаметр, м",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (60, 175, 135, 190, 105, 175, 80, 90)
+        ):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            flow = item_data["jet_fire_flow_kg_s"]
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["jet_fire_status_name"],
+                "" if flow is None else f"{flow:.6g}",
+                item_data["jet_fire_type_name"] or "",
+                (
+                    ""
+                    if item_data["jet_fire_length_m"] is None
+                    else item_data["jet_fire_length_m"]
+                ),
+                (
+                    ""
+                    if item_data["jet_fire_diameter_m"] is None
+                    else item_data["jet_fire_diameter_m"]
+                ),
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1701,6 +1795,11 @@ class MainWindow(QMainWindow):
         self.flash_fire_button.setEnabled(False)
         self.flash_fire_button.clicked.connect(self.calculate_flash_fires)
 
+        self.jet_fire_button = QPushButton("Факельное горение")
+        self.jet_fire_button.setObjectName("jet_fire_button")
+        self.jet_fire_button.setEnabled(False)
+        self.jet_fire_button.clicked.connect(self.calculate_jet_fires)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1725,6 +1824,7 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.pool_fire_button)
         calculation_button_layout.addWidget(self.explosion_button)
         calculation_button_layout.addWidget(self.flash_fire_button)
+        calculation_button_layout.addWidget(self.jet_fire_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
 
@@ -1782,6 +1882,7 @@ class MainWindow(QMainWindow):
         self.pool_fire_button.setEnabled(True)
         self.explosion_button.setEnabled(True)
         self.flash_fire_button.setEnabled(True)
+        self.jet_fire_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2073,6 +2174,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         FlashFireCalculationDialog(result, self).exec()
+
+    def calculate_jet_fires(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = JetFireCalculationService().calculate(
+                self.current_project_directory
+            )
+        except JetFireCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        JetFireCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

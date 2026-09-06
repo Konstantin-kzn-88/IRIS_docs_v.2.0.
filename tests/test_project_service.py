@@ -231,5 +231,8 @@ def test_minimal_window_starts() -> None:
         flash_fire_button = window.findChild(QPushButton, "flash_fire_button")
         assert flash_fire_button is not None
         assert not flash_fire_button.isEnabled()
+        jet_fire_button = window.findChild(QPushButton, "jet_fire_button")
+        assert jet_fire_button is not None
+        assert not jet_fire_button.isEnabled()
     finally:
         window.close()
