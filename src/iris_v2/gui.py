@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QColor, QDesktopServices
+from PySide6.QtGui import QColor, QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QTabWidget,
     QTableWidget,
@@ -102,6 +103,11 @@ from iris_v2.risk_summary import (
     RiskSummaryError,
     RiskSummaryResult,
     RiskSummaryService,
+)
+from iris_v2.risk_charts import (
+    RiskChartsError,
+    RiskChartsResult,
+    RiskChartsService,
 )
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
@@ -2167,6 +2173,61 @@ class RiskSummaryDialog(QDialog):
             table.setItem(row, column, cell)
 
 
+class RiskChartsDialog(QDialog):
+    def __init__(
+        self,
+        result: RiskChartsResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Диаграммы риска F/N и F/G")
+        self.resize(1180, 760)
+
+        status = QLabel(
+            f"F/N: {result.fn_point_count} точек. "
+            f"F/G: {result.fg_point_count} точек."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        tabs = QTabWidget()
+        tabs.addTab(self._image_area(result.fn_path), "F/N")
+        tabs.addTab(self._image_area(result.fg_path), "F/G")
+
+        path_label = QLabel(f"Папка: {result.directory}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        open_button = QPushButton("Открыть папку")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.directory)))
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(tabs)
+        layout.addWidget(path_label)
+        layout.addLayout(button_layout)
+
+    @staticmethod
+    def _image_area(path: Path) -> QScrollArea:
+        image = QPixmap(str(path))
+        label = QLabel()
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setPixmap(
+            image.scaledToWidth(
+                1080, Qt.TransformationMode.SmoothTransformation
+            )
+        )
+        area = QScrollArea()
+        area.setWidget(label)
+        area.setWidgetResizable(True)
+        return area
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2607,6 +2668,11 @@ class MainWindow(QMainWindow):
         self.risk_summary_button.setEnabled(False)
         self.risk_summary_button.clicked.connect(self.calculate_risk_summary)
 
+        self.risk_charts_button = QPushButton("Диаграммы риска")
+        self.risk_charts_button.setObjectName("risk_charts_button")
+        self.risk_charts_button.setEnabled(False)
+        self.risk_charts_button.clicked.connect(self.calculate_risk_charts)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2646,6 +2712,7 @@ class MainWindow(QMainWindow):
         effect_button_layout_2.addWidget(self.damage_button)
         effect_button_layout_2.addWidget(self.risk_button)
         effect_button_layout_2.addWidget(self.risk_summary_button)
+        effect_button_layout_2.addWidget(self.risk_charts_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2712,6 +2779,7 @@ class MainWindow(QMainWindow):
         self.damage_button.setEnabled(True)
         self.risk_button.setEnabled(True)
         self.risk_summary_button.setEnabled(True)
+        self.risk_charts_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -3120,6 +3188,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         RiskSummaryDialog(result, self).exec()
+
+    def calculate_risk_charts(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = RiskChartsService().calculate(
+                self.current_project_directory
+            )
+        except RiskChartsError as exc:
+            self._show_error(str(exc))
+            return
+        RiskChartsDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
