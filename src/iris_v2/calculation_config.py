@@ -16,6 +16,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "evaporation_coefficient": 1.0,
     "liquid_leak_hole_diameter_mm": 20.0,
     "gas_leak_hole_diameter_mm": 20.0,
+    "fireball_surface_emissive_power_kw_m2": 350.0,
     "damage_scale": 30.3,
     "frequency_multipliers": {
         "standard": 1.0,
@@ -111,6 +112,10 @@ class CalculationConfigService:
             ("evaporation_coefficient", "Коэффициент испарения"),
             ("liquid_leak_hole_diameter_mm", "Отверстие истечения жидкости"),
             ("gas_leak_hole_diameter_mm", "Отверстие истечения газа"),
+            (
+                "fireball_surface_emissive_power_kw_m2",
+                "Плотность теплового излучения огненного шара",
+            ),
             ("damage_scale", "Масштаб ущерба"),
         ):
             if _number(data.get(key), label) <= 0:

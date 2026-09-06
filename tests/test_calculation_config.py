@@ -15,6 +15,7 @@ def test_defaults_are_returned_without_file(tmp_path: Path) -> None:
 
     assert config["partial_release_fraction"] == 0.125
     assert config["evaporation_coefficient"] == 1.0
+    assert config["fireball_surface_emissive_power_kw_m2"] == 350.0
     assert config["frequency_multipliers"] == {
         "standard": 1.0,
         "without_compensation": 1.25,
