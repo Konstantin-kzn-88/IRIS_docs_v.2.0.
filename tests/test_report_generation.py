@@ -69,6 +69,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{DAMAGE_SECTION}}")
     document.add_paragraph("{{FATAL_ACCIDENT_FREQUENCY}}")
     document.add_paragraph("{{COLLECTIVE_RISK_SECTION}}")
+    document.add_paragraph("{{INDIVIDUAL_RISK_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -334,6 +335,8 @@ def write_scenario_results(project: Path) -> None:
                 "fatal_accident_frequency_max": 6.0e-5,
                 "total_collective_risk_fatalities": 6.0e-5,
                 "total_collective_risk_injured": 1.8e-4,
+                "total_individual_risk_fatalities": 4.0e-6,
+                "total_individual_risk_injured": 1.2e-5,
                 "risk_unit": "1/год",
                 "components": [
                     {
@@ -341,6 +344,8 @@ def write_scenario_results(project: Path) -> None:
                         "scenario_count": 1,
                         "collective_risk_fatalities": 6.0e-5,
                         "collective_risk_injured": 1.8e-4,
+                        "individual_risk_fatalities": 4.0e-6,
+                        "individual_risk_injured": 1.2e-5,
                     }
                 ],
             },
@@ -476,6 +481,22 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "6.000E-05",
         "1.800E-04",
     ]
+    assert "{{INDIVIDUAL_RISK_SECTION}}" not in text
+    individual_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if table.cell(0, 1).text == "Индивидуальный риск гибели, 1/год"
+    )
+    assert [cell.text for cell in individual_table.rows[1].cells] == [
+        "Участок трубопроводов",
+        "4.000E-06",
+        "1.200E-05",
+    ]
+    assert [cell.text for cell in individual_table.rows[2].cells] == [
+        "Итого по ОПО",
+        "4.000E-06",
+        "1.200E-05",
+    ]
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -495,6 +516,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
         "COLLECTIVE_RISK_SECTION",
+        "INDIVIDUAL_RISK_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -559,6 +581,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
         "COLLECTIVE_RISK_SECTION",
+        "INDIVIDUAL_RISK_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -570,6 +593,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "DAMAGE_SECTION" not in result.deferred_markers
     assert "FATAL_ACCIDENT_FREQUENCY" not in result.deferred_markers
     assert "COLLECTIVE_RISK_SECTION" not in result.deferred_markers
+    assert "INDIVIDUAL_RISK_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
