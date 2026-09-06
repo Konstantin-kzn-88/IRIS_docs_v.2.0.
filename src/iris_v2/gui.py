@@ -2581,6 +2581,7 @@ class ReportGenerationDialog(QDialog):
 
         status = QLabel(
             f"Заполнено текстовых маркеров: {result.replaced_count}.\n"
+            f"Сформировано разделов: {len(result.filled_sections)}.\n"
             f"Оставлено расчётных блоков: {len(result.deferred_markers)}."
         )
         status.setStyleSheet("color: green; font-weight: bold;")

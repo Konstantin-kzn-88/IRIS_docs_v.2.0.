@@ -86,6 +86,41 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     return path
 
 
+def write_substances(project: Path) -> None:
+    data = [
+        {
+            "id": 1,
+            "name": "Нефть",
+            "kind": 0,
+            "formula": "Смесь углеводородов",
+            "composition": {
+                "components": [
+                    {"name": "Углеводороды", "mass_fraction": 0.98},
+                    {"name": "Вода", "mass_fraction": 0.02},
+                ]
+            },
+            "notes": "Товарная нефть",
+            "physical": {
+                "density_liquid_kg_per_m3": 850,
+                "boiling_point_C": None,
+            },
+            "explosion": {"flash_point_C": -35},
+            "toxicity": {"hazard_class": 3},
+            "reactivity": "Стабильна при нормальных условиях",
+            "odor": "Характерный",
+            "corrosiveness": "",
+            "precautions": "Исключить источники зажигания",
+            "impact": "Опасна при попадании в окружающую среду",
+            "protection": "Спецодежда и средства защиты органов дыхания",
+            "neutralization_methods": "Сбор механическим способом",
+            "first_aid": "Вывести пострадавшего на свежий воздух",
+        }
+    ]
+    (project / "substances.json").write_text(
+        json.dumps(data, ensure_ascii=False), encoding="utf-8"
+    )
+
+
 def all_text(document: Document) -> str:
     values = [paragraph.text for paragraph in document.paragraphs]
     for table in document.tables:
@@ -100,6 +135,7 @@ def all_text(document: Document) -> str:
 def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> None:
     project = make_project(tmp_path)
     install_template(project)
+    write_substances(project)
 
     result = ReportGenerationService().generate(
         project, generated_at=datetime(2026, 9, 6, 12, 30)
@@ -112,9 +148,21 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "СЗЗ: отсутствует" in text
     assert "Организация: Акционерное общество Короткое" in text
     assert "АО Короткое — Площадка нефти" in text
-    assert "{{SUBSTANCES_SECTION}}" in text
+    assert "{{SUBSTANCES_SECTION}}" not in text
+    assert "Параметр" in text
+    assert "0 — Легковоспламеняющаяся жидкость (ЛВЖ)" in text
+    assert "Плотность жидкости" in text
+    assert "850 кг/м³" in text
+    assert "Температура кипения" not in text
+    assert all(
+        row._tr.get_or_add_trPr().find(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
+        ) is not None
+        for row in Document(result.output_path).tables[0].rows
+    )
     assert result.replaced_count == 7
-    assert result.deferred_markers == ("SUBSTANCES_SECTION",)
+    assert result.filled_sections == ("SUBSTANCES_SECTION",)
+    assert result.deferred_markers == ()
 
 
 def test_unknown_marker_does_not_replace_existing_report(tmp_path: Path) -> None:
@@ -144,9 +192,11 @@ def test_builtin_default_template_contains_only_supported_markers(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     project = make_project(tmp_path)
+    write_substances(project)
 
     result = ReportGenerationService().generate(project)
 
     assert result.output_path.is_file()
     assert result.replaced_count > 0
-    assert "SUBSTANCES_SECTION" in result.deferred_markers
+    assert result.filled_sections == ("SUBSTANCES_SECTION",)
+    assert "SUBSTANCES_SECTION" not in result.deferred_markers

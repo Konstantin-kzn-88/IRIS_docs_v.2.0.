@@ -11,18 +11,23 @@ from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
 
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+from iris_v2.report_substances import (
+    ReportSubstancesError,
+    render_substances_section,
+)
 from iris_v2.service import DATABASE_NAME, ProjectError, ProjectInfo, ProjectService
+from iris_v2.substances import SubstanceError, SubstanceService
 from iris_v2.template_catalog import CONFIG_FILE_NAME
 
 
 OUTPUT_FILE_NAME = "template_report_out.docx"
 MARKER_RE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+SUPPORTED_SECTION_MARKERS = frozenset({"SUBSTANCES_SECTION"})
 
 # Эти блоки заполняются отдельными модулями формирования таблиц, выводов и
 # диаграмм. На первом этапе их нельзя удалять из документа.
 DEFERRED_MARKERS = frozenset(
     {
-        "SUBSTANCES_SECTION",
         "SUBSTANCES_INFO_SECTION",
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
@@ -67,6 +72,7 @@ class ReportGenerationError(Exception):
 class ReportGenerationResult:
     output_path: Path
     replaced_count: int
+    filled_sections: tuple[str, ...]
     deferred_markers: tuple[str, ...]
 
 
@@ -294,12 +300,25 @@ class ReportGenerationService:
             project, common, generated_at or datetime.now()
         )
         marker_names = _marker_names(document)
-        unknown = marker_names - replacements.keys() - DEFERRED_MARKERS
+        unknown = (
+            marker_names
+            - replacements.keys()
+            - DEFERRED_MARKERS
+            - SUPPORTED_SECTION_MARKERS
+        )
         if unknown:
             names = ", ".join(sorted(unknown))
             raise ReportGenerationError(f"Неизвестные маркеры шаблона: {names}")
 
         replaced_count = _replace_markers(document, replacements)
+        filled_sections: list[str] = []
+        if "SUBSTANCES_SECTION" in marker_names:
+            try:
+                substances = SubstanceService().load_project(project_root)
+                if render_substances_section(document, substances):
+                    filled_sections.append("SUBSTANCES_SECTION")
+            except (SubstanceError, ReportSubstancesError) as exc:
+                raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
         if unexpected:
@@ -322,6 +341,7 @@ class ReportGenerationService:
         return ReportGenerationResult(
             output_path=output_path,
             replaced_count=replaced_count,
+            filled_sections=tuple(filled_sections),
             deferred_markers=tuple(sorted(remaining)),
         )
 
