@@ -62,6 +62,10 @@ from iris_v2.report_ov_amount import (
     render_ov_amount_section,
 )
 from iris_v2.report_pareto_charts import (
+    DAMAGE_EMPTY_TEXT,
+    DAMAGE_MARKER,
+    ENV_DAMAGE_EMPTY_TEXT,
+    ENV_DAMAGE_MARKER,
     FATALITIES_EMPTY_TEXT,
     FATALITIES_MARKER,
     INJURED_EMPTY_TEXT,
@@ -112,6 +116,8 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "FG_CHART",
         "PARETO_FATALITIES_CHART",
         "PARETO_INJURED_CHART",
+        "PARETO_DAMAGE_CHART",
+        "PARETO_ENV_DAMAGE_CHART",
     }
 )
 
@@ -120,8 +126,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "PARETO_DAMAGE_CHART",
-        "PARETO_ENV_DAMAGE_CHART",
         "DAMAGE_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
@@ -497,7 +501,13 @@ class ReportGenerationService:
                     filled_sections.append("FG_CHART")
             except ReportRiskChartsError as exc:
                 raise ReportGenerationError(str(exc)) from exc
-        if {"PARETO_FATALITIES_CHART", "PARETO_INJURED_CHART"} & marker_names:
+        pareto_markers = {
+            "PARETO_FATALITIES_CHART",
+            "PARETO_INJURED_CHART",
+            "PARETO_DAMAGE_CHART",
+            "PARETO_ENV_DAMAGE_CHART",
+        }
+        if pareto_markers & marker_names:
             try:
                 charts = prepare_pareto_risk_charts(project_root)
                 if "PARETO_FATALITIES_CHART" in marker_names and render_risk_chart(
@@ -514,6 +524,20 @@ class ReportGenerationService:
                     INJURED_EMPTY_TEXT,
                 ):
                     filled_sections.append("PARETO_INJURED_CHART")
+                if "PARETO_DAMAGE_CHART" in marker_names and render_risk_chart(
+                    document,
+                    DAMAGE_MARKER,
+                    charts.damage_path,
+                    DAMAGE_EMPTY_TEXT,
+                ):
+                    filled_sections.append("PARETO_DAMAGE_CHART")
+                if "PARETO_ENV_DAMAGE_CHART" in marker_names and render_risk_chart(
+                    document,
+                    ENV_DAMAGE_MARKER,
+                    charts.environmental_damage_path,
+                    ENV_DAMAGE_EMPTY_TEXT,
+                ):
+                    filled_sections.append("PARETO_ENV_DAMAGE_CHART")
             except ParetoChartsError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
