@@ -16,6 +16,11 @@ from iris_v2.report_equipment import (
     load_project_equipment,
     render_equipment_section,
 )
+from iris_v2.report_distribution import (
+    ReportDistributionError,
+    load_amount_results,
+    render_distribution_section,
+)
 from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
@@ -28,7 +33,7 @@ from iris_v2.template_catalog import CONFIG_FILE_NAME
 OUTPUT_FILE_NAME = "template_report_out.docx"
 MARKER_RE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
 SUPPORTED_SECTION_MARKERS = frozenset(
-    {"SUBSTANCES_SECTION", "EQUIPMENT_SECTION"}
+    {"SUBSTANCES_SECTION", "EQUIPMENT_SECTION", "DISTRIBUTION_SECTION"}
 )
 
 # Эти блоки заполняются отдельными модулями формирования таблиц, выводов и
@@ -36,7 +41,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
@@ -334,6 +338,21 @@ class ReportGenerationService:
             except (
                 SubstanceError,
                 ReportEquipmentError,
+            ) as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "DISTRIBUTION_SECTION" in marker_names:
+            try:
+                substances = SubstanceService().load_project(project_root)
+                equipment = load_project_equipment(project_root)
+                amounts = load_amount_results(project_root)
+                if render_distribution_section(
+                    document, equipment, substances, amounts
+                ):
+                    filled_sections.append("DISTRIBUTION_SECTION")
+            except (
+                SubstanceError,
+                ReportEquipmentError,
+                ReportDistributionError,
             ) as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)

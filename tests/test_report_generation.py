@@ -61,6 +61,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("СЗЗ: {{ SITE_SANITARY_PROTECTION_ZONE_M }}")
     document.add_paragraph("{{SUBSTANCES_SECTION}}")
     document.add_paragraph("{{EQUIPMENT_SECTION}}")
+    document.add_paragraph("{{DISTRIBUTION_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -184,6 +185,20 @@ def write_equipment(project: Path) -> None:
     )
 
 
+def write_amount_results(project: Path) -> None:
+    data = {
+        "format_version": 1,
+        "equipment_count": 2,
+        "results": [
+            {"equipment_id": 1, "amount_t": 5.0},
+            {"equipment_id": 2, "amount_t": 10.123},
+        ],
+    }
+    (project / "amount_results.json").write_text(
+        json.dumps(data, ensure_ascii=False), encoding="utf-8"
+    )
+
+
 def all_text(document: Document) -> str:
     values = [paragraph.text for paragraph in document.paragraphs]
     for table in document.tables:
@@ -200,6 +215,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     install_template(project)
     write_substances(project)
     write_equipment(project)
+    write_amount_results(project)
 
     result = ReportGenerationService().generate(
         project, generated_at=datetime(2026, 9, 6, 12, 30)
@@ -237,6 +253,12 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "0,85" in text
     assert "Координаты" not in text
     assert "Возможные погибшие" not in text
+    assert "{{DISTRIBUTION_SECTION}}" not in text
+    assert "Технологический блок, оборудование" in text
+    assert "Нефтепровод от скважины № 1 (Нефть)" in text
+    assert "10,123" in text
+    assert "20,246" in text
+    assert "Общая масса опасных веществ в оборудовании: 25,246 т" in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -248,6 +270,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert result.filled_sections == (
         "SUBSTANCES_SECTION",
         "EQUIPMENT_SECTION",
+        "DISTRIBUTION_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -294,6 +317,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     project = make_project(tmp_path)
     write_substances(project)
     write_equipment(project)
+    write_amount_results(project)
 
     result = ReportGenerationService().generate(project)
 
@@ -302,6 +326,24 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert result.filled_sections == (
         "SUBSTANCES_SECTION",
         "EQUIPMENT_SECTION",
+        "DISTRIBUTION_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
+    assert "DISTRIBUTION_SECTION" not in result.deferred_markers
+
+
+def test_missing_amount_results_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Количество опасного вещества"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
