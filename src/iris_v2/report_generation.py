@@ -16,6 +16,11 @@ from iris_v2.report_casualties import (
     load_casualty_rows,
     render_casualties_section,
 )
+from iris_v2.report_collective_risk import (
+    ReportCollectiveRiskError,
+    load_collective_risk_rows,
+    render_collective_risk_section,
+)
 from iris_v2.report_damage import (
     ReportDamageError,
     load_damage_rows,
@@ -73,6 +78,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
+        "COLLECTIVE_RISK_SECTION",
     }
 )
 
@@ -81,7 +87,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
@@ -430,6 +435,13 @@ class ReportGenerationService:
                 if render_fatal_accident_frequency(document, value):
                     filled_sections.append("FATAL_ACCIDENT_FREQUENCY")
             except ReportFatalFrequencyError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "COLLECTIVE_RISK_SECTION" in marker_names:
+            try:
+                rows = load_collective_risk_rows(project_root)
+                if render_collective_risk_section(document, rows):
+                    filled_sections.append("COLLECTIVE_RISK_SECTION")
+            except ReportCollectiveRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
