@@ -82,6 +82,11 @@ from iris_v2.impact_zones import (
     ImpactZonesResult,
     ImpactZonesService,
 )
+from iris_v2.people_calculation import (
+    PeopleCalculationError,
+    PeopleCalculationResult,
+    PeopleCalculationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1754,6 +1759,81 @@ class ImpactZonesDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class PeopleCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: PeopleCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Число погибших и пострадавших")
+        self.resize(1380, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Максимум погибших: {result.max_fatalities}. "
+            f"Максимум пострадавших: {result.max_injured}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 9)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Поражающий фактор",
+                "Возможно погибших",
+                "Погибших",
+                "Возможно пострадавших",
+                "Пострадавших",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((60, 180, 145, 170, 125, 80, 145, 100)):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["impact_type"],
+                item_data["possible_dead"],
+                item_data["fatalities_count"],
+                item_data["possible_injured"],
+                item_data["injured_count"],
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2174,6 +2254,11 @@ class MainWindow(QMainWindow):
         self.impact_zones_button.setEnabled(False)
         self.impact_zones_button.clicked.connect(self.calculate_impact_zones)
 
+        self.people_button = QPushButton("Погибшие и пострадавшие")
+        self.people_button.setObjectName("people_button")
+        self.people_button.setEnabled(False)
+        self.people_button.clicked.connect(self.calculate_people)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2209,6 +2294,7 @@ class MainWindow(QMainWindow):
         effect_button_layout_2.addWidget(self.fireball_button)
         effect_button_layout_2.addWidget(self.chemical_spill_button)
         effect_button_layout_2.addWidget(self.impact_zones_button)
+        effect_button_layout_2.addWidget(self.people_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2271,6 +2357,7 @@ class MainWindow(QMainWindow):
         self.fireball_button.setEnabled(True)
         self.chemical_spill_button.setEnabled(True)
         self.impact_zones_button.setEnabled(True)
+        self.people_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2627,6 +2714,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ImpactZonesDialog(result, self).exec()
+
+    def calculate_people(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = PeopleCalculationService().calculate(
+                self.current_project_directory
+            )
+        except PeopleCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        PeopleCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
