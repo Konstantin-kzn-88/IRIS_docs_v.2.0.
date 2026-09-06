@@ -129,6 +129,11 @@ from iris_v2.key_scenarios import (
     KeyScenariosResult,
     KeyScenariosService,
 )
+from iris_v2.template_catalog import (
+    TemplateCatalogError,
+    TemplateCatalogService,
+    TemplateProfile,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2456,6 +2461,109 @@ class KeyScenariosDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class TemplateCatalogDialog(QDialog):
+    def __init__(
+        self,
+        service: TemplateCatalogService,
+        profiles: tuple[TemplateProfile, ...],
+        project_directory: Path | None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.service = service
+        self.profiles = profiles
+        self.project_directory = project_directory
+        self.setWindowTitle("Шаблоны документов")
+        self.resize(900, 560)
+
+        self.profile_combo = QComboBox()
+        self.profile_combo.addItems([profile.name for profile in profiles])
+        self.profile_combo.currentIndexChanged.connect(
+            lambda _index: self._fill_documents()
+        )
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(
+            ["Документ", "Размер, байт", "SHA-256"]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setColumnWidth(1, 120)
+        self.table.setColumnWidth(2, 280)
+        self.table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        self.table.verticalHeader().setDefaultSectionSize(30)
+
+        if profiles:
+            status_text = (
+                "Выберите вариант. При сохранении его DOCX копируются внутрь проекта."
+            )
+        else:
+            status_text = (
+                f"Шаблоны не найдены. Создайте папку варианта внутри: {service.root}"
+            )
+        status = QLabel(status_text)
+        status.setWordWrap(True)
+        self.save_button = QPushButton("Сохранить для проекта")
+        self.save_button.setEnabled(bool(profiles) and project_directory is not None)
+        self.save_button.clicked.connect(self._save_selection)
+        open_button = QPushButton("Открыть папку шаблонов")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(service.root)))
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        form = QFormLayout()
+        form.addRow("Вариант шаблонов:", self.profile_combo)
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addWidget(self.save_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addLayout(form)
+        layout.addWidget(self.table)
+        layout.addLayout(button_layout)
+        self._fill_documents()
+
+    def _fill_documents(self) -> None:
+        index = self.profile_combo.currentIndex()
+        documents = self.profiles[index].documents if index >= 0 else ()
+        self.table.setRowCount(len(documents))
+        for row, document in enumerate(documents):
+            values = (document.name, document.size, document.sha256)
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+    def _save_selection(self) -> None:
+        index = self.profile_combo.currentIndex()
+        if index < 0 or self.project_directory is None:
+            return
+        try:
+            result = self.service.select(
+                self.project_directory,
+                self.profiles[index].name,
+            )
+        except TemplateCatalogError as exc:
+            QMessageBox.critical(self, "Ошибка", str(exc))
+            return
+        QMessageBox.information(
+            self,
+            "Шаблоны сохранены",
+            f"Вариант: {result.profile_name}\n"
+            f"Документов: {len(result.documents)}\n"
+            f"Файл настройки: {result.config_path}",
+        )
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2771,6 +2879,10 @@ class MainWindow(QMainWindow):
         open_button.setObjectName("open_project_button")
         open_button.clicked.connect(self.open_project)
 
+        self.template_catalog_button = QPushButton("Шаблоны")
+        self.template_catalog_button.setObjectName("template_catalog_button")
+        self.template_catalog_button.clicked.connect(self.open_template_catalog)
+
         self.project_common_button = QPushButton("Данные проекта")
         self.project_common_button.setObjectName("project_common_button")
         self.project_common_button.setEnabled(False)
@@ -2933,6 +3045,7 @@ class MainWindow(QMainWindow):
         data_button_layout = QHBoxLayout()
         data_button_layout.addWidget(create_button)
         data_button_layout.addWidget(open_button)
+        data_button_layout.addWidget(self.template_catalog_button)
         data_button_layout.addWidget(self.project_common_button)
         data_button_layout.addWidget(self.substances_button)
         data_button_layout.addWidget(self.equipment_button)
@@ -3012,6 +3125,20 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         self.show_project(project, Path(directory).resolve())
+
+    def open_template_catalog(self) -> None:
+        service = TemplateCatalogService()
+        try:
+            profiles = service.load()
+        except TemplateCatalogError as exc:
+            self._show_error(str(exc))
+            return
+        TemplateCatalogDialog(
+            service,
+            profiles,
+            self.current_project_directory,
+            self,
+        ).exec()
 
     def show_project(self, project: ProjectInfo, directory: Path) -> None:
         self.current_project = project
