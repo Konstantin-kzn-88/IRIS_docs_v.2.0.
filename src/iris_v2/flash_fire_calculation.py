@@ -9,6 +9,7 @@ from iris_v2.hazard_factor_calculation import FILE_NAME as HAZARD_FACTOR_FILE_NA
 
 FILE_NAME = "flash_fire_results.json"
 FLASH_FIRE_CALC_CODE = 3
+GAS_KINDS = {2, 3, 7}
 
 
 class FlashFireCalculationError(Exception):
@@ -38,32 +39,54 @@ def _number(value: Any, label: str, *, positive: bool = False) -> float:
 
 def calculate_flash_fire_radii(
     cloud_mass_kg: float,
-    molar_mass_kg_mol: float,
-    boiling_point_c: float,
+    molar_mass_kg_mol: float | None,
+    boiling_point_c: float | None,
     lel_percent: float,
+    gas_density_kg_m3: float | None = None,
 ) -> dict[str, float]:
     """Calculate LEL and flash-fire radii using the old LCLP model."""
     for value, label in (
         (cloud_mass_kg, "Масса облака"),
-        (molar_mass_kg_mol, "Молярная масса"),
         (lel_percent, "НКПР"),
     ):
         if not math.isfinite(value) or value <= 0:
             raise FlashFireCalculationError(f"{label} должно быть больше нуля")
-    if not math.isfinite(boiling_point_c):
-        raise FlashFireCalculationError("Температура кипения должна быть числом")
     if lel_percent > 100:
         raise FlashFireCalculationError("НКПР не может превышать 100 % об.")
 
-    molar_mass_kg_kmol = molar_mass_kg_mol * 1000.0
-    density_denominator = 22.413 * (1.0 + 0.00367 * boiling_point_c)
-    if density_denominator <= 0:
-        raise FlashFireCalculationError(
-            "Температура кипения даёт недопустимую плотность пара"
-        )
-    vapor_density = molar_mass_kg_kmol / density_denominator
-    if not math.isfinite(vapor_density) or vapor_density <= 0:
-        raise FlashFireCalculationError("Получена недопустимая плотность пара")
+    if gas_density_kg_m3 is not None:
+        if (
+            not math.isfinite(gas_density_kg_m3)
+            or gas_density_kg_m3 <= 0
+        ):
+            raise FlashFireCalculationError(
+                "Плотность газа должна быть больше нуля"
+            )
+        vapor_density = gas_density_kg_m3
+    else:
+        if (
+            molar_mass_kg_mol is None
+            or not math.isfinite(molar_mass_kg_mol)
+            or molar_mass_kg_mol <= 0
+        ):
+            raise FlashFireCalculationError(
+                "Молярная масса должна быть больше нуля"
+            )
+        if boiling_point_c is None or not math.isfinite(boiling_point_c):
+            raise FlashFireCalculationError(
+                "Температура кипения должна быть числом"
+            )
+        molar_mass_kg_kmol = molar_mass_kg_mol * 1000.0
+        density_denominator = 22.413 * (1.0 + 0.00367 * boiling_point_c)
+        if density_denominator <= 0:
+            raise FlashFireCalculationError(
+                "Температура кипения даёт недопустимую плотность пара"
+            )
+        vapor_density = molar_mass_kg_kmol / density_denominator
+        if not math.isfinite(vapor_density) or vapor_density <= 0:
+            raise FlashFireCalculationError(
+                "Получена недопустимая плотность пара"
+            )
 
     lel_radius = round(
         7.8 * (cloud_mass_kg / (vapor_density * lel_percent)) ** 0.33,
@@ -179,25 +202,38 @@ class FlashFireCalculationService:
                     raise FlashFireCalculationError(
                         f"Сценарий {scenario_code}: explosion должен быть объектом"
                     )
-                molar_mass = _number(
-                    physical.get("molar_mass_kg_per_mol"),
-                    f"Сценарий {scenario_code}: molar_mass_kg_per_mol",
-                    positive=True,
-                )
-                boiling_point = _number(
-                    physical.get("boiling_point_C"),
-                    f"Сценарий {scenario_code}: boiling_point_C",
-                )
                 lel = _number(
                     explosion.get("lel_percent"),
                     f"Сценарий {scenario_code}: lel_percent",
                     positive=True,
                 )
+                if value.get("kind") in GAS_KINDS:
+                    gas_density = _number(
+                        physical.get("density_gas_kg_per_m3"),
+                        f"Сценарий {scenario_code}: density_gas_kg_per_m3",
+                        positive=True,
+                    )
+                    molar_mass = None
+                    boiling_point = None
+                    density_source = "substance_gas_density"
+                else:
+                    gas_density = None
+                    molar_mass = _number(
+                        physical.get("molar_mass_kg_per_mol"),
+                        f"Сценарий {scenario_code}: molar_mass_kg_per_mol",
+                        positive=True,
+                    )
+                    boiling_point = _number(
+                        physical.get("boiling_point_C"),
+                        f"Сценарий {scenario_code}: boiling_point_C",
+                    )
+                    density_source = "calculated_vapor_density"
                 calculated = calculate_flash_fire_radii(
                     mass_t * 1000.0,
                     molar_mass,
                     boiling_point,
                     lel,
+                    gas_density,
                 )
                 status = "calculated"
                 flash_fire_count += 1
@@ -206,6 +242,8 @@ class FlashFireCalculationService:
                 molar_mass = None
                 boiling_point = None
                 lel = None
+                gas_density = None
+                density_source = None
                 calculated = {
                     "vapor_density_kg_m3": None,
                     "lel_radius_m": None,
@@ -230,6 +268,8 @@ class FlashFireCalculationService:
                     "flash_fire_molar_mass_kg_mol": molar_mass,
                     "flash_fire_boiling_point_c": boiling_point,
                     "flash_fire_lel_percent": lel,
+                    "flash_fire_gas_density_kg_m3": gas_density,
+                    "flash_fire_density_source": density_source,
                     "flash_fire_formula": (
                         "Приказ МЧС России от 10.07.2009 № 404"
                         if applicable

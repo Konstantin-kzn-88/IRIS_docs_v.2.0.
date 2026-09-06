@@ -38,6 +38,9 @@ def write_project(
     values: list[dict],
     *,
     lel_percent: float | None = 2.9,
+    kind: int = 0,
+    boiling_point: float | None = 60.0,
+    gas_density: float | None = None,
 ) -> None:
     write_json(
         path / "hazard_factor_results.json",
@@ -49,10 +52,11 @@ def write_project(
             {
                 "id": 1,
                 "name": "Бензин",
-                "kind": 0,
+                "kind": kind,
                 "physical": {
                     "molar_mass_kg_per_mol": 0.09,
-                    "boiling_point_C": 60.0,
+                    "density_gas_kg_per_m3": gas_density,
+                    "boiling_point_C": boiling_point,
                 },
                 "explosion": {"lel_percent": lel_percent},
             }
@@ -75,6 +79,25 @@ def test_flash_fire_radius_is_twenty_percent_larger() -> None:
         result["lel_radius_m"] * 1.2,
         2,
     )
+
+
+def test_gas_uses_density_without_boiling_point(tmp_path: Path) -> None:
+    value = hazard_result(1, 3)
+    value["kind"] = 2
+    write_project(
+        tmp_path,
+        [value],
+        kind=2,
+        boiling_point=None,
+        gas_density=0.72,
+    )
+
+    item = FlashFireCalculationService().calculate(tmp_path).results[0]
+
+    assert item["flash_fire_status"] == "calculated"
+    assert item["flash_fire_density_source"] == "substance_gas_density"
+    assert item["vapor_density_kg_m3"] == pytest.approx(0.72)
+    assert item["flash_fire_boiling_point_c"] is None
 
 
 def test_service_calculates_only_flash_fire_scenarios(tmp_path: Path) -> None:
