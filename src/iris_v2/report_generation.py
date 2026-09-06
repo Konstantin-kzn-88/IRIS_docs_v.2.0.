@@ -46,6 +46,11 @@ from iris_v2.report_impact_zones import (
     load_impact_zone_rows,
     render_impact_zones_section,
 )
+from iris_v2.report_max_damage import (
+    ReportMaxDamageError,
+    load_max_damage_rows,
+    render_max_damage_section,
+)
 from iris_v2.report_individual_risk import (
     ReportIndividualRiskError,
     load_individual_risk_section,
@@ -85,6 +90,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "FATAL_ACCIDENT_FREQUENCY",
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
+        "MAX_DAMAGE_BY_COMPONENT_SECTION",
     }
 )
 
@@ -93,7 +99,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
         "FG_CHART",
         "PARETO_FATALITIES_CHART",
@@ -454,6 +459,13 @@ class ReportGenerationService:
                 if render_individual_risk_section(document, section_data):
                     filled_sections.append("INDIVIDUAL_RISK_SECTION")
             except ReportIndividualRiskError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "MAX_DAMAGE_BY_COMPONENT_SECTION" in marker_names:
+            try:
+                rows = load_max_damage_rows(project_root)
+                if render_max_damage_section(document, rows):
+                    filled_sections.append("MAX_DAMAGE_BY_COMPONENT_SECTION")
+            except ReportMaxDamageError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
