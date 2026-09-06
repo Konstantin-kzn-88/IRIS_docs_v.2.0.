@@ -25,6 +25,11 @@ from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
 )
+from iris_v2.report_scenarios import (
+    ReportScenariosError,
+    load_scenario_rows,
+    render_scenarios_section,
+)
 from iris_v2.service import DATABASE_NAME, ProjectError, ProjectInfo, ProjectService
 from iris_v2.substances import SubstanceError, SubstanceService
 from iris_v2.template_catalog import CONFIG_FILE_NAME
@@ -33,7 +38,12 @@ from iris_v2.template_catalog import CONFIG_FILE_NAME
 OUTPUT_FILE_NAME = "template_report_out.docx"
 MARKER_RE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
 SUPPORTED_SECTION_MARKERS = frozenset(
-    {"SUBSTANCES_SECTION", "EQUIPMENT_SECTION", "DISTRIBUTION_SECTION"}
+    {
+        "SUBSTANCES_SECTION",
+        "EQUIPMENT_SECTION",
+        "DISTRIBUTION_SECTION",
+        "SCENARIOS_SECTION",
+    }
 )
 
 # Эти блоки заполняются отдельными модулями формирования таблиц, выводов и
@@ -41,7 +51,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
@@ -354,6 +363,13 @@ class ReportGenerationService:
                 ReportEquipmentError,
                 ReportDistributionError,
             ) as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "SCENARIOS_SECTION" in marker_names:
+            try:
+                rows = load_scenario_rows(project_root)
+                if render_scenarios_section(document, rows):
+                    filled_sections.append("SCENARIOS_SECTION")
+            except ReportScenariosError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS

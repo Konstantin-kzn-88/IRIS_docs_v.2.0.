@@ -109,8 +109,7 @@ def distribution_rows(
                 f"В {FILE_NAME} отсутствует оборудование id={equipment_id}"
             )
         substance_id = item.get("substance_id")
-        substance_name = substance_names.get(substance_id)
-        if substance_name is None:
+        if substance_names.get(substance_id) is None:
             raise ReportDistributionError(
                 f"Оборудование {equipment_id}: substance_id отсутствует в substances.json"
             )
@@ -153,7 +152,7 @@ def distribution_rows(
         )
         row = {
             "component": component,
-            "equipment": f"{equipment_name} ({substance_name})",
+            "equipment": equipment_name,
             "units": str(units),
             "mass_in_unit": _number(mass_in_unit, 3),
             "mass_in_block": _number(mass_in_block, 3),

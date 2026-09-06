@@ -62,6 +62,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{SUBSTANCES_SECTION}}")
     document.add_paragraph("{{EQUIPMENT_SECTION}}")
     document.add_paragraph("{{DISTRIBUTION_SECTION}}")
+    document.add_paragraph("{{SCENARIOS_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -199,6 +200,33 @@ def write_amount_results(project: Path) -> None:
     )
 
 
+def write_scenario_results(project: Path) -> None:
+    case = {
+        "id": 1,
+        "scenario_code": "С1",
+        "equipment_id": 1,
+        "equipment_name": "Нефтепровод от скважины № 1",
+        "hazard_component": "Участок трубопроводов",
+        "scenario_text": "Разрыв трубопровода → пожар пролива",
+    }
+    (project / "calculation_cases.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "cases": [case]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    frequency = dict(case)
+    frequency["scenario_frequency"] = 6.0e-5
+    (project / "frequency_results.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [frequency]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
 def all_text(document: Document) -> str:
     values = [paragraph.text for paragraph in document.paragraphs]
     for table in document.tables:
@@ -216,6 +244,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     write_substances(project)
     write_equipment(project)
     write_amount_results(project)
+    write_scenario_results(project)
 
     result = ReportGenerationService().generate(
         project, generated_at=datetime(2026, 9, 6, 12, 30)
@@ -255,10 +284,14 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Возможные погибшие" not in text
     assert "{{DISTRIBUTION_SECTION}}" not in text
     assert "Технологический блок, оборудование" in text
-    assert "Нефтепровод от скважины № 1 (Нефть)" in text
+    assert "Нефтепровод от скважины № 1 (Нефть)" not in text
     assert "10,123" in text
     assert "20,246" in text
     assert "Общая масса опасных веществ в оборудовании: 25,246 т" in text
+    assert "{{SCENARIOS_SECTION}}" not in text
+    assert "Разрыв трубопровода → пожар пролива" in text
+    assert "Нефтепровод от скважины № 1 (Участок трубопроводов)" in text
+    assert "6.000E-05" in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -271,6 +304,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "SUBSTANCES_SECTION",
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
+        "SCENARIOS_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -318,6 +352,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     write_substances(project)
     write_equipment(project)
     write_amount_results(project)
+    write_scenario_results(project)
 
     result = ReportGenerationService().generate(project)
 
@@ -327,10 +362,12 @@ def test_builtin_default_template_contains_only_supported_markers(
         "SUBSTANCES_SECTION",
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
+        "SCENARIOS_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
     assert "DISTRIBUTION_SECTION" not in result.deferred_markers
+    assert "SCENARIOS_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
@@ -344,6 +381,25 @@ def test_missing_amount_results_does_not_replace_existing_report(
     output.write_bytes(b"previous report")
 
     with pytest.raises(ReportGenerationError, match="Количество опасного вещества"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
+def test_missing_frequency_results_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    (project / "frequency_results.json").unlink()
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Частоты сценариев"):
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"
