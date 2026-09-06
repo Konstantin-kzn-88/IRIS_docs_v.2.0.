@@ -47,6 +47,12 @@ def test_all_supported_impact_types_are_combined(tmp_path: Path) -> None:
             values[3], "flash_fire_status",
             lel_radius_m=20, flash_fire_radius_m=24,
         ),
+        "toxic_results.json": {
+            **values[4],
+            "toxic_status": "calculated_temporary",
+            "lethal_radius_m": 50,
+            "threshold_radius_m": 150,
+        },
         "jet_fire_results.json": module_result(
             values[5], "jet_fire_status",
             jet_fire_length_m=30, jet_fire_diameter_m=5,
@@ -66,10 +72,10 @@ def test_all_supported_impact_types_are_combined(tmp_path: Path) -> None:
     result = ImpactZonesService().calculate(tmp_path)
 
     assert result.case_count == 8
-    assert result.calculated_count == 6
-    assert result.unavailable_count == 1
+    assert result.calculated_count == 7
+    assert result.unavailable_count == 0
     assert result.results[0]["impact_status"] == "none"
-    assert result.results[4]["impact_status"] == "unavailable"
+    assert result.results[4]["impact_status"] == "calculated_temporary"
     assert result.results[7]["impact_values"] == {
         "chemical_spill_area_m2": 125.5
     }
