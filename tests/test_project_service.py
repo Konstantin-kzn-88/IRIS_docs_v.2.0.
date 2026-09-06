@@ -242,5 +242,10 @@ def test_minimal_window_starts() -> None:
         )
         assert chemical_spill_button is not None
         assert not chemical_spill_button.isEnabled()
+        impact_zones_button = window.findChild(
+            QPushButton, "impact_zones_button"
+        )
+        assert impact_zones_button is not None
+        assert not impact_zones_button.isEnabled()
     finally:
         window.close()

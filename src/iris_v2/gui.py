@@ -72,6 +72,11 @@ from iris_v2.chemical_spill_calculation import (
     ChemicalSpillCalculationResult,
     ChemicalSpillCalculationService,
 )
+from iris_v2.impact_zones import (
+    ImpactZonesError,
+    ImpactZonesResult,
+    ImpactZonesService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1585,6 +1590,82 @@ class ChemicalSpillCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class ImpactZonesDialog(QDialog):
+    def __init__(
+        self,
+        result: ImpactZonesResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Свод зон поражения")
+        self.resize(1380, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Рассчитано: {result.calculated_count}. "
+            f"Без модели: {result.unavailable_count}."
+        )
+        color = "#B26A00" if result.unavailable_count else "#16803A"
+        status.setStyleSheet(f"color: {color}; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 7)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Поражающий фактор",
+                "Статус",
+                "Результаты",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            6, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((60, 180, 145, 170, 230, 360)):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["impact_type"],
+                item_data["impact_status_name"],
+                item_data["impact_summary"],
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1995,6 +2076,11 @@ class MainWindow(QMainWindow):
             self.calculate_chemical_spills
         )
 
+        self.impact_zones_button = QPushButton("Свод зон")
+        self.impact_zones_button.setObjectName("impact_zones_button")
+        self.impact_zones_button.setEnabled(False)
+        self.impact_zones_button.clicked.connect(self.calculate_impact_zones)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2026,6 +2112,7 @@ class MainWindow(QMainWindow):
         effect_button_layout.addWidget(self.jet_fire_button)
         effect_button_layout.addWidget(self.fireball_button)
         effect_button_layout.addWidget(self.chemical_spill_button)
+        effect_button_layout.addWidget(self.impact_zones_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2085,6 +2172,7 @@ class MainWindow(QMainWindow):
         self.jet_fire_button.setEnabled(True)
         self.fireball_button.setEnabled(True)
         self.chemical_spill_button.setEnabled(True)
+        self.impact_zones_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2415,6 +2503,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ChemicalSpillCalculationDialog(result, self).exec()
+
+    def calculate_impact_zones(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ImpactZonesService().calculate(
+                self.current_project_directory
+            )
+        except ImpactZonesError as exc:
+            self._show_error(str(exc))
+            return
+        ImpactZonesDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
