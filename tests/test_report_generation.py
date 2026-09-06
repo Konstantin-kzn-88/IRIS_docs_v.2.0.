@@ -77,6 +77,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{PARETO_INJURED_CHART}}")
     document.add_paragraph("{{PARETO_DAMAGE_CHART}}")
     document.add_paragraph("{{PARETO_ENV_DAMAGE_CHART}}")
+    document.add_paragraph("{{DAMAGE_BY_COMPONENT_CHART}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -541,7 +542,8 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "{{PARETO_INJURED_CHART}}" not in text
     assert "{{PARETO_DAMAGE_CHART}}" not in text
     assert "{{PARETO_ENV_DAMAGE_CHART}}" not in text
-    assert len(Document(result.output_path).inline_shapes) == 6
+    assert "{{DAMAGE_BY_COMPONENT_CHART}}" not in text
+    assert len(Document(result.output_path).inline_shapes) == 7
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -569,6 +571,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
+        "DAMAGE_BY_COMPONENT_CHART",
     )
     assert result.deferred_markers == ()
 
@@ -641,6 +644,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
+        "DAMAGE_BY_COMPONENT_CHART",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -660,6 +664,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "PARETO_INJURED_CHART" not in result.deferred_markers
     assert "PARETO_DAMAGE_CHART" not in result.deferred_markers
     assert "PARETO_ENV_DAMAGE_CHART" not in result.deferred_markers
+    assert "DAMAGE_BY_COMPONENT_CHART" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(

@@ -72,10 +72,6 @@ def _read_components(path: Path) -> list[tuple[str, float, float]]:
             ) from exc
         if direct + environmental > 0:
             result.append((name, direct, environmental))
-    if not result:
-        raise ComponentDamageChartError(
-            "Нет составляющих ОПО с положительным ущербом"
-        )
     result.sort(key=lambda item: item[1] + item[2], reverse=True)
     return result
 
@@ -135,6 +131,10 @@ class ComponentDamageChartService:
                 f"Папка проекта не найдена: {project}"
             )
         rows = _read_components(project / SUMMARY_FILE_NAME)
+        if not rows:
+            raise ComponentDamageChartError(
+                "Нет составляющих ОПО с положительным ущербом"
+            )
         output_directory = project / "output" / "charts"
         try:
             import matplotlib

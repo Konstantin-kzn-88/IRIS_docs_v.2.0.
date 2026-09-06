@@ -21,6 +21,12 @@ from iris_v2.report_collective_risk import (
     load_collective_risk_rows,
     render_collective_risk_section,
 )
+from iris_v2.report_component_damage_chart import (
+    ComponentDamageChartError,
+    EMPTY_TEXT as COMPONENT_DAMAGE_EMPTY_TEXT,
+    MARKER as COMPONENT_DAMAGE_MARKER,
+    prepare_component_damage_chart,
+)
 from iris_v2.report_damage import (
     ReportDamageError,
     load_damage_rows,
@@ -118,6 +124,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
+        "DAMAGE_BY_COMPONENT_CHART",
     }
 )
 
@@ -126,7 +133,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "DAMAGE_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
@@ -539,6 +545,18 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("PARETO_ENV_DAMAGE_CHART")
             except ParetoChartsError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "DAMAGE_BY_COMPONENT_CHART" in marker_names:
+            try:
+                path = prepare_component_damage_chart(project_root)
+                if render_risk_chart(
+                    document,
+                    COMPONENT_DAMAGE_MARKER,
+                    path,
+                    COMPONENT_DAMAGE_EMPTY_TEXT,
+                ):
+                    filled_sections.append("DAMAGE_BY_COMPONENT_CHART")
+            except (ComponentDamageChartError, ReportMaxDamageError) as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS

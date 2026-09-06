@@ -62,6 +62,16 @@ def test_service_creates_png(tmp_path: Path) -> None:
     assert result.component_count == 2
 
 
+def test_service_rejects_components_without_positive_damage(tmp_path: Path) -> None:
+    write_json(
+        tmp_path / "risk_summary.json",
+        {"components": [component("Участок А", 0.0, 0.0)]},
+    )
+
+    with pytest.raises(ComponentDamageChartError, match="положительным ущербом"):
+        ComponentDamageChartService().calculate(tmp_path)
+
+
 def test_missing_summary_has_clear_error(tmp_path: Path) -> None:
     with pytest.raises(
         ComponentDamageChartError,
