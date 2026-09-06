@@ -67,6 +67,11 @@ from iris_v2.fireball_calculation import (
     FireballCalculationResult,
     FireballCalculationService,
 )
+from iris_v2.chemical_spill_calculation import (
+    ChemicalSpillCalculationError,
+    ChemicalSpillCalculationResult,
+    ChemicalSpillCalculationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -1502,6 +1507,84 @@ class FireballCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class ChemicalSpillCalculationDialog(QDialog):
+    def __init__(
+        self,
+        result: ChemicalSpillCalculationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Химически опасный пролив")
+        self.resize(1180, 720)
+
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Химически опасных проливов: {result.chemical_spill_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        self.table = QTableWidget(len(result.results), 8)
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Код",
+                "Оборудование",
+                "Вещество",
+                "Статус",
+                "Масса ПФ, т",
+                "Площадь, м²",
+                "Источник площади",
+                "Сценарий",
+            ]
+        )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setWordWrap(False)
+        self.table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
+        self.table.verticalHeader().setDefaultSectionSize(30)
+        self.table.horizontalHeader().setSectionResizeMode(
+            7, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((60, 180, 145, 210, 95, 100, 170)):
+            self.table.setColumnWidth(column, width)
+
+        for row, item_data in enumerate(result.results):
+            area = item_data["chemical_spill_area_m2"]
+            mass = item_data.get("ov_in_hazard_factor_t")
+            values = (
+                item_data["scenario_code"],
+                item_data["equipment_name"],
+                item_data["substance_name"],
+                item_data["chemical_spill_status_name"],
+                "" if mass is None else f"{mass:.6g}",
+                "" if area is None else f"{area:.6g}",
+                item_data.get("spill_source_name", ""),
+                item_data["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                self.table.setItem(row, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(self.table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -1905,6 +1988,13 @@ class MainWindow(QMainWindow):
         self.fireball_button.setEnabled(False)
         self.fireball_button.clicked.connect(self.calculate_fireballs)
 
+        self.chemical_spill_button = QPushButton("Химически опасный пролив")
+        self.chemical_spill_button.setObjectName("chemical_spill_button")
+        self.chemical_spill_button.setEnabled(False)
+        self.chemical_spill_button.clicked.connect(
+            self.calculate_chemical_spills
+        )
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -1926,18 +2016,22 @@ class MainWindow(QMainWindow):
         calculation_button_layout.addWidget(self.spill_button)
         calculation_button_layout.addWidget(self.evaporation_button)
         calculation_button_layout.addWidget(self.hazard_factor_button)
-        calculation_button_layout.addWidget(self.pool_fire_button)
-        calculation_button_layout.addWidget(self.explosion_button)
-        calculation_button_layout.addWidget(self.flash_fire_button)
-        calculation_button_layout.addWidget(self.jet_fire_button)
-        calculation_button_layout.addWidget(self.fireball_button)
         calculation_button_layout.addWidget(self.frequency_button)
         calculation_button_layout.addWidget(self.validation_button)
+
+        effect_button_layout = QHBoxLayout()
+        effect_button_layout.addWidget(self.pool_fire_button)
+        effect_button_layout.addWidget(self.explosion_button)
+        effect_button_layout.addWidget(self.flash_fire_button)
+        effect_button_layout.addWidget(self.jet_fire_button)
+        effect_button_layout.addWidget(self.fireball_button)
+        effect_button_layout.addWidget(self.chemical_spill_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
         layout.addLayout(data_button_layout)
         layout.addLayout(calculation_button_layout)
+        layout.addLayout(effect_button_layout)
         layout.addWidget(self.project_label, 1)
 
         container = QWidget()
@@ -1990,6 +2084,7 @@ class MainWindow(QMainWindow):
         self.flash_fire_button.setEnabled(True)
         self.jet_fire_button.setEnabled(True)
         self.fireball_button.setEnabled(True)
+        self.chemical_spill_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2307,6 +2402,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         FireballCalculationDialog(result, self).exec()
+
+    def calculate_chemical_spills(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ChemicalSpillCalculationService().calculate(
+                self.current_project_directory
+            )
+        except ChemicalSpillCalculationError as exc:
+            self._show_error(str(exc))
+            return
+        ChemicalSpillCalculationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
