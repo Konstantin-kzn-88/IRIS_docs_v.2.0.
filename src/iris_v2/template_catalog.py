@@ -71,6 +71,11 @@ def _document(path: Path) -> TemplateDocument:
 class TemplateCatalogService:
     def __init__(self, root: Path | str | None = None) -> None:
         self.root = Path(root) if root is not None else Path.cwd() / "templates"
+        self.builtin_root = (
+            None
+            if root is not None
+            else Path(__file__).parent / "data" / "templates"
+        )
 
     def ensure_root(self) -> Path:
         try:
@@ -110,6 +115,24 @@ class TemplateCatalogService:
                     documents=tuple(_document(path) for path in paths),
                 )
             )
+        if (
+            self.builtin_root is not None
+            and not any(profile.name == "default" for profile in profiles)
+        ):
+            directory = self.builtin_root / "default"
+            paths = sorted(
+                directory.glob("*.docx"),
+                key=lambda item: item.name.casefold(),
+            )
+            if paths:
+                profiles.append(
+                    TemplateProfile(
+                        name="default",
+                        directory=directory,
+                        documents=tuple(_document(path) for path in paths),
+                    )
+                )
+                profiles.sort(key=lambda profile: profile.name.casefold())
         return tuple(profiles)
 
     def select(

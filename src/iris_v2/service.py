@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from iris_v2.database import create_database_engine, upgrade_database
 from iris_v2.models import Project
+from iris_v2.template_catalog import TemplateCatalogError, TemplateCatalogService
 
 
 DATABASE_NAME = "project.sqlite3"
@@ -109,6 +110,12 @@ class ProjectService:
             (temporary / MANIFEST_NAME).write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
             )
+            try:
+                TemplateCatalogService().select(temporary, "default")
+            except TemplateCatalogError as exc:
+                raise ProjectError(
+                    f"Не удалось добавить шаблон default: {exc}"
+                ) from exc
             temporary.replace(target)
         except Exception:
             shutil.rmtree(temporary, ignore_errors=True)

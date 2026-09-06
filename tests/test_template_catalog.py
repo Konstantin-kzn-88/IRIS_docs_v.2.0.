@@ -86,3 +86,28 @@ def test_invalid_docx_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(TemplateCatalogError, match="не является документом DOCX"):
         TemplateCatalogService(tmp_path / "templates").load()
+
+
+def test_new_project_gets_builtin_default_template(tmp_path: Path, monkeypatch) -> None:
+    from iris_v2.service import CreateProjectData, ProjectService
+
+    monkeypatch.chdir(tmp_path)
+    project = tmp_path / "project"
+    ProjectService().create(
+        project,
+        CreateProjectData(
+            name="Проект",
+            code="CODE-1",
+            organization_name="Организация",
+            opo_name="ОПО",
+            opo_registration_number="А00-00000-0000",
+        ),
+    )
+
+    template = (
+        project / "input" / "templates" / "selected" / "template_report.docx"
+    )
+    config = json.loads((project / "report_config.json").read_text(encoding="utf-8"))
+    assert template.is_file()
+    assert config["template_profile"] == "default"
+    assert config["documents"][0]["name"] == "template_report.docx"
