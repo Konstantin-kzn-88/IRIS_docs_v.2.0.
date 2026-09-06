@@ -65,6 +65,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{SCENARIOS_SECTION}}")
     document.add_paragraph("{{OV_AMOUNT_SECTION}}")
     document.add_paragraph("{{IMPACT_ZONES_SECTION}}")
+    document.add_paragraph("{{CASUALTIES_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -262,6 +263,23 @@ def write_scenario_results(project: Path) -> None:
         ),
         encoding="utf-8",
     )
+    people = dict(impact)
+    people.update(
+        {
+            "possible_dead": 2,
+            "possible_injured": 4,
+            "fatalities_count": 1,
+            "injured_count": 3,
+            "people_rule": "full_pool_fire",
+        }
+    )
+    (project / "people_results.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [people]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 def all_text(document: Document) -> str:
@@ -339,6 +357,20 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "10,0" in text
     assert "125,5" in text
     assert "интенсивность теплового излучения" in text
+    assert "{{CASUALTIES_SECTION}}" not in text
+    assert "Количество погибших, чел." in text
+    assert "Количество пострадавших, чел." in text
+    casualties_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if table.cell(0, 2).text == "Количество погибших, чел."
+    )
+    assert [cell.text for cell in casualties_table.rows[1].cells] == [
+        "С1",
+        "Нефтепровод от скважины № 1 (Участок трубопроводов)",
+        "1",
+        "3",
+    ]
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -354,6 +386,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
+        "CASUALTIES_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -414,6 +447,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "SCENARIOS_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
+        "CASUALTIES_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -421,6 +455,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "SCENARIOS_SECTION" not in result.deferred_markers
     assert "OV_AMOUNT_SECTION" not in result.deferred_markers
     assert "IMPACT_ZONES_SECTION" not in result.deferred_markers
+    assert "CASUALTIES_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
@@ -491,6 +526,25 @@ def test_missing_impact_zones_does_not_replace_existing_report(
     output.write_bytes(b"previous report")
 
     with pytest.raises(ReportGenerationError, match="Зоны поражающих факторов"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
+def test_missing_people_results_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    (project / "people_results.json").unlink()
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Число погибших"):
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"
