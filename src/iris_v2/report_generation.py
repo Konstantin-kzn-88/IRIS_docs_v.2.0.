@@ -61,6 +61,14 @@ from iris_v2.report_ov_amount import (
     load_ov_amount_rows,
     render_ov_amount_section,
 )
+from iris_v2.report_pareto_charts import (
+    FATALITIES_EMPTY_TEXT,
+    FATALITIES_MARKER,
+    INJURED_EMPTY_TEXT,
+    INJURED_MARKER,
+    ParetoChartsError,
+    prepare_pareto_risk_charts,
+)
 from iris_v2.report_risk_charts import (
     FG_EMPTY_TEXT,
     FG_MARKER,
@@ -102,6 +110,8 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
         "FG_CHART",
+        "PARETO_FATALITIES_CHART",
+        "PARETO_INJURED_CHART",
     }
 )
 
@@ -110,8 +120,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "PARETO_FATALITIES_CHART",
-        "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
         "DAMAGE_BY_COMPONENT_CHART",
@@ -488,6 +496,25 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("FG_CHART")
             except ReportRiskChartsError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if {"PARETO_FATALITIES_CHART", "PARETO_INJURED_CHART"} & marker_names:
+            try:
+                charts = prepare_pareto_risk_charts(project_root)
+                if "PARETO_FATALITIES_CHART" in marker_names and render_risk_chart(
+                    document,
+                    FATALITIES_MARKER,
+                    charts.fatalities_path,
+                    FATALITIES_EMPTY_TEXT,
+                ):
+                    filled_sections.append("PARETO_FATALITIES_CHART")
+                if "PARETO_INJURED_CHART" in marker_names and render_risk_chart(
+                    document,
+                    INJURED_MARKER,
+                    charts.injured_path,
+                    INJURED_EMPTY_TEXT,
+                ):
+                    filled_sections.append("PARETO_INJURED_CHART")
+            except ParetoChartsError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
