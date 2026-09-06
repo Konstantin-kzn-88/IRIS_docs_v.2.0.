@@ -119,6 +119,11 @@ from iris_v2.pareto_charts import (
     ParetoChartsResult,
     ParetoChartsService,
 )
+from iris_v2.component_damage_chart import (
+    ComponentDamageChartError,
+    ComponentDamageChartResult,
+    ComponentDamageChartService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2335,6 +2340,44 @@ class ParetoChartsDialog(QDialog):
         layout.addLayout(button_layout)
 
 
+class ComponentDamageChartDialog(QDialog):
+    def __init__(
+        self,
+        result: ComponentDamageChartResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Ущерб по составляющим ОПО")
+        self.resize(1180, 760)
+
+        status = QLabel(
+            f"Составляющих ОПО на диаграмме: {result.component_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        image_area = RiskChartsDialog._image_area(result.path)
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        open_button = QPushButton("Открыть папку")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl.fromLocalFile(str(result.path.parent))
+            )
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(image_area)
+        layout.addWidget(path_label)
+        layout.addLayout(button_layout)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2790,6 +2833,15 @@ class MainWindow(QMainWindow):
         self.pareto_charts_button.setEnabled(False)
         self.pareto_charts_button.clicked.connect(self.calculate_pareto_charts)
 
+        self.component_damage_chart_button = QPushButton("Ущерб по ОПО")
+        self.component_damage_chart_button.setObjectName(
+            "component_damage_chart_button"
+        )
+        self.component_damage_chart_button.setEnabled(False)
+        self.component_damage_chart_button.clicked.connect(
+            self.calculate_component_damage_chart
+        )
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2834,6 +2886,7 @@ class MainWindow(QMainWindow):
         risk_button_layout.addWidget(self.risk_charts_button)
         risk_button_layout.addWidget(self.risk_matrices_button)
         risk_button_layout.addWidget(self.pareto_charts_button)
+        risk_button_layout.addWidget(self.component_damage_chart_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2904,6 +2957,7 @@ class MainWindow(QMainWindow):
         self.risk_charts_button.setEnabled(True)
         self.risk_matrices_button.setEnabled(True)
         self.pareto_charts_button.setEnabled(True)
+        self.component_damage_chart_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -3351,6 +3405,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ParetoChartsDialog(result, self).exec()
+
+    def calculate_component_damage_chart(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ComponentDamageChartService().calculate(
+                self.current_project_directory
+            )
+        except ComponentDamageChartError as exc:
+            self._show_error(str(exc))
+            return
+        ComponentDamageChartDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
