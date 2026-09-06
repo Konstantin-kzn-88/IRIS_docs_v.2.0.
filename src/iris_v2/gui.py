@@ -124,6 +124,11 @@ from iris_v2.component_damage_chart import (
     ComponentDamageChartResult,
     ComponentDamageChartService,
 )
+from iris_v2.key_scenarios import (
+    KeyScenariosError,
+    KeyScenariosResult,
+    KeyScenariosService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2378,6 +2383,79 @@ class ComponentDamageChartDialog(QDialog):
         layout.addLayout(button_layout)
 
 
+class KeyScenariosDialog(QDialog):
+    def __init__(
+        self,
+        result: KeyScenariosResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Ключевые сценарии по составляющим ОПО")
+        self.resize(1480, 700)
+
+        status = QLabel(
+            f"Составляющих ОПО: {result.component_count}. "
+            f"Выбрано строк: {result.row_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        table = QTableWidget(result.row_count, 9)
+        table.setHorizontalHeaderLabels(
+            [
+                "Составляющая ОПО",
+                "Тип сценария",
+                "Код",
+                "Оборудование",
+                "Погибших",
+                "Пострадавших",
+                "Ущерб, тыс. руб.",
+                "Частота, 1/год",
+                "Сценарий",
+            ]
+        )
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setWordWrap(False)
+        table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        table.verticalHeader().setDefaultSectionSize(30)
+        table.horizontalHeader().setSectionResizeMode(
+            8, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate(
+            (210, 145, 55, 200, 85, 105, 125, 110)
+        ):
+            table.setColumnWidth(column, width)
+        for row_number, item in enumerate(result.rows):
+            values = (
+                item["hazard_component"],
+                item["scenario_type_name"],
+                item["scenario_code"],
+                item["equipment_name"],
+                item["fatalities_count"],
+                item["injured_count"],
+                f"{item['total_damage']:.1f}",
+                f"{item['scenario_frequency']:.3e}",
+                item["scenario_text"],
+            )
+            for column, value in enumerate(values):
+                text = str(value)
+                cell = QTableWidgetItem(text)
+                cell.setToolTip(text)
+                table.setItem(row_number, column, cell)
+
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(table)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2842,6 +2920,11 @@ class MainWindow(QMainWindow):
             self.calculate_component_damage_chart
         )
 
+        self.key_scenarios_button = QPushButton("Ключевые сценарии")
+        self.key_scenarios_button.setObjectName("key_scenarios_button")
+        self.key_scenarios_button.setEnabled(False)
+        self.key_scenarios_button.clicked.connect(self.calculate_key_scenarios)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2887,6 +2970,7 @@ class MainWindow(QMainWindow):
         risk_button_layout.addWidget(self.risk_matrices_button)
         risk_button_layout.addWidget(self.pareto_charts_button)
         risk_button_layout.addWidget(self.component_damage_chart_button)
+        risk_button_layout.addWidget(self.key_scenarios_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2958,6 +3042,7 @@ class MainWindow(QMainWindow):
         self.risk_matrices_button.setEnabled(True)
         self.pareto_charts_button.setEnabled(True)
         self.component_damage_chart_button.setEnabled(True)
+        self.key_scenarios_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -3418,6 +3503,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ComponentDamageChartDialog(result, self).exec()
+
+    def calculate_key_scenarios(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = KeyScenariosService().calculate(
+                self.current_project_directory
+            )
+        except KeyScenariosError as exc:
+            self._show_error(str(exc))
+            return
+        KeyScenariosDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
