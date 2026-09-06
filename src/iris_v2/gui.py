@@ -1,6 +1,7 @@
 import sys
 import copy
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
@@ -96,6 +97,11 @@ from iris_v2.risk_calculation import (
     RiskCalculationError,
     RiskCalculationResult,
     RiskCalculationService,
+)
+from iris_v2.risk_summary import (
+    RiskSummaryError,
+    RiskSummaryResult,
+    RiskSummaryService,
 )
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
@@ -2024,6 +2030,143 @@ class RiskCalculationDialog(QDialog):
         layout.addWidget(close_buttons)
 
 
+class RiskSummaryDialog(QDialog):
+    def __init__(
+        self,
+        result: RiskSummaryResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Сводные показатели риска")
+        self.resize(1280, 680)
+
+        if result.fatal_accident_frequency_min is None:
+            fatal_frequency_text = "Сценариев с погибшими нет."
+        else:
+            fatal_frequency_text = (
+                "Частота сценариев с погибшими: "
+                f"от {result.fatal_accident_frequency_min:.3e} до "
+                f"{result.fatal_accident_frequency_max:.3e} 1/год."
+            )
+        status = QLabel(
+            f"Сценариев: {result.case_count}. "
+            f"Составляющих ОПО: {result.component_count}. "
+            f"{fatal_frequency_text}"
+        )
+        status.setWordWrap(True)
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+
+        tabs = QTabWidget()
+        component_table = QTableWidget(len(result.components), 10)
+        component_table.setHorizontalHeaderLabels(
+            [
+                "Составляющая ОПО",
+                "Сценариев",
+                "Коллективный риск гибели",
+                "Индивидуальный риск гибели",
+                "Коллективный риск пострадавших",
+                "Ожидаемый ущерб",
+                "Частота с погибшими",
+                "Макс. прямой ущерб",
+                "Макс. экологический ущерб",
+                "Макс. суммарный ущерб",
+            ]
+        )
+        self._prepare_table(component_table, 0)
+        for row, item_data in enumerate(result.components):
+            individual = item_data["individual_risk_fatalities"]
+            values = (
+                item_data["hazard_component"],
+                item_data["scenario_count"],
+                f"{item_data['collective_risk_fatalities']:.3e}",
+                "" if individual is None else f"{individual:.3e}",
+                f"{item_data['collective_risk_injured']:.3e}",
+                f"{item_data['expected_damage']:.3e}",
+                f"{item_data['fatal_accident_frequency']:.3e}",
+                f"{item_data['max_direct_losses']:.1f}",
+                f"{item_data['max_total_environmental_damage']:.1f}",
+                f"{item_data['max_total_damage']:.1f}",
+            )
+            self._fill_row(component_table, row, values)
+        component_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        for column, width in enumerate((260, 80, 155, 165, 185, 130, 145, 135, 155, 145)):
+            if column > 0:
+                component_table.setColumnWidth(column, width)
+        tabs.addTab(component_table, "По составляющим ОПО")
+
+        fn_table = QTableWidget(len(result.fn_points), 2)
+        fn_table.setHorizontalHeaderLabels(
+            ["Погибших N, чел.", "F(N), 1/год"]
+        )
+        self._prepare_table(fn_table, 1)
+        for row, point in enumerate(result.fn_points):
+            self._fill_row(
+                fn_table,
+                row,
+                (
+                    point["fatalities_count"],
+                    f"{point['cumulative_frequency']:.6e}",
+                ),
+            )
+        tabs.addTab(fn_table, "Точки F/N")
+
+        fg_table = QTableWidget(len(result.fg_points), 2)
+        fg_table.setHorizontalHeaderLabels(
+            ["Ущерб G, млн руб.", "F(G), 1/год"]
+        )
+        self._prepare_table(fg_table, 1)
+        for row, point in enumerate(result.fg_points):
+            self._fill_row(
+                fg_table,
+                row,
+                (
+                    f"{point['damage_million_rub']:.6f}",
+                    f"{point['cumulative_frequency']:.6e}",
+                ),
+            )
+        tabs.addTab(fg_table, "Точки F/G")
+
+        unit_label = QLabel(
+            "Риски и частоты — 1/год; ожидаемый ущерб — тыс. руб./год; "
+            "максимальный ущерб — тыс. руб."
+        )
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(tabs)
+        layout.addWidget(unit_label)
+        layout.addWidget(path_label)
+        layout.addWidget(close_buttons)
+
+    @staticmethod
+    def _prepare_table(table: QTableWidget, stretch_column: int) -> None:
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setWordWrap(False)
+        table.setTextElideMode(Qt.TextElideMode.ElideRight)
+        table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        table.verticalHeader().setDefaultSectionSize(30)
+        table.horizontalHeader().setSectionResizeMode(
+            stretch_column, QHeaderView.ResizeMode.Stretch
+        )
+
+    @staticmethod
+    def _fill_row(table: QTableWidget, row: int, values: tuple[Any, ...]) -> None:
+        for column, value in enumerate(values):
+            text = str(value)
+            cell = QTableWidgetItem(text)
+            cell.setToolTip(text)
+            table.setItem(row, column, cell)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2459,6 +2602,11 @@ class MainWindow(QMainWindow):
         self.risk_button.setEnabled(False)
         self.risk_button.clicked.connect(self.calculate_risks)
 
+        self.risk_summary_button = QPushButton("Свод риска")
+        self.risk_summary_button.setObjectName("risk_summary_button")
+        self.risk_summary_button.setEnabled(False)
+        self.risk_summary_button.clicked.connect(self.calculate_risk_summary)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2497,6 +2645,7 @@ class MainWindow(QMainWindow):
         effect_button_layout_2.addWidget(self.people_button)
         effect_button_layout_2.addWidget(self.damage_button)
         effect_button_layout_2.addWidget(self.risk_button)
+        effect_button_layout_2.addWidget(self.risk_summary_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2562,6 +2711,7 @@ class MainWindow(QMainWindow):
         self.people_button.setEnabled(True)
         self.damage_button.setEnabled(True)
         self.risk_button.setEnabled(True)
+        self.risk_summary_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -2957,6 +3107,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         RiskCalculationDialog(result, self).exec()
+
+    def calculate_risk_summary(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = RiskSummaryService().calculate(
+                self.current_project_directory
+            )
+        except RiskSummaryError as exc:
+            self._show_error(str(exc))
+            return
+        RiskSummaryDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
