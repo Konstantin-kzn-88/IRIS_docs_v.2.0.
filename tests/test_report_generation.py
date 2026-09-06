@@ -67,6 +67,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{IMPACT_ZONES_SECTION}}")
     document.add_paragraph("{{CASUALTIES_SECTION}}")
     document.add_paragraph("{{DAMAGE_SECTION}}")
+    document.add_paragraph("{{FATAL_ACCIDENT_FREQUENCY}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -302,6 +303,39 @@ def write_scenario_results(project: Path) -> None:
         ),
         encoding="utf-8",
     )
+    risk = dict(damage)
+    risk.update(
+        {
+            "scenario_frequency": 6.0e-5,
+            "risk_people_count": 15,
+            "individual_risk_status": "calculated",
+            "collective_risk_fatalities": 6.0e-5,
+            "collective_risk_injured": 1.8e-4,
+            "individual_risk_fatalities": 4.0e-6,
+            "individual_risk_injured": 1.2e-5,
+            "expected_damage": 0.233628,
+        }
+    )
+    (project / "risk_results.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [risk]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (project / "risk_summary.json").write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "case_count": 1,
+                "fatal_accident_frequency_min": 6.0e-5,
+                "fatal_accident_frequency_max": 6.0e-5,
+                "risk_unit": "1/год",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 def all_text(document: Document) -> str:
@@ -412,6 +446,8 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "23,6",
         "3893,8",
     ]
+    assert "{{FATAL_ACCIDENT_FREQUENCY}}" not in text
+    assert "Частота сценариев с погибшими: 6.000E-05 1/год." in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -429,6 +465,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
+        "FATAL_ACCIDENT_FREQUENCY",
     )
     assert result.deferred_markers == ()
 
@@ -491,6 +528,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
+        "FATAL_ACCIDENT_FREQUENCY",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -500,6 +538,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "IMPACT_ZONES_SECTION" not in result.deferred_markers
     assert "CASUALTIES_SECTION" not in result.deferred_markers
     assert "DAMAGE_SECTION" not in result.deferred_markers
+    assert "FATAL_ACCIDENT_FREQUENCY" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
@@ -608,6 +647,25 @@ def test_missing_damage_results_does_not_replace_existing_report(
     output.write_bytes(b"previous report")
 
     with pytest.raises(ReportGenerationError, match="Ущерб не рассчитан"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
+def test_missing_risk_summary_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    (project / "risk_summary.json").unlink()
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Сводные показатели риска"):
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"
