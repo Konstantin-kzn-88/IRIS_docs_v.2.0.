@@ -63,6 +63,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{EQUIPMENT_SECTION}}")
     document.add_paragraph("{{DISTRIBUTION_SECTION}}")
     document.add_paragraph("{{SCENARIOS_SECTION}}")
+    document.add_paragraph("{{OV_AMOUNT_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -225,6 +226,24 @@ def write_scenario_results(project: Path) -> None:
         ),
         encoding="utf-8",
     )
+    release = dict(case)
+    release["ov_in_accident_t"] = 4.321
+    (project / "release_results.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [release]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    factor = dict(release)
+    factor["ov_in_hazard_factor_t"] = 1.234
+    (project / "hazard_factor_results.json").write_text(
+        json.dumps(
+            {"format_version": 1, "case_count": 1, "results": [factor]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
 
 
 def all_text(document: Document) -> str:
@@ -259,7 +278,8 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "АО Короткое — Площадка нефти" in text
     assert "{{SUBSTANCES_SECTION}}" not in text
     assert "Параметр" in text
-    assert "0 — Легковоспламеняющаяся жидкость (ЛВЖ)" in text
+    assert "Легковоспламеняющаяся жидкость (ЛВЖ)" not in text
+    assert "Вид опасного вещества" not in text
     assert "Плотность жидкости" in text
     assert "850 кг/м³" in text
     assert "Температура кипения" not in text
@@ -292,6 +312,10 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Разрыв трубопровода → пожар пролива" in text
     assert "Нефтепровод от скважины № 1 (Участок трубопроводов)" in text
     assert "6.000E-05" in text
+    assert "{{OV_AMOUNT_SECTION}}" not in text
+    assert "Количество ОВ, участвующего в аварии, т" in text
+    assert "4,321" in text
+    assert "1,234" in text
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -305,6 +329,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "OV_AMOUNT_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -363,11 +388,13 @@ def test_builtin_default_template_contains_only_supported_markers(
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "OV_AMOUNT_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
     assert "DISTRIBUTION_SECTION" not in result.deferred_markers
     assert "SCENARIOS_SECTION" not in result.deferred_markers
+    assert "OV_AMOUNT_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
@@ -400,6 +427,25 @@ def test_missing_frequency_results_does_not_replace_existing_report(
     output.write_bytes(b"previous report")
 
     with pytest.raises(ReportGenerationError, match="Частоты сценариев"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
+def test_missing_hazard_factor_results_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    (project / "hazard_factor_results.json").unlink()
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="поражающем факторе"):
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"

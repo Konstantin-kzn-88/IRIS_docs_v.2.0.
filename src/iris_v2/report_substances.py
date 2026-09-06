@@ -8,9 +8,6 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
 
-from iris_v2.substances import KIND_NAMES
-
-
 MARKER = "{{SUBSTANCES_SECTION}}"
 
 NESTED_FIELDS = {
@@ -147,14 +144,9 @@ def _nested_rows(
 
 
 def substance_sections(item: dict[str, Any]) -> list[tuple[str, list[tuple[str, str]]]]:
-    kind = item.get("kind")
     basic = [
         ("Наименование вещества", _value(item.get("name", "—"))),
     ]
-    if isinstance(kind, int) and kind in KIND_NAMES:
-        basic.append(("Вид опасного вещества", f"{kind} — {KIND_NAMES[kind]}"))
-    elif not _is_empty(kind):
-        basic.append(("Вид опасного вещества", _value(kind)))
     if not _is_empty(item.get("formula")):
         basic.append(("Химическая формула", _value(item["formula"])))
     if not _is_empty(item.get("notes")):

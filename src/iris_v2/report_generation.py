@@ -21,6 +21,11 @@ from iris_v2.report_distribution import (
     load_amount_results,
     render_distribution_section,
 )
+from iris_v2.report_ov_amount import (
+    ReportOvAmountError,
+    load_ov_amount_rows,
+    render_ov_amount_section,
+)
 from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
@@ -43,6 +48,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "OV_AMOUNT_SECTION",
     }
 )
 
@@ -51,7 +57,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
@@ -370,6 +375,13 @@ class ReportGenerationService:
                 if render_scenarios_section(document, rows):
                     filled_sections.append("SCENARIOS_SECTION")
             except ReportScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "OV_AMOUNT_SECTION" in marker_names:
+            try:
+                rows = load_ov_amount_rows(project_root)
+                if render_ov_amount_section(document, rows):
+                    filled_sections.append("OV_AMOUNT_SECTION")
+            except ReportOvAmountError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
