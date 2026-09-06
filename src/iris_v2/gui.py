@@ -134,6 +134,11 @@ from iris_v2.template_catalog import (
     TemplateCatalogService,
     TemplateProfile,
 )
+from iris_v2.report_generation import (
+    ReportGenerationError,
+    ReportGenerationResult,
+    ReportGenerationService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2564,6 +2569,65 @@ class TemplateCatalogDialog(QDialog):
         )
 
 
+class ReportGenerationDialog(QDialog):
+    def __init__(
+        self,
+        result: ReportGenerationResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Формирование Word-отчёта")
+        self.resize(760, 420)
+
+        status = QLabel(
+            f"Заполнено текстовых маркеров: {result.replaced_count}.\n"
+            f"Оставлено расчётных блоков: {len(result.deferred_markers)}."
+        )
+        status.setStyleSheet("color: green; font-weight: bold;")
+        status.setWordWrap(True)
+
+        deferred = QPlainTextEdit()
+        deferred.setReadOnly(True)
+        deferred.setPlainText(
+            "\n".join(result.deferred_markers)
+            if result.deferred_markers
+            else "Все маркеры заполнены"
+        )
+
+        path_label = QLabel(f"Файл: {result.output_path}")
+        path_label.setWordWrap(True)
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        open_document = QPushButton("Открыть документ")
+        open_document.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl.fromLocalFile(str(result.output_path))
+            )
+        )
+        open_directory = QPushButton("Открыть папку")
+        open_directory.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl.fromLocalFile(str(result.output_path.parent))
+            )
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        buttons = QHBoxLayout()
+        buttons.addWidget(open_document)
+        buttons.addWidget(open_directory)
+        buttons.addStretch()
+        buttons.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(QLabel("Ещё не заполненные расчётные маркеры:"))
+        layout.addWidget(deferred)
+        layout.addWidget(path_label)
+        layout.addLayout(buttons)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -3042,6 +3106,11 @@ class MainWindow(QMainWindow):
         self.validation_button.setEnabled(False)
         self.validation_button.clicked.connect(self.validate_project)
 
+        self.report_generation_button = QPushButton("Сформировать Word")
+        self.report_generation_button.setObjectName("report_generation_button")
+        self.report_generation_button.setEnabled(False)
+        self.report_generation_button.clicked.connect(self.generate_report)
+
         data_button_layout = QHBoxLayout()
         data_button_layout.addWidget(create_button)
         data_button_layout.addWidget(open_button)
@@ -3085,6 +3154,10 @@ class MainWindow(QMainWindow):
         risk_button_layout.addWidget(self.component_damage_chart_button)
         risk_button_layout.addWidget(self.key_scenarios_button)
 
+        report_button_layout = QHBoxLayout()
+        report_button_layout.addWidget(self.report_generation_button)
+        report_button_layout.addStretch()
+
         layout = QVBoxLayout()
         layout.addWidget(title)
         layout.addLayout(data_button_layout)
@@ -3092,6 +3165,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(effect_button_layout_1)
         layout.addLayout(effect_button_layout_2)
         layout.addLayout(risk_button_layout)
+        layout.addLayout(report_button_layout)
         layout.addWidget(self.project_label, 1)
 
         container = QWidget()
@@ -3172,6 +3246,7 @@ class MainWindow(QMainWindow):
         self.key_scenarios_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
+        self.report_generation_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -3643,6 +3718,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         KeyScenariosDialog(result, self).exec()
+
+    def generate_report(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ReportGenerationService().generate(
+                self.current_project_directory
+            )
+        except ReportGenerationError as exc:
+            self._show_error(str(exc))
+            return
+        ReportGenerationDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
