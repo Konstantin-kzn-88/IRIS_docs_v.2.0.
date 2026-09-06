@@ -114,6 +114,11 @@ from iris_v2.risk_matrices import (
     RiskMatricesResult,
     RiskMatricesService,
 )
+from iris_v2.pareto_charts import (
+    ParetoChartsError,
+    ParetoChartsResult,
+    ParetoChartsService,
+)
 from iris_v2.pool_fire_calculation import (
     PoolFireCalculationError,
     PoolFireCalculationResult,
@@ -2279,6 +2284,57 @@ class RiskMatricesDialog(QDialog):
         layout.addLayout(button_layout)
 
 
+class ParetoChartsDialog(QDialog):
+    def __init__(
+        self,
+        result: ParetoChartsResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Диаграммы Парето")
+        self.resize(1180, 760)
+
+        status = QLabel(f"Обработано сценариев: {result.scenario_count}.")
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        tabs = QTabWidget()
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.fatalities_path),
+            "Риск гибели",
+        )
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.injured_path),
+            "Риск травмирования",
+        )
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.damage_path),
+            "Суммарный ущерб",
+        )
+        tabs.addTab(
+            RiskChartsDialog._image_area(result.environmental_damage_path),
+            "Экологический ущерб",
+        )
+
+        path_label = QLabel(f"Папка: {result.directory}")
+        path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        open_button = QPushButton("Открыть папку")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(result.directory)))
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(tabs)
+        layout.addWidget(path_label)
+        layout.addLayout(button_layout)
+
+
 class SubstanceDialog(QDialog):
     def __init__(
         self,
@@ -2729,6 +2785,11 @@ class MainWindow(QMainWindow):
         self.risk_matrices_button.setEnabled(False)
         self.risk_matrices_button.clicked.connect(self.calculate_risk_matrices)
 
+        self.pareto_charts_button = QPushButton("Парето")
+        self.pareto_charts_button.setObjectName("pareto_charts_button")
+        self.pareto_charts_button.setEnabled(False)
+        self.pareto_charts_button.clicked.connect(self.calculate_pareto_charts)
+
         self.validation_button = QPushButton("Проверка данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
@@ -2772,6 +2833,7 @@ class MainWindow(QMainWindow):
         risk_button_layout.addWidget(self.risk_summary_button)
         risk_button_layout.addWidget(self.risk_charts_button)
         risk_button_layout.addWidget(self.risk_matrices_button)
+        risk_button_layout.addWidget(self.pareto_charts_button)
 
         layout = QVBoxLayout()
         layout.addWidget(title)
@@ -2841,6 +2903,7 @@ class MainWindow(QMainWindow):
         self.risk_summary_button.setEnabled(True)
         self.risk_charts_button.setEnabled(True)
         self.risk_matrices_button.setEnabled(True)
+        self.pareto_charts_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.project_label.setText(
@@ -3275,6 +3338,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         RiskMatricesDialog(result, self).exec()
+
+    def calculate_pareto_charts(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ParetoChartsService().calculate(
+                self.current_project_directory
+            )
+        except ParetoChartsError as exc:
+            self._show_error(str(exc))
+            return
+        ParetoChartsDialog(result, self).exec()
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)
