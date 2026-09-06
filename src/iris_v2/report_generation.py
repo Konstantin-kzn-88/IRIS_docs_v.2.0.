@@ -16,6 +16,11 @@ from iris_v2.report_casualties import (
     load_casualty_rows,
     render_casualties_section,
 )
+from iris_v2.report_damage import (
+    ReportDamageError,
+    load_damage_rows,
+    render_damage_section,
+)
 from iris_v2.report_equipment import (
     ReportEquipmentError,
     load_project_equipment,
@@ -61,6 +66,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
+        "DAMAGE_SECTION",
     }
 )
 
@@ -69,7 +75,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
@@ -406,6 +411,13 @@ class ReportGenerationService:
                 if render_casualties_section(document, rows):
                     filled_sections.append("CASUALTIES_SECTION")
             except ReportCasualtiesError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "DAMAGE_SECTION" in marker_names:
+            try:
+                rows = load_damage_rows(project_root)
+                if render_damage_section(document, rows):
+                    filled_sections.append("DAMAGE_SECTION")
+            except ReportDamageError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
