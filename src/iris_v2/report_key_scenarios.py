@@ -9,10 +9,16 @@ from docx.oxml.ns import qn
 from docx.shared import Pt
 
 from iris_v2.key_scenarios import KeyScenariosError, KeyScenariosService
+from iris_v2.report_impact_zones import (
+    ZONE_FIELDS,
+    ReportImpactZonesError,
+    load_impact_zone_rows,
+)
 
 
 MARKER = "{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}"
 DESCRIPTION_MARKER = "{{TOP_SCENARIOS_DESC_BY_COMPONENT}}"
+PF_MARKER = "{{TOP_SCENARIOS_PF_BY_COMPONENT}}"
 
 
 class ReportKeyScenariosError(Exception):
@@ -59,6 +65,50 @@ def load_key_scenario_description_rows(
         }
         for item in result.rows
     )
+
+
+def load_key_scenario_pf_rows(
+    project_directory: Path | str,
+) -> tuple[dict[str, str], ...]:
+    try:
+        selected = KeyScenariosService().calculate(project_directory).rows
+        impact_rows = load_impact_zone_rows(project_directory)
+    except (KeyScenariosError, ReportImpactZonesError) as exc:
+        raise ReportKeyScenariosError(str(exc)) from exc
+
+    impact_by_code = {item["code"]: item for item in impact_rows}
+    rows: list[dict[str, str]] = []
+    for item in selected:
+        code = str(item["scenario_code"])
+        impact = impact_by_code.get(code)
+        if impact is None:
+            raise ReportKeyScenariosError(
+                f"В impact_zones.json отсутствует ключевой сценарий {code}"
+            )
+        expected_equipment = (
+            f"{item['equipment_name']} ({item['hazard_component']})"
+        )
+        if impact["equipment"] != expected_equipment:
+            raise ReportKeyScenariosError(
+                f"Результаты для сценария {code} устарели: "
+                "не совпадает оборудование или составляющая ОПО"
+            )
+        zones = []
+        for field, label in ZONE_FIELDS:
+            value = impact[field]
+            if value != "—":
+                unit = "м²" if field == "spill_area_m2" else "м"
+                zones.append(f"{label}: {value} {unit}")
+        rows.append(
+            {
+                "component": str(item["hazard_component"]),
+                "scenario_type": str(item["scenario_type_name"]),
+                "scenario_code": code,
+                "factor": impact["factor"],
+                "zones": "; ".join(zones) or "Зоны поражения отсутствуют",
+            }
+        )
+    return tuple(rows)
 
 
 def _shade(cell: Any, color: str) -> None:
@@ -160,6 +210,38 @@ def _set_description_table_geometry(section: Any, table: Any) -> None:
         (section.page_width - section.left_margin - section.right_margin) / 635
     )
     proportions = (0.18, 0.16, 0.08, 0.58)
+    widths = [int(total_twips * value) for value in proportions[:-1]]
+    widths.append(total_twips - sum(widths))
+    table.autofit = False
+    properties = table._tbl.tblPr
+    table_width = properties.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        properties.append(table_width)
+    table_width.set(qn("w:w"), str(total_twips))
+    table_width.set(qn("w:type"), "dxa")
+    grid = table._tbl.tblGrid
+    for child in list(grid):
+        grid.remove(child)
+    for width in widths:
+        column = OxmlElement("w:gridCol")
+        column.set(qn("w:w"), str(width))
+        grid.append(column)
+    for row in table.rows:
+        row_properties = row._tr.get_or_add_trPr()
+        if row_properties.find(qn("w:cantSplit")) is None:
+            row_properties.append(OxmlElement("w:cantSplit"))
+        for cell, width in zip(row._tr.tc_lst, widths):
+            cell_width = cell.get_or_add_tcPr().get_or_add_tcW()
+            cell_width.set(qn("w:w"), str(width))
+            cell_width.set(qn("w:type"), "dxa")
+
+
+def _set_pf_table_geometry(section: Any, table: Any) -> None:
+    total_twips = int(
+        (section.page_width - section.left_margin - section.right_margin) / 635
+    )
+    proportions = (0.15, 0.14, 0.06, 0.18, 0.47)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -292,12 +374,61 @@ def render_key_scenario_descriptions(
     return True
 
 
+def render_key_scenario_hazard_factors(
+    document: DocumentType,
+    rows: tuple[dict[str, str], ...],
+) -> bool:
+    marker_paragraph = next(
+        (paragraph for paragraph in document.paragraphs if PF_MARKER in paragraph.text),
+        None,
+    )
+    if marker_paragraph is None:
+        return False
+
+    section = _paragraph_section(document, marker_paragraph._p)
+    table = document.add_table(rows=1, cols=5)
+    table.style = "Table Grid"
+    marker_paragraph._p.addnext(table._tbl)
+    headers = (
+        "Составляющая ОПО",
+        "Тип сценария",
+        "№",
+        "Поражающий фактор",
+        "Параметры зон поражения",
+    )
+    for cell, value in zip(table.rows[0].cells, headers):
+        _set_cell_text(cell, value, bold=True, centered=True, font_size=8)
+        _shade(cell, "D9E1F2")
+    repeat_header = OxmlElement("w:tblHeader")
+    repeat_header.set(qn("w:val"), "true")
+    table.rows[0]._tr.get_or_add_trPr().append(repeat_header)
+
+    for item in rows:
+        cells = table.add_row().cells
+        values = (
+            item["component"],
+            item["scenario_type"],
+            item["scenario_code"],
+            item["factor"],
+            item["zones"],
+        )
+        for column, (cell, value) in enumerate(zip(cells, values)):
+            _set_cell_text(cell, value, centered=column == 2, font_size=8.5)
+
+    marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    _set_pf_table_geometry(section, table)
+    return True
+
+
 __all__ = [
     "DESCRIPTION_MARKER",
     "MARKER",
+    "PF_MARKER",
     "ReportKeyScenariosError",
     "load_key_scenario_description_rows",
+    "load_key_scenario_pf_rows",
     "load_key_scenario_rows",
     "render_key_scenario_descriptions",
+    "render_key_scenario_hazard_factors",
     "render_key_scenarios_section",
 ]

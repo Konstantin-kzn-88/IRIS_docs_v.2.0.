@@ -10,7 +10,10 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
 
-from iris_v2.hazard_factor_calculation import FILE_NAME as HAZARD_FACTOR_FILE_NAME
+from iris_v2.hazard_factor_calculation import (
+    CALC_CODE_NAMES,
+    FILE_NAME as HAZARD_FACTOR_FILE_NAME,
+)
 from iris_v2.impact_zones import FILE_NAME as IMPACT_ZONES_FILE_NAME
 
 
@@ -142,11 +145,24 @@ def load_impact_zone_rows(
             raise ReportImpactZonesError(
                 f"Сценарий {code}: impact_values должен быть объектом"
             )
+        calc_code = impact.get("calc_code")
+        if (
+            isinstance(calc_code, bool)
+            or not isinstance(calc_code, int)
+            or calc_code not in CALC_CODE_NAMES
+        ):
+            raise ReportImpactZonesError(
+                f"Сценарий {code}: calc_code должен быть от 0 до 7"
+            )
         spill_area = values.get("chemical_spill_area_m2")
         if spill_area is None:
             spill_area = impact.get("spill_area_m2")
 
-        row = {"code": code, "equipment": f"{equipment} ({component})"}
+        row = {
+            "code": code,
+            "equipment": f"{equipment} ({component})",
+            "factor": CALC_CODE_NAMES[calc_code],
+        }
         for field, _ in ZONE_FIELDS:
             value = spill_area if field == "spill_area_m2" else values.get(field)
             row[field] = _zone(value, f"Сценарий {code}: {field}")

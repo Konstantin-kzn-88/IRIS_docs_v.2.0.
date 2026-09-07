@@ -678,6 +678,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "NGK_BACKGROUND_RISK_COMPARISON",
         "SUBSTANCES_BY_COMPONENT_TABLE",
         "TOP_SCENARIOS_DESC_BY_COMPONENT",
+        "TOP_SCENARIOS_PF_BY_COMPONENT",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -706,6 +707,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "NGK_BACKGROUND_RISK_COMPARISON" not in result.deferred_markers
     assert "SUBSTANCES_BY_COMPONENT_TABLE" not in result.deferred_markers
     assert "TOP_SCENARIOS_DESC_BY_COMPONENT" not in result.deferred_markers
+    assert "TOP_SCENARIOS_PF_BY_COMPONENT" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
