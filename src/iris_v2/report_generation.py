@@ -27,6 +27,11 @@ from iris_v2.report_component_damage_chart import (
     MARKER as COMPONENT_DAMAGE_MARKER,
     prepare_component_damage_chart,
 )
+from iris_v2.report_component_fatality_risk import (
+    ReportComponentFatalityRiskError,
+    load_component_fatality_risk_rows,
+    render_component_fatality_risk_section,
+)
 from iris_v2.report_damage import (
     ReportDamageError,
     load_damage_rows,
@@ -141,6 +146,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
+        "FATALITY_RISK_BY_COMPONENT_SECTION",
     }
 )
 
@@ -149,7 +155,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
         "NGK_BACKGROUND_RISK_COMPARISON",
         "SUBSTANCES_BY_COMPONENT_TABLE",
@@ -596,6 +601,13 @@ class ReportGenerationService:
                 if render_key_scenarios_section(document, rows):
                     filled_sections.append("TOP_SCENARIOS_BY_COMPONENT_SECTION")
             except ReportKeyScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "FATALITY_RISK_BY_COMPONENT_SECTION" in marker_names:
+            try:
+                rows = load_component_fatality_risk_rows(project_root)
+                if render_component_fatality_risk_section(document, rows):
+                    filled_sections.append("FATALITY_RISK_BY_COMPONENT_SECTION")
+            except ReportComponentFatalityRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS

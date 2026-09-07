@@ -367,6 +367,7 @@ def write_scenario_results(project: Path) -> None:
                         "collective_risk_injured": 1.8e-4,
                         "individual_risk_fatalities": 4.0e-6,
                         "individual_risk_injured": 1.2e-5,
+                        "fatal_accident_frequency": 6.0e-5,
                         "max_direct_losses": 100.0,
                         "max_total_environmental_damage": 23.6,
                         "max_total_damage": 3893.8,
@@ -672,6 +673,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
+        "FATALITY_RISK_BY_COMPONENT_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -695,6 +697,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "RISK_MATRIX_CHART" not in result.deferred_markers
     assert "RISK_MATRIX_DAMAGE_CHART" not in result.deferred_markers
     assert "TOP_SCENARIOS_BY_COMPONENT_SECTION" not in result.deferred_markers
+    assert "FATALITY_RISK_BY_COMPONENT_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
