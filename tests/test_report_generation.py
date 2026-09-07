@@ -674,6 +674,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
+        "COMPARATIVE_FATALITY_RISK_TABLE",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -698,6 +699,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "RISK_MATRIX_DAMAGE_CHART" not in result.deferred_markers
     assert "TOP_SCENARIOS_BY_COMPONENT_SECTION" not in result.deferred_markers
     assert "FATALITY_RISK_BY_COMPONENT_SECTION" not in result.deferred_markers
+    assert "COMPARATIVE_FATALITY_RISK_TABLE" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(

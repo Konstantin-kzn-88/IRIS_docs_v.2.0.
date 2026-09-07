@@ -32,6 +32,11 @@ from iris_v2.report_component_fatality_risk import (
     load_component_fatality_risk_rows,
     render_component_fatality_risk_section,
 )
+from iris_v2.report_comparative_fatality_risk import (
+    ReportComparativeFatalityRiskError,
+    load_comparative_fatality_risk_rows,
+    render_comparative_fatality_risk_table,
+)
 from iris_v2.report_damage import (
     ReportDamageError,
     load_damage_rows,
@@ -147,6 +152,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
+        "COMPARATIVE_FATALITY_RISK_TABLE",
     }
 )
 
@@ -155,7 +161,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "COMPARATIVE_FATALITY_RISK_TABLE",
         "NGK_BACKGROUND_RISK_COMPARISON",
         "SUBSTANCES_BY_COMPONENT_TABLE",
         "TOP_SCENARIOS_DESC_BY_COMPONENT",
@@ -608,6 +613,13 @@ class ReportGenerationService:
                 if render_component_fatality_risk_section(document, rows):
                     filled_sections.append("FATALITY_RISK_BY_COMPONENT_SECTION")
             except ReportComponentFatalityRiskError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "COMPARATIVE_FATALITY_RISK_TABLE" in marker_names:
+            try:
+                rows = load_comparative_fatality_risk_rows(project_root)
+                if render_comparative_fatality_risk_table(document, rows):
+                    filled_sections.append("COMPARATIVE_FATALITY_RISK_TABLE")
+            except ReportComparativeFatalityRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
