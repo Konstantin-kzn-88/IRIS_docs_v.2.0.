@@ -681,6 +681,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "TOP_SCENARIOS_PF_BY_COMPONENT",
         "TOP_SCENARIOS_FATALITIES_INJURED",
         "TOP_SCENARIOS_DAMAGE",
+        "TOP_SCENARIOS_FINAL_CONCLUSION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -712,6 +713,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "TOP_SCENARIOS_PF_BY_COMPONENT" not in result.deferred_markers
     assert "TOP_SCENARIOS_FATALITIES_INJURED" not in result.deferred_markers
     assert "TOP_SCENARIOS_DAMAGE" not in result.deferred_markers
+    assert "TOP_SCENARIOS_FINAL_CONCLUSION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(

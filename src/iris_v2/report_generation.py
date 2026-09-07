@@ -64,11 +64,13 @@ from iris_v2.report_impact_zones import (
 )
 from iris_v2.report_key_scenarios import (
     ReportKeyScenariosError,
+    load_key_scenario_conclusions,
     load_key_scenario_damage_rows,
     load_key_scenario_description_rows,
     load_key_scenario_people_rows,
     load_key_scenario_pf_rows,
     load_key_scenario_rows,
+    render_key_scenario_conclusions,
     render_key_scenario_damage,
     render_key_scenario_descriptions,
     render_key_scenario_hazard_factors,
@@ -177,6 +179,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "TOP_SCENARIOS_PF_BY_COMPONENT",
         "TOP_SCENARIOS_FATALITIES_INJURED",
         "TOP_SCENARIOS_DAMAGE",
+        "TOP_SCENARIOS_FINAL_CONCLUSION",
     }
 )
 
@@ -185,7 +188,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "TOP_SCENARIOS_FINAL_CONCLUSION",
         "MAX_PEOPLE_VICTIMS",
     }
 )
@@ -681,6 +683,13 @@ class ReportGenerationService:
                 rows = load_key_scenario_damage_rows(project_root)
                 if render_key_scenario_damage(document, rows):
                     filled_sections.append("TOP_SCENARIOS_DAMAGE")
+            except ReportKeyScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "TOP_SCENARIOS_FINAL_CONCLUSION" in marker_names:
+            try:
+                conclusions = load_key_scenario_conclusions(project_root)
+                if render_key_scenario_conclusions(document, conclusions):
+                    filled_sections.append("TOP_SCENARIOS_FINAL_CONCLUSION")
             except ReportKeyScenariosError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)

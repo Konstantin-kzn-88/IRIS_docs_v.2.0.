@@ -8,11 +8,13 @@ from iris_v2.calculation_config import (
     new_calculation_config,
 )
 from iris_v2.report_key_scenarios import (
+    load_key_scenario_conclusions,
     load_key_scenario_damage_rows,
     load_key_scenario_description_rows,
     load_key_scenario_people_rows,
     load_key_scenario_pf_rows,
     load_key_scenario_rows,
+    render_key_scenario_conclusions,
     render_key_scenario_damage,
     render_key_scenario_descriptions,
     render_key_scenario_hazard_factors,
@@ -409,3 +411,44 @@ def test_damage_table_replaces_marker_and_repeats_header() -> None:
     assert properties.find(
         "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
     ) is not None
+
+
+def test_conclusions_compare_dangerous_and_probable_scenarios(
+    tmp_path: Path,
+) -> None:
+    write_json(
+        tmp_path / "risk_results.json",
+        {
+            "results": [
+                row("С1", "Участок", 1, 3, 1200.0, 4e-5),
+                row("С2", "Участок", 2, 4, 900.0, 2e-5),
+                row("С3", "Участок", 0, 1, 500.0, 6e-5),
+            ]
+        },
+    )
+
+    assert load_key_scenario_conclusions(tmp_path) == (
+        "Для составляющей ОПО «Участок» наиболее опасным является сценарий С2: "
+        "погибло 2 чел., пострадало 4 чел., суммарный ущерб — 900,0 тыс. руб. "
+        "Наиболее вероятным является сценарий С3 с частотой 6.000E-05 1/год.",
+    )
+
+
+def test_conclusion_replaces_marker_with_formatted_paragraph() -> None:
+    document = Document()
+    document.add_paragraph("{{TOP_SCENARIOS_FINAL_CONCLUSION}}")
+    conclusions = (
+        "Для составляющей ОПО «Участок» наиболее опасным и наиболее вероятным "
+        "является сценарий С1.",
+    )
+
+    assert render_key_scenario_conclusions(document, conclusions)
+    text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+    assert "TOP_SCENARIOS_FINAL_CONCLUSION" not in text
+    assert conclusions[0] in text
+    paragraph = next(
+        paragraph for paragraph in document.paragraphs if paragraph.text == conclusions[0]
+    )
+    assert paragraph.alignment == 3
+    assert paragraph.runs[0].font.name == "Times New Roman"
+    assert paragraph.runs[0].font.size.pt == 10

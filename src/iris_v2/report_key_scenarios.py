@@ -22,6 +22,7 @@ DESCRIPTION_MARKER = "{{TOP_SCENARIOS_DESC_BY_COMPONENT}}"
 PF_MARKER = "{{TOP_SCENARIOS_PF_BY_COMPONENT}}"
 PEOPLE_MARKER = "{{TOP_SCENARIOS_FATALITIES_INJURED}}"
 DAMAGE_MARKER = "{{TOP_SCENARIOS_DAMAGE}}"
+CONCLUSION_MARKER = "{{TOP_SCENARIOS_FINAL_CONCLUSION}}"
 
 
 class ReportKeyScenariosError(Exception):
@@ -168,6 +169,53 @@ def load_key_scenario_damage_rows(
         row.update({field: damage[field] for field, _ in DAMAGE_FIELDS})
         rows.append(row)
     return tuple(rows)
+
+
+def load_key_scenario_conclusions(
+    project_directory: Path | str,
+) -> tuple[str, ...]:
+    try:
+        selected = KeyScenariosService().calculate(project_directory).rows
+    except KeyScenariosError as exc:
+        raise ReportKeyScenariosError(str(exc)) from exc
+
+    grouped: dict[str, dict[str, Any]] = {}
+    for item in selected:
+        grouped.setdefault(str(item["hazard_component"]), {})[
+            str(item["scenario_type"])
+        ] = item
+
+    conclusions: list[str] = []
+    for component, values in grouped.items():
+        dangerous = values.get("dangerous")
+        probable = values.get("probable")
+        if dangerous is None or probable is None:
+            raise ReportKeyScenariosError(
+                f"Для составляющей ОПО «{component}» не определены оба "
+                "ключевых сценария"
+            )
+        dangerous_code = str(dangerous["scenario_code"])
+        damage = f"{float(dangerous['total_damage']):.1f}".replace(".", ",")
+        if dangerous_code == str(probable["scenario_code"]):
+            frequency = f"{float(dangerous['scenario_frequency']):.3E}"
+            conclusions.append(
+                f"Для составляющей ОПО «{component}» наиболее опасным и "
+                f"наиболее вероятным является сценарий {dangerous_code}: "
+                f"погибло {dangerous['fatalities_count']} чел., пострадало "
+                f"{dangerous['injured_count']} чел., суммарный ущерб — "
+                f"{damage} тыс. руб., частота — {frequency} 1/год."
+            )
+            continue
+        frequency = f"{float(probable['scenario_frequency']):.3E}"
+        conclusions.append(
+            f"Для составляющей ОПО «{component}» наиболее опасным является "
+            f"сценарий {dangerous_code}: погибло "
+            f"{dangerous['fatalities_count']} чел., пострадало "
+            f"{dangerous['injured_count']} чел., суммарный ущерб — "
+            f"{damage} тыс. руб. Наиболее вероятным является сценарий "
+            f"{probable['scenario_code']} с частотой {frequency} 1/год."
+        )
+    return tuple(conclusions)
 
 
 def _shade(cell: Any, color: str) -> None:
@@ -639,18 +687,54 @@ def render_key_scenario_damage(
     return True
 
 
+def render_key_scenario_conclusions(
+    document: DocumentType,
+    conclusions: tuple[str, ...],
+) -> bool:
+    marker_paragraph = next(
+        (
+            paragraph
+            for paragraph in document.paragraphs
+            if CONCLUSION_MARKER in paragraph.text
+        ),
+        None,
+    )
+    if marker_paragraph is None:
+        return False
+
+    anchor = marker_paragraph._p
+    for value in conclusions:
+        paragraph = document.add_paragraph()
+        paragraph.paragraph_format.space_before = Pt(0)
+        paragraph.paragraph_format.space_after = Pt(6)
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        run = paragraph.add_run(value)
+        run.font.name = "Times New Roman"
+        run.font.size = Pt(10)
+        fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
+        for name in ("ascii", "hAnsi", "eastAsia"):
+            fonts.set(qn(f"w:{name}"), "Times New Roman")
+        anchor.addnext(paragraph._p)
+        anchor = paragraph._p
+    marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    return True
+
+
 __all__ = [
+    "CONCLUSION_MARKER",
     "DAMAGE_MARKER",
     "DESCRIPTION_MARKER",
     "MARKER",
     "PF_MARKER",
     "PEOPLE_MARKER",
     "ReportKeyScenariosError",
+    "load_key_scenario_conclusions",
     "load_key_scenario_damage_rows",
     "load_key_scenario_description_rows",
     "load_key_scenario_people_rows",
     "load_key_scenario_pf_rows",
     "load_key_scenario_rows",
+    "render_key_scenario_conclusions",
     "render_key_scenario_damage",
     "render_key_scenario_descriptions",
     "render_key_scenario_hazard_factors",
