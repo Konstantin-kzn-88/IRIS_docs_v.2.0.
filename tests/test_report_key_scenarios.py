@@ -5,10 +5,12 @@ from docx import Document
 
 from iris_v2.report_key_scenarios import (
     load_key_scenario_description_rows,
+    load_key_scenario_people_rows,
     load_key_scenario_pf_rows,
     load_key_scenario_rows,
     render_key_scenario_descriptions,
     render_key_scenario_hazard_factors,
+    render_key_scenario_people,
     render_key_scenarios_section,
 )
 
@@ -236,6 +238,66 @@ def test_pf_table_replaces_marker_and_repeats_header() -> None:
         "С2",
         "взрыв облака",
         "Р=2: 42,0 м",
+    ]
+    properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
+    assert properties.find(
+        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
+    ) is not None
+
+
+def test_people_rows_use_selected_scenarios(tmp_path: Path) -> None:
+    write_json(
+        tmp_path / "risk_results.json",
+        {
+            "results": [
+                row("С1", "Участок", 1, 3, 1200.25, 4e-5),
+                row("С2", "Участок", 2, 4, 900.0, 2e-5),
+                row("С3", "Участок", 0, 1, 500.0, 6e-5),
+            ]
+        },
+    )
+
+    assert load_key_scenario_people_rows(tmp_path) == (
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее опасный",
+            "scenario_code": "С2",
+            "fatalities": "2",
+            "injured": "4",
+        },
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее вероятный",
+            "scenario_code": "С3",
+            "fatalities": "0",
+            "injured": "1",
+        },
+    )
+
+
+def test_people_table_replaces_marker_and_repeats_header() -> None:
+    document = Document()
+    document.add_paragraph("{{TOP_SCENARIOS_FATALITIES_INJURED}}")
+    rows = (
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее опасный",
+            "scenario_code": "С2",
+            "fatalities": "2",
+            "injured": "4",
+        },
+    )
+
+    assert render_key_scenario_people(document, rows)
+    assert "TOP_SCENARIOS_FATALITIES" not in "\n".join(
+        paragraph.text for paragraph in document.paragraphs
+    )
+    assert [cell.text for cell in document.tables[0].rows[1].cells] == [
+        "Участок",
+        "Наиболее опасный",
+        "С2",
+        "2",
+        "4",
     ]
     properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
     assert properties.find(

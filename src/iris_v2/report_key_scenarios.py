@@ -19,6 +19,7 @@ from iris_v2.report_impact_zones import (
 MARKER = "{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}"
 DESCRIPTION_MARKER = "{{TOP_SCENARIOS_DESC_BY_COMPONENT}}"
 PF_MARKER = "{{TOP_SCENARIOS_PF_BY_COMPONENT}}"
+PEOPLE_MARKER = "{{TOP_SCENARIOS_FATALITIES_INJURED}}"
 
 
 class ReportKeyScenariosError(Exception):
@@ -109,6 +110,26 @@ def load_key_scenario_pf_rows(
             }
         )
     return tuple(rows)
+
+
+def load_key_scenario_people_rows(
+    project_directory: Path | str,
+) -> tuple[dict[str, str], ...]:
+    try:
+        selected = KeyScenariosService().calculate(project_directory).rows
+    except KeyScenariosError as exc:
+        raise ReportKeyScenariosError(str(exc)) from exc
+
+    return tuple(
+        {
+            "component": str(item["hazard_component"]),
+            "scenario_type": str(item["scenario_type_name"]),
+            "scenario_code": str(item["scenario_code"]),
+            "fatalities": str(item["fatalities_count"]),
+            "injured": str(item["injured_count"]),
+        }
+        for item in selected
+    )
 
 
 def _shade(cell: Any, color: str) -> None:
@@ -242,6 +263,38 @@ def _set_pf_table_geometry(section: Any, table: Any) -> None:
         (section.page_width - section.left_margin - section.right_margin) / 635
     )
     proportions = (0.15, 0.14, 0.06, 0.18, 0.47)
+    widths = [int(total_twips * value) for value in proportions[:-1]]
+    widths.append(total_twips - sum(widths))
+    table.autofit = False
+    properties = table._tbl.tblPr
+    table_width = properties.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        properties.append(table_width)
+    table_width.set(qn("w:w"), str(total_twips))
+    table_width.set(qn("w:type"), "dxa")
+    grid = table._tbl.tblGrid
+    for child in list(grid):
+        grid.remove(child)
+    for width in widths:
+        column = OxmlElement("w:gridCol")
+        column.set(qn("w:w"), str(width))
+        grid.append(column)
+    for row in table.rows:
+        row_properties = row._tr.get_or_add_trPr()
+        if row_properties.find(qn("w:cantSplit")) is None:
+            row_properties.append(OxmlElement("w:cantSplit"))
+        for cell, width in zip(row._tr.tc_lst, widths):
+            cell_width = cell.get_or_add_tcPr().get_or_add_tcW()
+            cell_width.set(qn("w:w"), str(width))
+            cell_width.set(qn("w:type"), "dxa")
+
+
+def _set_people_table_geometry(section: Any, table: Any) -> None:
+    total_twips = int(
+        (section.page_width - section.left_margin - section.right_margin) / 635
+    )
+    proportions = (0.28, 0.23, 0.10, 0.19, 0.20)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -420,15 +473,68 @@ def render_key_scenario_hazard_factors(
     return True
 
 
+def render_key_scenario_people(
+    document: DocumentType,
+    rows: tuple[dict[str, str], ...],
+) -> bool:
+    marker_paragraph = next(
+        (
+            paragraph
+            for paragraph in document.paragraphs
+            if PEOPLE_MARKER in paragraph.text
+        ),
+        None,
+    )
+    if marker_paragraph is None:
+        return False
+
+    section = _paragraph_section(document, marker_paragraph._p)
+    table = document.add_table(rows=1, cols=5)
+    table.style = "Table Grid"
+    marker_paragraph._p.addnext(table._tbl)
+    headers = (
+        "Составляющая ОПО",
+        "Тип сценария",
+        "№",
+        "Погибло, чел.",
+        "Пострадало, чел.",
+    )
+    for cell, value in zip(table.rows[0].cells, headers):
+        _set_cell_text(cell, value, bold=True, centered=True, font_size=8.5)
+        _shade(cell, "D9E1F2")
+    repeat_header = OxmlElement("w:tblHeader")
+    repeat_header.set(qn("w:val"), "true")
+    table.rows[0]._tr.get_or_add_trPr().append(repeat_header)
+
+    for item in rows:
+        cells = table.add_row().cells
+        values = (
+            item["component"],
+            item["scenario_type"],
+            item["scenario_code"],
+            item["fatalities"],
+            item["injured"],
+        )
+        for column, (cell, value) in enumerate(zip(cells, values)):
+            _set_cell_text(cell, value, centered=column >= 2, font_size=9)
+
+    marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    _set_people_table_geometry(section, table)
+    return True
+
+
 __all__ = [
     "DESCRIPTION_MARKER",
     "MARKER",
     "PF_MARKER",
+    "PEOPLE_MARKER",
     "ReportKeyScenariosError",
     "load_key_scenario_description_rows",
+    "load_key_scenario_people_rows",
     "load_key_scenario_pf_rows",
     "load_key_scenario_rows",
     "render_key_scenario_descriptions",
     "render_key_scenario_hazard_factors",
+    "render_key_scenario_people",
     "render_key_scenarios_section",
 ]
