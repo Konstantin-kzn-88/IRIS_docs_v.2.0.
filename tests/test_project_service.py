@@ -165,6 +165,7 @@ def test_minimal_window_starts() -> None:
         from PySide6.QtWidgets import (
             QApplication,
             QGroupBox,
+            QLabel,
             QPushButton,
             QScrollArea,
         )
@@ -179,6 +180,7 @@ def test_minimal_window_starts() -> None:
         assert window.findChild(QPushButton, "create_project_button") is not None
         assert window.findChild(QPushButton, "open_project_button") is not None
         assert window.findChild(QScrollArea, "workflow_scroll_area") is not None
+        assert window.findChild(QLabel, "workflow_status_legend") is not None
         group_titles = {
             group.objectName(): group.title()
             for group in window.findChildren(QGroupBox)

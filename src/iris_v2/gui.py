@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectInfo, ProjectService
+from iris_v2.workflow_status import workflow_statuses
 from iris_v2.catalog import CatalogError, Organization, load_organizations
 from iris_v2.developer_catalog import (
     Developer,
@@ -3169,10 +3170,50 @@ class MainWindow(QMainWindow):
             (self.report_generation_button,),
         )
 
+        self._workflow_buttons = (
+            self.project_common_button, self.substances_button,
+            self.equipment_button, self.calculation_config_button,
+            self.amount_button, self.validation_button,
+            self.calculation_cases_button, self.frequency_button,
+            self.release_button, self.spill_button,
+            self.evaporation_button, self.hazard_factor_button,
+            self.pool_fire_button, self.explosion_button,
+            self.flash_fire_button, self.toxic_button,
+            self.jet_fire_button, self.fireball_button,
+            self.chemical_spill_button, self.impact_zones_button,
+            self.people_button, self.damage_button, self.risk_button,
+            self.risk_summary_button, self.key_scenarios_button,
+            self.risk_charts_button, self.risk_matrices_button,
+            self.pareto_charts_button, self.component_damage_chart_button,
+            self.report_generation_button,
+        )
+        for button in self._workflow_buttons:
+            button.clicked.connect(
+                lambda _checked=False: self._refresh_workflow_status()
+            )
+
+        status_legend = QLabel(
+            '<span style="color:#38761d">● Выполнено</span>&nbsp;&nbsp;&nbsp;'
+            '<span style="color:#bf9000">● Требуется выполнить или обновить</span>'
+            '&nbsp;&nbsp;&nbsp;<span style="color:#777">● Не требуется</span>'
+        )
+        status_legend.setObjectName("workflow_status_legend")
+        status_legend.setWordWrap(True)
+
+        self.setStyleSheet(
+            'QPushButton[workflowState="done"] {'
+            ' background-color: #d9ead3; border: 1px solid #6aa84f; }'
+            'QPushButton[workflowState="pending"] {'
+            ' background-color: #fff2cc; border: 1px solid #bf9000; }'
+            'QPushButton[workflowState="not_required"] {'
+            ' background-color: #e7e6e6; color: #666; border: 1px solid #aaa; }'
+        )
+
         content_layout = QVBoxLayout()
         content_layout.addWidget(title)
         content_layout.addWidget(project_group)
         content_layout.addWidget(self.project_label)
+        content_layout.addWidget(status_legend)
         content_layout.addWidget(source_group)
         content_layout.addWidget(scenarios_group)
         content_layout.addWidget(consequences_group)
@@ -3294,6 +3335,23 @@ class MainWindow(QMainWindow):
             f"ОПО: {project.opo_name}\n"
             f"Регистрационный номер: {project.opo_registration_number}"
         )
+        self._refresh_workflow_status()
+
+    def _refresh_workflow_status(self) -> None:
+        if self.current_project_directory is None:
+            return
+        descriptions = {
+            "done": "Выполнено: результат существует и актуален.",
+            "pending": "Требуется выполнить или повторить после изменения исходных данных.",
+            "not_required": "Для сценариев этого проекта расчёт не требуется.",
+        }
+        statuses = workflow_statuses(self.current_project_directory)
+        for button in self._workflow_buttons:
+            status = statuses.get(button.objectName(), "pending")
+            button.setProperty("workflowState", status)
+            button.setToolTip(descriptions[status])
+            button.style().unpolish(button)
+            button.style().polish(button)
 
     def edit_project_common(self) -> None:
         if self.current_project is None or self.current_project_directory is None:
