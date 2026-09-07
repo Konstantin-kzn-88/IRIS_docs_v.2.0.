@@ -52,6 +52,11 @@ from iris_v2.report_impact_zones import (
     load_impact_zone_rows,
     render_impact_zones_section,
 )
+from iris_v2.report_key_scenarios import (
+    ReportKeyScenariosError,
+    load_key_scenario_rows,
+    render_key_scenarios_section,
+)
 from iris_v2.report_max_damage import (
     ReportMaxDamageError,
     load_max_damage_rows,
@@ -135,6 +140,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "DAMAGE_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
+        "TOP_SCENARIOS_BY_COMPONENT_SECTION",
     }
 )
 
@@ -143,7 +149,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
         "NGK_BACKGROUND_RISK_COMPARISON",
@@ -584,6 +589,13 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("RISK_MATRIX_DAMAGE_CHART")
             except RiskMatricesError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "TOP_SCENARIOS_BY_COMPONENT_SECTION" in marker_names:
+            try:
+                rows = load_key_scenario_rows(project_root)
+                if render_key_scenarios_section(document, rows):
+                    filled_sections.append("TOP_SCENARIOS_BY_COMPONENT_SECTION")
+            except ReportKeyScenariosError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS

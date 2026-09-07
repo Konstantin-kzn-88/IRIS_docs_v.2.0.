@@ -80,6 +80,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{DAMAGE_BY_COMPONENT_CHART}}")
     document.add_paragraph("{{RISK_MATRIX_CHART}}")
     document.add_paragraph("{{RISK_MATRIX_DAMAGE_CHART}}")
+    document.add_paragraph("{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -547,6 +548,22 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "{{DAMAGE_BY_COMPONENT_CHART}}" not in text
     assert "{{RISK_MATRIX_CHART}}" not in text
     assert "{{RISK_MATRIX_DAMAGE_CHART}}" not in text
+    assert "{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}" not in text
+    key_scenarios_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if table.cell(0, 1).text == "Тип сценария"
+    )
+    assert [cell.text for cell in key_scenarios_table.rows[1].cells] == [
+        "Участок трубопроводов",
+        "Наиболее опасный",
+        "С1",
+        "Нефтепровод от скважины № 1",
+        "1",
+        "3",
+        "3893,8",
+        "6.000E-05",
+    ]
     assert len(Document(result.output_path).inline_shapes) == 9
     assert all(
         row._tr.get_or_add_trPr().find(
@@ -578,6 +595,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "DAMAGE_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
+        "TOP_SCENARIOS_BY_COMPONENT_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -653,6 +671,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "DAMAGE_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
+        "TOP_SCENARIOS_BY_COMPONENT_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -675,6 +694,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "DAMAGE_BY_COMPONENT_CHART" not in result.deferred_markers
     assert "RISK_MATRIX_CHART" not in result.deferred_markers
     assert "RISK_MATRIX_DAMAGE_CHART" not in result.deferred_markers
+    assert "TOP_SCENARIOS_BY_COMPONENT_SECTION" not in result.deferred_markers
 
 
 def test_missing_amount_results_does_not_replace_existing_report(
