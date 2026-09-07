@@ -3,11 +3,17 @@ from pathlib import Path
 
 from docx import Document
 
+from iris_v2.calculation_config import (
+    CalculationConfigService,
+    new_calculation_config,
+)
 from iris_v2.report_key_scenarios import (
+    load_key_scenario_damage_rows,
     load_key_scenario_description_rows,
     load_key_scenario_people_rows,
     load_key_scenario_pf_rows,
     load_key_scenario_rows,
+    render_key_scenario_damage,
     render_key_scenario_descriptions,
     render_key_scenario_hazard_factors,
     render_key_scenario_people,
@@ -298,6 +304,106 @@ def test_people_table_replaces_marker_and_repeats_header() -> None:
         "С2",
         "2",
         "4",
+    ]
+    properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
+    assert properties.find(
+        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
+    ) is not None
+
+
+def test_damage_rows_use_selected_scenarios_and_damage_breakdown(
+    tmp_path: Path,
+) -> None:
+    risks = [
+        row("С1", "Участок", 1, 3, 1200.0, 4e-5),
+        row("С2", "Участок", 2, 4, 900.0, 2e-5),
+        row("С3", "Участок", 0, 1, 500.0, 6e-5),
+    ]
+    write_json(tmp_path / "risk_results.json", {"results": risks})
+    people = []
+    damages = []
+    for risk in risks:
+        source = {
+            "scenario_code": risk["scenario_code"],
+            "equipment_name": risk["equipment_name"],
+            "hazard_component": risk["hazard_component"],
+        }
+        people.append(source)
+        damage = dict(source)
+        damage.update(
+            {
+                "damage_scale": 30.3,
+                "damage_unit": "тыс. руб.",
+                "direct_losses": risk["total_damage"],
+                "liquidation_costs": 0.0,
+                "social_losses": 0.0,
+                "indirect_damage": 0.0,
+                "total_environmental_damage": 0.0,
+                "total_damage": risk["total_damage"],
+            }
+        )
+        damages.append(damage)
+    write_json(tmp_path / "people_results.json", {"results": people})
+    write_json(tmp_path / "damage_results.json", {"results": damages})
+    CalculationConfigService().save(tmp_path, new_calculation_config())
+
+    assert load_key_scenario_damage_rows(tmp_path) == (
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее опасный",
+            "scenario_code": "С2",
+            "direct_losses": "900,0",
+            "liquidation_costs": "0,0",
+            "social_losses": "0,0",
+            "indirect_damage": "0,0",
+            "total_environmental_damage": "0,0",
+            "total_damage": "900,0",
+        },
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее вероятный",
+            "scenario_code": "С3",
+            "direct_losses": "500,0",
+            "liquidation_costs": "0,0",
+            "social_losses": "0,0",
+            "indirect_damage": "0,0",
+            "total_environmental_damage": "0,0",
+            "total_damage": "500,0",
+        },
+    )
+
+
+def test_damage_table_replaces_marker_and_repeats_header() -> None:
+    document = Document()
+    document.add_paragraph("{{TOP_SCENARIOS_DAMAGE}}")
+    rows = (
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее опасный",
+            "scenario_code": "С2",
+            "direct_losses": "100,0",
+            "liquidation_costs": "10,0",
+            "social_losses": "20,0",
+            "indirect_damage": "30,0",
+            "total_environmental_damage": "40,0",
+            "total_damage": "200,0",
+        },
+    )
+
+    assert render_key_scenario_damage(document, rows)
+    assert "TOP_SCENARIOS_DAMAGE" not in "\n".join(
+        paragraph.text for paragraph in document.paragraphs
+    )
+    assert [cell.text for cell in document.tables[0].rows[1].cells] == [
+        "Участок",
+        "Наиболее опасный",
+        "С2",
+        "100,0",
+        "10,0",
+        "20,0",
+        "30,0",
+        "40,0",
+        "200,0",
     ]
     properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
     assert properties.find(
