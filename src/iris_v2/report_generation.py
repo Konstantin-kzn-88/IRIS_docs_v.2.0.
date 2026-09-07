@@ -120,6 +120,11 @@ from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
 )
+from iris_v2.report_substances_by_component import (
+    ReportSubstancesByComponentError,
+    load_substances_by_component_rows,
+    render_substances_by_component_table,
+)
 from iris_v2.report_scenarios import (
     ReportScenariosError,
     load_scenario_rows,
@@ -159,6 +164,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
         "NGK_BACKGROUND_RISK_COMPARISON",
+        "SUBSTANCES_BY_COMPONENT_TABLE",
     }
 )
 
@@ -167,7 +173,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "SUBSTANCES_BY_COMPONENT_TABLE",
         "TOP_SCENARIOS_DESC_BY_COMPONENT",
         "TOP_SCENARIOS_PF_BY_COMPONENT",
         "TOP_SCENARIOS_FATALITIES_INJURED",
@@ -634,6 +639,13 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("NGK_BACKGROUND_RISK_COMPARISON")
             except ReportNgkBackgroundRiskError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "SUBSTANCES_BY_COMPONENT_TABLE" in marker_names:
+            try:
+                rows = load_substances_by_component_rows(project_root)
+                if render_substances_by_component_table(document, rows):
+                    filled_sections.append("SUBSTANCES_BY_COMPONENT_TABLE")
+            except ReportSubstancesByComponentError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
