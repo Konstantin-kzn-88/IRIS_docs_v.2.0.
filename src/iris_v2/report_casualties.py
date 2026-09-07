@@ -88,8 +88,8 @@ def load_casualty_rows(
     )
     people = _load_results(
         project / PEOPLE_FILE_NAME,
-        "Число погибших и пострадавших не рассчитано. "
-        "Сначала выполните модуль «Погибшие и пострадавшие»",
+        "Число погибших и раненых не рассчитано. "
+        "Сначала выполните модуль «Погибшие и раненые»",
     )
     equipment_by_id = _load_equipment(project / "equipments.json")
 
@@ -155,18 +155,21 @@ def load_casualty_rows(
             raise ReportCasualtiesError(
                 f"Сценарий {code}: не заполнено оборудование или составляющая ОПО"
             )
+        fatalities = _count(
+            item.get("fatalities_count"),
+            f"Сценарий {code}: fatalities_count",
+        )
+        injured = _count(
+            item.get("injured_count"),
+            f"Сценарий {code}: injured_count",
+        )
         rows.append(
             {
                 "code": code,
                 "equipment": f"{equipment_name} ({component})",
-                "fatalities": _count(
-                    item.get("fatalities_count"),
-                    f"Сценарий {code}: fatalities_count",
-                ),
-                "injured": _count(
-                    item.get("injured_count"),
-                    f"Сценарий {code}: injured_count",
-                ),
+                "fatalities": fatalities,
+                "injured": injured,
+                "affected": str(int(fatalities) + int(injured)),
             }
         )
 
@@ -257,7 +260,7 @@ def _set_table_geometry(section: Any, table: Any) -> None:
     total_twips = int(
         (section.page_width - section.left_margin - section.right_margin) / 635
     )
-    proportions = (0.13, 0.47, 0.20, 0.20)
+    proportions = (0.11, 0.39, 0.16, 0.16, 0.18)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -295,7 +298,7 @@ def render_casualties_section(
     if marker_paragraph is None:
         return False
 
-    table = document.add_table(rows=1, cols=4)
+    table = document.add_table(rows=1, cols=5)
     table.style = "Table Grid"
     marker_paragraph._p.addnext(table._tbl)
     section = _paragraph_section(document, marker_paragraph._p)
@@ -305,6 +308,7 @@ def render_casualties_section(
         "№ сценария",
         "Оборудование (составляющая)",
         "Количество погибших, чел.",
+        "Количество раненых, чел.",
         "Количество пострадавших, чел.",
     )
     for cell, value in zip(table.rows[0].cells, headers):
@@ -318,6 +322,7 @@ def render_casualties_section(
             item["equipment"],
             item["fatalities"],
             item["injured"],
+            item["affected"],
         )
         for index, (cell, value) in enumerate(zip(cells, values)):
             _set_cell_text(cell, value, centered=index != 1)

@@ -73,8 +73,8 @@ def load_damage_rows(
     project = Path(project_directory)
     people = _load_results(
         project / PEOPLE_FILE_NAME,
-        "Число погибших и пострадавших не рассчитано. "
-        "Сначала выполните модуль «Погибшие и пострадавшие»",
+        "Число погибших и раненых не рассчитано. "
+        "Сначала выполните модуль «Погибшие и раненые»",
     )
     damages = _load_results(
         project / DAMAGE_FILE_NAME,

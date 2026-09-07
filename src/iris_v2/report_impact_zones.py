@@ -23,6 +23,8 @@ ZONE_FIELDS = (
     ("q_7_0_m", "q=7,0"),
     ("q_4_2_m", "q=4,2"),
     ("q_1_4_m", "q=1,4"),
+    ("p_100_m", "Р=100"),
+    ("p_70_m", "Р=70"),
     ("p_28_m", "Р=28"),
     ("p_14_m", "Р=14"),
     ("p_5_m", "Р=5"),
@@ -31,8 +33,8 @@ ZONE_FIELDS = (
     ("jet_fire_diameter_m", "Dф"),
     ("lel_radius_m", "Rнкпр"),
     ("flash_fire_radius_m", "Rвсп"),
-    ("lethal_radius_m", "Lпт"),
-    ("threshold_radius_m", "Pпт"),
+    ("lethal_radius_m", "LD"),
+    ("threshold_radius_m", "PD"),
     ("dose_600_m", "Q=600"),
     ("dose_320_m", "Q=320"),
     ("dose_220_m", "Q=220"),
@@ -44,8 +46,8 @@ LEGEND = (
     "Р — избыточное давление взрыва ТВС, кПа; "
     "Lф — длина факела, м; Dф — диаметр факела, м; "
     "Rнкпр — радиус НКПР, м; Rвсп — радиус пожара-вспышки, м; "
-    "Lпт — радиус смертельной токсодозы, м; "
-    "Pпт — радиус пороговой токсодозы, м; "
+    "LD — радиус смертельной токсодозы, м; "
+    "PD — радиус пороговой токсодозы, м; "
     "Q — доза теплового излучения, кДж/м²; S — площадь пролива, м². "
     "Размеры зон q, Р и Q указаны в метрах."
 )
@@ -154,9 +156,11 @@ def load_impact_zone_rows(
             raise ReportImpactZonesError(
                 f"Сценарий {code}: calc_code должен быть от 0 до 7"
             )
-        spill_area = values.get("chemical_spill_area_m2")
-        if spill_area is None:
-            spill_area = impact.get("spill_area_m2")
+        spill_area = None
+        if calc_code == 7:
+            spill_area = values.get("chemical_spill_area_m2")
+            if spill_area is None:
+                spill_area = impact.get("spill_area_m2")
 
         row = {
             "code": code,

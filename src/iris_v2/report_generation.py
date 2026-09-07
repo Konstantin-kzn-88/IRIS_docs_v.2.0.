@@ -227,6 +227,17 @@ def _sanitary_zone(value: Any) -> str:
     return _text(value)
 
 
+def _remove_table_shading(document: Any) -> None:
+    """Remove cell fills from every table in the generated document."""
+    for cell in document.element.iter(qn("w:tc")):
+        properties = cell.find(qn("w:tcPr"))
+        if properties is None:
+            continue
+        shading = properties.find(qn("w:shd"))
+        if shading is not None:
+            properties.remove(shading)
+
+
 def _build_replacements(
     project: ProjectInfo,
     common: dict[str, Any],
@@ -697,6 +708,8 @@ class ReportGenerationService:
         if unexpected:
             names = ", ".join(sorted(unexpected))
             raise ReportGenerationError(f"Не удалось заполнить маркеры: {names}")
+
+        _remove_table_shading(document)
 
         output_directory = project_root / "output"
         output_path = output_directory / OUTPUT_FILE_NAME

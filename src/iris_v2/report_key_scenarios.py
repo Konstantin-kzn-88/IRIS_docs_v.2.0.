@@ -24,6 +24,30 @@ PEOPLE_MARKER = "{{TOP_SCENARIOS_FATALITIES_INJURED}}"
 DAMAGE_MARKER = "{{TOP_SCENARIOS_DAMAGE}}"
 CONCLUSION_MARKER = "{{TOP_SCENARIOS_FINAL_CONCLUSION}}"
 
+ZONE_DESCRIPTIONS = {
+    "q_10_5_m": "зона теплового излучения с интенсивностью 10,5 кВт/м²",
+    "q_7_0_m": "зона теплового излучения с интенсивностью 7,0 кВт/м²",
+    "q_4_2_m": "зона теплового излучения с интенсивностью 4,2 кВт/м²",
+    "q_1_4_m": "зона теплового излучения с интенсивностью 1,4 кВт/м²",
+    "p_100_m": "зона полного разрушения зданий (100 кПа)",
+    "p_70_m": "зона сильных разрушений зданий (70 кПа)",
+    "p_28_m": "зона средних разрушений зданий (28 кПа)",
+    "p_14_m": "зона умеренных разрушений зданий (14 кПа)",
+    "p_5_m": "зона слабых разрушений зданий (5 кПа)",
+    "p_2_m": "зона разрушения остекления (2 кПа)",
+    "jet_fire_length_m": "длина факела",
+    "jet_fire_diameter_m": "диаметр факела",
+    "lel_radius_m": "радиус нижнего концентрационного предела распространения пламени",
+    "flash_fire_radius_m": "радиус пожара-вспышки",
+    "lethal_radius_m": "радиус смертельной токсодозы (LD)",
+    "threshold_radius_m": "радиус пороговой токсодозы (PD)",
+    "dose_600_m": "зона тепловой дозы 600 кДж/м²",
+    "dose_320_m": "зона тепловой дозы 320 кДж/м²",
+    "dose_220_m": "зона тепловой дозы 220 кДж/м²",
+    "dose_120_m": "зона тепловой дозы 120 кДж/м²",
+    "spill_area_m2": "площадь химически опасного пролива",
+}
+
 
 class ReportKeyScenariosError(Exception):
     pass
@@ -45,6 +69,7 @@ def load_key_scenario_rows(
             "equipment": str(item["equipment_name"]),
             "fatalities": str(item["fatalities_count"]),
             "injured": str(item["injured_count"]),
+            "affected": str(item["fatalities_count"] + item["injured_count"]),
             "damage": f"{float(item['total_damage']):.1f}".replace(".", ","),
             "frequency": f"{float(item['scenario_frequency']):.3E}",
         }
@@ -98,11 +123,11 @@ def load_key_scenario_pf_rows(
                 "не совпадает оборудование или составляющая ОПО"
             )
         zones = []
-        for field, label in ZONE_FIELDS:
+        for field, _ in ZONE_FIELDS:
             value = impact[field]
             if value != "—":
                 unit = "м²" if field == "spill_area_m2" else "м"
-                zones.append(f"{label}: {value} {unit}")
+                zones.append(f"{ZONE_DESCRIPTIONS[field]} — {value} {unit}")
         rows.append(
             {
                 "component": str(item["hazard_component"]),
@@ -130,6 +155,7 @@ def load_key_scenario_people_rows(
             "scenario_code": str(item["scenario_code"]),
             "fatalities": str(item["fatalities_count"]),
             "injured": str(item["injured_count"]),
+            "affected": str(item["fatalities_count"] + item["injured_count"]),
         }
         for item in selected
     )
@@ -201,8 +227,10 @@ def load_key_scenario_conclusions(
             conclusions.append(
                 f"Для составляющей ОПО «{component}» наиболее опасным и "
                 f"наиболее вероятным является сценарий {dangerous_code}: "
-                f"погибло {dangerous['fatalities_count']} чел., пострадало "
-                f"{dangerous['injured_count']} чел., суммарный ущерб — "
+                f"погибло {dangerous['fatalities_count']} чел., ранено "
+                f"{dangerous['injured_count']} чел., всего пострадало "
+                f"{dangerous['fatalities_count'] + dangerous['injured_count']} чел., "
+                "суммарный ущерб — "
                 f"{damage} тыс. руб., частота — {frequency} 1/год."
             )
             continue
@@ -210,8 +238,10 @@ def load_key_scenario_conclusions(
         conclusions.append(
             f"Для составляющей ОПО «{component}» наиболее опасным является "
             f"сценарий {dangerous_code}: погибло "
-            f"{dangerous['fatalities_count']} чел., пострадало "
-            f"{dangerous['injured_count']} чел., суммарный ущерб — "
+            f"{dangerous['fatalities_count']} чел., ранено "
+            f"{dangerous['injured_count']} чел., всего пострадало "
+            f"{dangerous['fatalities_count'] + dangerous['injured_count']} чел., "
+            "суммарный ущерб — "
             f"{damage} тыс. руб. Наиболее вероятным является сценарий "
             f"{probable['scenario_code']} с частотой {frequency} 1/год."
         )
@@ -284,7 +314,7 @@ def _set_table_geometry(section: Any, table: Any) -> None:
     total_twips = int(
         (section.page_width - section.left_margin - section.right_margin) / 635
     )
-    proportions = (0.14, 0.12, 0.08, 0.19, 0.10, 0.12, 0.14, 0.11)
+    proportions = (0.12, 0.11, 0.06, 0.17, 0.09, 0.09, 0.10, 0.14, 0.12)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -380,7 +410,7 @@ def _set_people_table_geometry(section: Any, table: Any) -> None:
     total_twips = int(
         (section.page_width - section.left_margin - section.right_margin) / 635
     )
-    proportions = (0.28, 0.23, 0.10, 0.19, 0.20)
+    proportions = (0.24, 0.20, 0.08, 0.15, 0.15, 0.18)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -452,7 +482,7 @@ def render_key_scenarios_section(
         return False
 
     section = _paragraph_section(document, marker_paragraph._p)
-    table = document.add_table(rows=1, cols=8)
+    table = document.add_table(rows=1, cols=9)
     table.style = "Table Grid"
     marker_paragraph._p.addnext(table._tbl)
     for run in marker_paragraph.runs:
@@ -467,6 +497,7 @@ def render_key_scenarios_section(
         "№",
         "Оборудование",
         "Погибло,\nчел.",
+        "Ранено,\nчел.",
         "Пострадало,\nчел.",
         "Суммарный ущерб,\nтыс. руб.",
         "Частота,\n1/год",
@@ -487,6 +518,7 @@ def render_key_scenarios_section(
             item["equipment"],
             item["fatalities"],
             item["injured"],
+            item["affected"],
             item["damage"],
             item["frequency"],
         )
@@ -607,7 +639,7 @@ def render_key_scenario_people(
         return False
 
     section = _paragraph_section(document, marker_paragraph._p)
-    table = document.add_table(rows=1, cols=5)
+    table = document.add_table(rows=1, cols=6)
     table.style = "Table Grid"
     marker_paragraph._p.addnext(table._tbl)
     headers = (
@@ -615,6 +647,7 @@ def render_key_scenario_people(
         "Тип сценария",
         "№",
         "Погибло, чел.",
+        "Ранено, чел.",
         "Пострадало, чел.",
     )
     for cell, value in zip(table.rows[0].cells, headers):
@@ -632,6 +665,7 @@ def render_key_scenario_people(
             item["scenario_code"],
             item["fatalities"],
             item["injured"],
+            item["affected"],
         )
         for column, (cell, value) in enumerate(zip(cells, values)):
             _set_cell_text(cell, value, centered=column >= 2, font_size=9)

@@ -453,10 +453,15 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "{{IMPACT_ZONES_SECTION}}" not in text
     assert "q=10,5" in text
     assert "10,0" in text
-    assert "125,5" in text
+    assert "125,5" not in text
+    assert "LD" in text
+    assert "PD" in text
+    assert "Lпт" not in text
+    assert "Pпт" not in text
     assert "интенсивность теплового излучения" in text
     assert "{{CASUALTIES_SECTION}}" not in text
     assert "Количество погибших, чел." in text
+    assert "Количество раненых, чел." in text
     assert "Количество пострадавших, чел." in text
     casualties_table = next(
         table
@@ -468,6 +473,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "Нефтепровод от скважины № 1 (Участок трубопроводов)",
         "1",
         "3",
+        "4",
     ]
     assert "{{DAMAGE_SECTION}}" not in text
     assert "Затраты на ЛЛА" in text
@@ -562,6 +568,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "Нефтепровод от скважины № 1",
         "1",
         "3",
+        "4",
         "3893,8",
         "6.000E-05",
     ]
@@ -572,6 +579,15 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         ) is not None
         for table in Document(result.output_path).tables[:2]
         for row in table.rows
+    )
+    assert all(
+        cell._tc.get_or_add_tcPr().find(
+            "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}shd"
+        )
+        is None
+        for table in Document(result.output_path).tables
+        for row in table.rows
+        for cell in row.cells
     )
     assert result.replaced_count == 7
     assert result.filled_sections == (

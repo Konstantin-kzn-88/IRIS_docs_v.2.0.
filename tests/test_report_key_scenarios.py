@@ -69,6 +69,7 @@ def test_rows_use_key_scenario_selection_and_report_formats(tmp_path: Path) -> N
             "equipment": "Оборудование С2",
             "fatalities": "2",
             "injured": "4",
+            "affected": "6",
             "damage": "900,0",
             "frequency": "2.000E-05",
         },
@@ -79,6 +80,7 @@ def test_rows_use_key_scenario_selection_and_report_formats(tmp_path: Path) -> N
             "equipment": "Оборудование С3",
             "fatalities": "0",
             "injured": "1",
+            "affected": "1",
             "damage": "500,0",
             "frequency": "6.000E-05",
         },
@@ -97,6 +99,7 @@ def test_section_replaces_marker_with_repeatable_table() -> None:
             "equipment": "Аппарат",
             "fatalities": "1",
             "injured": "2",
+            "affected": "3",
             "damage": "100,0",
             "frequency": "1.000E-05",
         },
@@ -111,6 +114,7 @@ def test_section_replaces_marker_with_repeatable_table() -> None:
         "Аппарат",
         "1",
         "2",
+        "3",
         "100,0",
         "1.000E-05",
     ]
@@ -211,7 +215,7 @@ def test_pf_rows_use_selected_scenarios_and_calculated_zones(
             "scenario_type": "Наиболее опасный",
             "scenario_code": "С2",
             "factor": "взрыв облака",
-            "zones": "Р=2: 42,0 м",
+            "zones": "зона разрушения остекления (2 кПа) — 42,0 м",
         },
         {
             "component": "Участок",
@@ -232,7 +236,7 @@ def test_pf_table_replaces_marker_and_repeats_header() -> None:
             "scenario_type": "Наиболее опасный",
             "scenario_code": "С2",
             "factor": "взрыв облака",
-            "zones": "Р=2: 42,0 м",
+            "zones": "зона разрушения остекления (2 кПа) — 42,0 м",
         },
     )
 
@@ -245,7 +249,7 @@ def test_pf_table_replaces_marker_and_repeats_header() -> None:
         "Наиболее опасный",
         "С2",
         "взрыв облака",
-        "Р=2: 42,0 м",
+        "зона разрушения остекления (2 кПа) — 42,0 м",
     ]
     properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
     assert properties.find(
@@ -272,6 +276,7 @@ def test_people_rows_use_selected_scenarios(tmp_path: Path) -> None:
             "scenario_code": "С2",
             "fatalities": "2",
             "injured": "4",
+            "affected": "6",
         },
         {
             "component": "Участок",
@@ -279,6 +284,7 @@ def test_people_rows_use_selected_scenarios(tmp_path: Path) -> None:
             "scenario_code": "С3",
             "fatalities": "0",
             "injured": "1",
+            "affected": "1",
         },
     )
 
@@ -293,6 +299,7 @@ def test_people_table_replaces_marker_and_repeats_header() -> None:
             "scenario_code": "С2",
             "fatalities": "2",
             "injured": "4",
+            "affected": "6",
         },
     )
 
@@ -306,6 +313,7 @@ def test_people_table_replaces_marker_and_repeats_header() -> None:
         "С2",
         "2",
         "4",
+        "6",
     ]
     properties = document.tables[0].rows[0]._tr.get_or_add_trPr()
     assert properties.find(
@@ -429,7 +437,8 @@ def test_conclusions_compare_dangerous_and_probable_scenarios(
 
     assert load_key_scenario_conclusions(tmp_path) == (
         "Для составляющей ОПО «Участок» наиболее опасным является сценарий С2: "
-        "погибло 2 чел., пострадало 4 чел., суммарный ущерб — 900,0 тыс. руб. "
+        "погибло 2 чел., ранено 4 чел., всего пострадало 6 чел., "
+        "суммарный ущерб — 900,0 тыс. руб. "
         "Наиболее вероятным является сценарий С3 с частотой 6.000E-05 1/год.",
     )
 
