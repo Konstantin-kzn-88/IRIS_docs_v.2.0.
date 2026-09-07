@@ -14,6 +14,9 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
     QHeaderView,
     QHBoxLayout,
     QLabel,
@@ -2924,7 +2927,7 @@ class MainWindow(QMainWindow):
             self.developers = ()
             QMessageBox.warning(self, "Ошибка справочника разработчиков", str(exc))
         self.setWindowTitle("IRIS v2")
-        self.resize(1320, 420)
+        self.resize(1180, 760)
 
         title = QLabel("IRIS v2")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2935,6 +2938,7 @@ class MainWindow(QMainWindow):
         self.project_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        self.project_label.setWordWrap(True)
 
         create_button = QPushButton("Создать проект")
         create_button.setObjectName("create_project_button")
@@ -2948,27 +2952,27 @@ class MainWindow(QMainWindow):
         self.template_catalog_button.setObjectName("template_catalog_button")
         self.template_catalog_button.clicked.connect(self.open_template_catalog)
 
-        self.project_common_button = QPushButton("Данные проекта")
+        self.project_common_button = QPushButton("1.1 Данные проекта")
         self.project_common_button.setObjectName("project_common_button")
         self.project_common_button.setEnabled(False)
         self.project_common_button.clicked.connect(self.edit_project_common)
 
-        self.substances_button = QPushButton("Вещества")
+        self.substances_button = QPushButton("1.2 Вещества")
         self.substances_button.setObjectName("substances_button")
         self.substances_button.setEnabled(False)
         self.substances_button.clicked.connect(self.edit_substances)
 
-        self.equipment_button = QPushButton("Оборудование")
+        self.equipment_button = QPushButton("1.3 Оборудование")
         self.equipment_button.setObjectName("equipment_button")
         self.equipment_button.setEnabled(False)
         self.equipment_button.clicked.connect(self.import_equipment)
 
-        self.amount_button = QPushButton("Количество ОВ")
+        self.amount_button = QPushButton("1.5 Количество ОВ")
         self.amount_button.setObjectName("amount_button")
         self.amount_button.setEnabled(False)
         self.amount_button.clicked.connect(self.calculate_amounts)
 
-        self.calculation_config_button = QPushButton("Настройки расчёта")
+        self.calculation_config_button = QPushButton("1.4 Настройки расчёта")
         self.calculation_config_button.setObjectName("calculation_config_button")
         self.calculation_config_button.setEnabled(False)
         self.calculation_config_button.clicked.connect(
@@ -2979,116 +2983,116 @@ class MainWindow(QMainWindow):
         self.typical_scenarios_button.setObjectName("typical_scenarios_button")
         self.typical_scenarios_button.clicked.connect(self.show_typical_scenarios)
 
-        self.calculation_cases_button = QPushButton("Расчётные сценарии")
+        self.calculation_cases_button = QPushButton("2.1 Расчётные сценарии")
         self.calculation_cases_button.setObjectName("calculation_cases_button")
         self.calculation_cases_button.setEnabled(False)
         self.calculation_cases_button.clicked.connect(
             self.generate_calculation_cases
         )
 
-        self.frequency_button = QPushButton("Расчёт частот")
+        self.frequency_button = QPushButton("2.2 Расчёт частот")
         self.frequency_button.setObjectName("frequency_button")
         self.frequency_button.setEnabled(False)
         self.frequency_button.clicked.connect(self.calculate_frequencies)
 
-        self.release_button = QPushButton("Масса в аварии")
+        self.release_button = QPushButton("2.3 Масса в аварии")
         self.release_button.setObjectName("release_button")
         self.release_button.setEnabled(False)
         self.release_button.clicked.connect(self.calculate_releases)
 
-        self.spill_button = QPushButton("Площадь пролива")
+        self.spill_button = QPushButton("2.4 Площадь пролива")
         self.spill_button.setObjectName("spill_button")
         self.spill_button.setEnabled(False)
         self.spill_button.clicked.connect(self.calculate_spills)
 
-        self.evaporation_button = QPushButton("Испарение")
+        self.evaporation_button = QPushButton("2.5 Испарение")
         self.evaporation_button.setObjectName("evaporation_button")
         self.evaporation_button.setEnabled(False)
         self.evaporation_button.clicked.connect(self.calculate_evaporation)
 
-        self.hazard_factor_button = QPushButton("Масса ПФ")
+        self.hazard_factor_button = QPushButton("2.6 Масса ПФ")
         self.hazard_factor_button.setObjectName("hazard_factor_button")
         self.hazard_factor_button.setEnabled(False)
         self.hazard_factor_button.clicked.connect(self.calculate_hazard_factors)
 
-        self.pool_fire_button = QPushButton("Пожар пролива")
+        self.pool_fire_button = QPushButton("3.1 Пожар пролива")
         self.pool_fire_button.setObjectName("pool_fire_button")
         self.pool_fire_button.setEnabled(False)
         self.pool_fire_button.clicked.connect(self.calculate_pool_fires)
 
-        self.explosion_button = QPushButton("Взрыв ТВС")
+        self.explosion_button = QPushButton("3.2 Взрыв ТВС")
         self.explosion_button.setObjectName("explosion_button")
         self.explosion_button.setEnabled(False)
         self.explosion_button.clicked.connect(self.calculate_explosions)
 
-        self.flash_fire_button = QPushButton("Пожар-вспышка")
+        self.flash_fire_button = QPushButton("3.3 Пожар-вспышка")
         self.flash_fire_button.setObjectName("flash_fire_button")
         self.flash_fire_button.setEnabled(False)
         self.flash_fire_button.clicked.connect(self.calculate_flash_fires)
 
-        self.toxic_button = QPushButton("Токсическое поражение")
+        self.toxic_button = QPushButton("3.4 Токсическое поражение")
         self.toxic_button.setObjectName("toxic_button")
         self.toxic_button.setEnabled(False)
         self.toxic_button.clicked.connect(self.calculate_toxic_effects)
 
-        self.jet_fire_button = QPushButton("Факельное горение")
+        self.jet_fire_button = QPushButton("3.5 Факельное горение")
         self.jet_fire_button.setObjectName("jet_fire_button")
         self.jet_fire_button.setEnabled(False)
         self.jet_fire_button.clicked.connect(self.calculate_jet_fires)
 
-        self.fireball_button = QPushButton("Огненный шар")
+        self.fireball_button = QPushButton("3.6 Огненный шар")
         self.fireball_button.setObjectName("fireball_button")
         self.fireball_button.setEnabled(False)
         self.fireball_button.clicked.connect(self.calculate_fireballs)
 
-        self.chemical_spill_button = QPushButton("Химически опасный пролив")
+        self.chemical_spill_button = QPushButton("3.7 Химически опасный пролив")
         self.chemical_spill_button.setObjectName("chemical_spill_button")
         self.chemical_spill_button.setEnabled(False)
         self.chemical_spill_button.clicked.connect(
             self.calculate_chemical_spills
         )
 
-        self.impact_zones_button = QPushButton("Свод зон")
+        self.impact_zones_button = QPushButton("3.8 Свод зон")
         self.impact_zones_button.setObjectName("impact_zones_button")
         self.impact_zones_button.setEnabled(False)
         self.impact_zones_button.clicked.connect(self.calculate_impact_zones)
 
-        self.people_button = QPushButton("Погибшие и пострадавшие")
+        self.people_button = QPushButton("3.9 Люди: погибшие, раненые, пострадавшие")
         self.people_button.setObjectName("people_button")
         self.people_button.setEnabled(False)
         self.people_button.clicked.connect(self.calculate_people)
 
-        self.damage_button = QPushButton("Ущерб")
+        self.damage_button = QPushButton("3.10 Ущерб")
         self.damage_button.setObjectName("damage_button")
         self.damage_button.setEnabled(False)
         self.damage_button.clicked.connect(self.calculate_damage)
 
-        self.risk_button = QPushButton("Риски")
+        self.risk_button = QPushButton("4.1 Риски")
         self.risk_button.setObjectName("risk_button")
         self.risk_button.setEnabled(False)
         self.risk_button.clicked.connect(self.calculate_risks)
 
-        self.risk_summary_button = QPushButton("Свод риска")
+        self.risk_summary_button = QPushButton("4.2 Свод риска")
         self.risk_summary_button.setObjectName("risk_summary_button")
         self.risk_summary_button.setEnabled(False)
         self.risk_summary_button.clicked.connect(self.calculate_risk_summary)
 
-        self.risk_charts_button = QPushButton("Диаграммы риска")
+        self.risk_charts_button = QPushButton("4.4 Диаграммы риска")
         self.risk_charts_button.setObjectName("risk_charts_button")
         self.risk_charts_button.setEnabled(False)
         self.risk_charts_button.clicked.connect(self.calculate_risk_charts)
 
-        self.risk_matrices_button = QPushButton("Матрицы риска")
+        self.risk_matrices_button = QPushButton("4.5 Матрицы риска")
         self.risk_matrices_button.setObjectName("risk_matrices_button")
         self.risk_matrices_button.setEnabled(False)
         self.risk_matrices_button.clicked.connect(self.calculate_risk_matrices)
 
-        self.pareto_charts_button = QPushButton("Парето")
+        self.pareto_charts_button = QPushButton("4.6 Диаграммы Парето")
         self.pareto_charts_button.setObjectName("pareto_charts_button")
         self.pareto_charts_button.setEnabled(False)
         self.pareto_charts_button.clicked.connect(self.calculate_pareto_charts)
 
-        self.component_damage_chart_button = QPushButton("Ущерб по ОПО")
+        self.component_damage_chart_button = QPushButton("4.7 Ущерб по ОПО")
         self.component_damage_chart_button.setObjectName(
             "component_damage_chart_button"
         )
@@ -3097,81 +3101,116 @@ class MainWindow(QMainWindow):
             self.calculate_component_damage_chart
         )
 
-        self.key_scenarios_button = QPushButton("Ключевые сценарии")
+        self.key_scenarios_button = QPushButton("4.3 Ключевые сценарии")
         self.key_scenarios_button.setObjectName("key_scenarios_button")
         self.key_scenarios_button.setEnabled(False)
         self.key_scenarios_button.clicked.connect(self.calculate_key_scenarios)
 
-        self.validation_button = QPushButton("Проверка данных")
+        self.validation_button = QPushButton("1.6 Проверка исходных данных")
         self.validation_button.setObjectName("validation_button")
         self.validation_button.setEnabled(False)
         self.validation_button.clicked.connect(self.validate_project)
 
-        self.report_generation_button = QPushButton("Сформировать Word")
+        self.report_generation_button = QPushButton("5.1 Сформировать Word-отчёт")
         self.report_generation_button.setObjectName("report_generation_button")
         self.report_generation_button.setEnabled(False)
         self.report_generation_button.clicked.connect(self.generate_report)
 
-        data_button_layout = QHBoxLayout()
-        data_button_layout.addWidget(create_button)
-        data_button_layout.addWidget(open_button)
-        data_button_layout.addWidget(self.template_catalog_button)
-        data_button_layout.addWidget(self.project_common_button)
-        data_button_layout.addWidget(self.substances_button)
-        data_button_layout.addWidget(self.equipment_button)
-        data_button_layout.addWidget(self.amount_button)
+        project_group = self._workflow_group(
+            "Проект и справочники",
+            "project_actions_group",
+            "Создайте или откройте проект. Справочники можно просматривать независимо.",
+            (create_button, open_button, self.template_catalog_button,
+             self.typical_scenarios_button),
+        )
+        source_group = self._workflow_group(
+            "Этап 1. Подготовка исходных данных",
+            "source_data_group",
+            "Заполняйте слева направо. Проверка подтверждает готовность к расчётам.",
+            (self.project_common_button, self.substances_button,
+             self.equipment_button, self.calculation_config_button,
+             self.amount_button, self.validation_button),
+            columns=3,
+        )
+        scenarios_group = self._workflow_group(
+            "Этап 2. Сценарии и массы",
+            "scenarios_mass_group",
+            "Последовательное формирование сценариев и параметров выброса.",
+            (self.calculation_cases_button, self.frequency_button,
+             self.release_button, self.spill_button,
+             self.evaporation_button, self.hazard_factor_button),
+            columns=3,
+        )
+        consequences_group = self._workflow_group(
+            "Этап 3. Зоны поражения и последствия",
+            "consequences_group",
+            "Сначала рассчитайте применимые поражающие факторы, затем свод и последствия.",
+            (self.pool_fire_button, self.explosion_button,
+             self.flash_fire_button, self.toxic_button,
+             self.jet_fire_button, self.fireball_button,
+             self.chemical_spill_button, self.impact_zones_button,
+             self.people_button, self.damage_button),
+            columns=3,
+        )
+        risk_group = self._workflow_group(
+            "Этап 4. Оценка и представление риска",
+            "risk_analysis_group",
+            "После расчёта риска сформируйте свод, ключевые сценарии и диаграммы.",
+            (self.risk_button, self.risk_summary_button,
+             self.key_scenarios_button, self.risk_charts_button,
+             self.risk_matrices_button, self.pareto_charts_button,
+             self.component_damage_chart_button),
+            columns=4,
+        )
+        report_group = self._workflow_group(
+            "Этап 5. Выпуск документа",
+            "report_group",
+            "Формируйте отчёт после завершения предыдущих этапов.",
+            (self.report_generation_button,),
+        )
 
-        calculation_button_layout = QHBoxLayout()
-        calculation_button_layout.addWidget(self.typical_scenarios_button)
-        calculation_button_layout.addWidget(self.calculation_config_button)
-        calculation_button_layout.addWidget(self.calculation_cases_button)
-        calculation_button_layout.addWidget(self.release_button)
-        calculation_button_layout.addWidget(self.spill_button)
-        calculation_button_layout.addWidget(self.evaporation_button)
-        calculation_button_layout.addWidget(self.hazard_factor_button)
-        calculation_button_layout.addWidget(self.frequency_button)
-        calculation_button_layout.addWidget(self.validation_button)
+        content_layout = QVBoxLayout()
+        content_layout.addWidget(title)
+        content_layout.addWidget(project_group)
+        content_layout.addWidget(self.project_label)
+        content_layout.addWidget(source_group)
+        content_layout.addWidget(scenarios_group)
+        content_layout.addWidget(consequences_group)
+        content_layout.addWidget(risk_group)
+        content_layout.addWidget(report_group)
+        content_layout.addStretch()
 
-        effect_button_layout_1 = QHBoxLayout()
-        effect_button_layout_1.addWidget(self.pool_fire_button)
-        effect_button_layout_1.addWidget(self.explosion_button)
-        effect_button_layout_1.addWidget(self.flash_fire_button)
-        effect_button_layout_1.addWidget(self.toxic_button)
+        content = QWidget()
+        content.setLayout(content_layout)
+        scroll = QScrollArea()
+        scroll.setObjectName("workflow_scroll_area")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(content)
+        self.setCentralWidget(scroll)
 
-        effect_button_layout_2 = QHBoxLayout()
-        effect_button_layout_2.addWidget(self.jet_fire_button)
-        effect_button_layout_2.addWidget(self.fireball_button)
-        effect_button_layout_2.addWidget(self.chemical_spill_button)
-        effect_button_layout_2.addWidget(self.impact_zones_button)
-        effect_button_layout_2.addWidget(self.people_button)
-        effect_button_layout_2.addWidget(self.damage_button)
-
-        risk_button_layout = QHBoxLayout()
-        risk_button_layout.addWidget(self.risk_button)
-        risk_button_layout.addWidget(self.risk_summary_button)
-        risk_button_layout.addWidget(self.risk_charts_button)
-        risk_button_layout.addWidget(self.risk_matrices_button)
-        risk_button_layout.addWidget(self.pareto_charts_button)
-        risk_button_layout.addWidget(self.component_damage_chart_button)
-        risk_button_layout.addWidget(self.key_scenarios_button)
-
-        report_button_layout = QHBoxLayout()
-        report_button_layout.addWidget(self.report_generation_button)
-        report_button_layout.addStretch()
-
-        layout = QVBoxLayout()
-        layout.addWidget(title)
-        layout.addLayout(data_button_layout)
-        layout.addLayout(calculation_button_layout)
-        layout.addLayout(effect_button_layout_1)
-        layout.addLayout(effect_button_layout_2)
-        layout.addLayout(risk_button_layout)
-        layout.addLayout(report_button_layout)
-        layout.addWidget(self.project_label, 1)
-
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+    @staticmethod
+    def _workflow_group(
+        title: str,
+        object_name: str,
+        description: str,
+        buttons: tuple[QPushButton, ...],
+        *,
+        columns: int = 4,
+    ) -> QGroupBox:
+        group = QGroupBox(title)
+        group.setObjectName(object_name)
+        layout = QGridLayout(group)
+        hint = QLabel(description)
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #555; padding-bottom: 3px;")
+        layout.addWidget(hint, 0, 0, 1, columns)
+        for index, button in enumerate(buttons):
+            button.setMinimumHeight(34)
+            layout.addWidget(button, 1 + index // columns, index % columns)
+        for column in range(columns):
+            layout.setColumnStretch(column, 1)
+        return group
 
     def create_project(self) -> None:
         if not self.organizations:

@@ -162,7 +162,12 @@ def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
 def test_minimal_window_starts() -> None:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     try:
-        from PySide6.QtWidgets import QApplication, QPushButton
+        from PySide6.QtWidgets import (
+            QApplication,
+            QGroupBox,
+            QPushButton,
+            QScrollArea,
+        )
         from iris_v2.gui import MainWindow
     except ImportError as exc:
         pytest.skip(f"Qt недоступен в текущей системе: {exc}")
@@ -173,9 +178,23 @@ def test_minimal_window_starts() -> None:
         assert window.windowTitle() == "IRIS v2"
         assert window.findChild(QPushButton, "create_project_button") is not None
         assert window.findChild(QPushButton, "open_project_button") is not None
+        assert window.findChild(QScrollArea, "workflow_scroll_area") is not None
+        group_titles = {
+            group.objectName(): group.title()
+            for group in window.findChildren(QGroupBox)
+        }
+        assert group_titles == {
+            "project_actions_group": "Проект и справочники",
+            "source_data_group": "Этап 1. Подготовка исходных данных",
+            "scenarios_mass_group": "Этап 2. Сценарии и массы",
+            "consequences_group": "Этап 3. Зоны поражения и последствия",
+            "risk_analysis_group": "Этап 4. Оценка и представление риска",
+            "report_group": "Этап 5. Выпуск документа",
+        }
         common_button = window.findChild(QPushButton, "project_common_button")
         assert common_button is not None
         assert not common_button.isEnabled()
+        assert common_button.text().startswith("1.1 ")
         substances_button = window.findChild(QPushButton, "substances_button")
         assert substances_button is not None
         assert not substances_button.isEnabled()
@@ -203,6 +222,7 @@ def test_minimal_window_starts() -> None:
         )
         assert cases_button is not None
         assert not cases_button.isEnabled()
+        assert cases_button.text().startswith("2.1 ")
         frequency_button = window.findChild(QPushButton, "frequency_button")
         assert frequency_button is not None
         assert not frequency_button.isEnabled()
@@ -225,6 +245,15 @@ def test_minimal_window_starts() -> None:
         pool_fire_button = window.findChild(QPushButton, "pool_fire_button")
         assert pool_fire_button is not None
         assert not pool_fire_button.isEnabled()
+        assert pool_fire_button.text().startswith("3.1 ")
+        risk_button = window.findChild(QPushButton, "risk_button")
+        assert risk_button is not None
+        assert risk_button.text().startswith("4.1 ")
+        report_button = window.findChild(
+            QPushButton, "report_generation_button"
+        )
+        assert report_button is not None
+        assert report_button.text().startswith("5.1 ")
         explosion_button = window.findChild(QPushButton, "explosion_button")
         assert explosion_button is not None
         assert not explosion_button.isEnabled()
