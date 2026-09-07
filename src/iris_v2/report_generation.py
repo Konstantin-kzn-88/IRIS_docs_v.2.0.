@@ -88,6 +88,14 @@ from iris_v2.report_risk_charts import (
     prepare_risk_charts,
     render_risk_chart,
 )
+from iris_v2.report_risk_matrices import (
+    DAMAGE_EMPTY_TEXT as RISK_MATRIX_DAMAGE_EMPTY_TEXT,
+    DAMAGE_MARKER as RISK_MATRIX_DAMAGE_MARKER,
+    PEOPLE_EMPTY_TEXT as RISK_MATRIX_EMPTY_TEXT,
+    PEOPLE_MARKER as RISK_MATRIX_MARKER,
+    RiskMatricesError,
+    prepare_risk_matrices,
+)
 from iris_v2.report_substances import (
     ReportSubstancesError,
     render_substances_section,
@@ -125,6 +133,8 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
         "DAMAGE_BY_COMPONENT_CHART",
+        "RISK_MATRIX_CHART",
+        "RISK_MATRIX_DAMAGE_CHART",
     }
 )
 
@@ -133,8 +143,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "RISK_MATRIX_CHART",
-        "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
@@ -557,6 +565,25 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("DAMAGE_BY_COMPONENT_CHART")
             except (ComponentDamageChartError, ReportMaxDamageError) as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if {"RISK_MATRIX_CHART", "RISK_MATRIX_DAMAGE_CHART"} & marker_names:
+            try:
+                matrices = prepare_risk_matrices(project_root)
+                if "RISK_MATRIX_CHART" in marker_names and render_risk_chart(
+                    document,
+                    RISK_MATRIX_MARKER,
+                    matrices.people_path,
+                    RISK_MATRIX_EMPTY_TEXT,
+                ):
+                    filled_sections.append("RISK_MATRIX_CHART")
+                if "RISK_MATRIX_DAMAGE_CHART" in marker_names and render_risk_chart(
+                    document,
+                    RISK_MATRIX_DAMAGE_MARKER,
+                    matrices.damage_path,
+                    RISK_MATRIX_DAMAGE_EMPTY_TEXT,
+                ):
+                    filled_sections.append("RISK_MATRIX_DAMAGE_CHART")
+            except RiskMatricesError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
