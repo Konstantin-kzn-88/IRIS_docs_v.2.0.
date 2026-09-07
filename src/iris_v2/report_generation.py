@@ -72,6 +72,11 @@ from iris_v2.report_max_damage import (
     load_max_damage_rows,
     render_max_damage_section,
 )
+from iris_v2.report_ngk_background_risk import (
+    ReportNgkBackgroundRiskError,
+    load_ngk_background_risk_rows,
+    render_ngk_background_risk_comparison,
+)
 from iris_v2.report_individual_risk import (
     ReportIndividualRiskError,
     load_individual_risk_section,
@@ -153,6 +158,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
+        "NGK_BACKGROUND_RISK_COMPARISON",
     }
 )
 
@@ -161,7 +167,6 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 DEFERRED_MARKERS = frozenset(
     {
         "SUBSTANCES_INFO_SECTION",
-        "NGK_BACKGROUND_RISK_COMPARISON",
         "SUBSTANCES_BY_COMPONENT_TABLE",
         "TOP_SCENARIOS_DESC_BY_COMPONENT",
         "TOP_SCENARIOS_PF_BY_COMPONENT",
@@ -620,6 +625,15 @@ class ReportGenerationService:
                 if render_comparative_fatality_risk_table(document, rows):
                     filled_sections.append("COMPARATIVE_FATALITY_RISK_TABLE")
             except ReportComparativeFatalityRiskError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "NGK_BACKGROUND_RISK_COMPARISON" in marker_names:
+            try:
+                maximum_risk, rows = load_ngk_background_risk_rows(project_root)
+                if render_ngk_background_risk_comparison(
+                    document, maximum_risk, rows
+                ):
+                    filled_sections.append("NGK_BACKGROUND_RISK_COMPARISON")
+            except ReportNgkBackgroundRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
