@@ -1,0 +1,813 @@
+{
+  "format_version": 1,
+  "source": "typical_scenarios.json",
+  "image_format": "PNG",
+  "probability_note": "Pитог — accident_event_probability из typical_scenarios.json",
+  "image_count": 62,
+  "warnings": [],
+  "items": [
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq00_kind00.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "a8f44563c7adbc858677d10bb98cd6295644a9b6a49527693828246e903dd28f"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq00_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "e488cb6c35b2dae03582d80f0a48e572969a2dab65d7ba5b16f2d9dbbb249407"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq00_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "d3dc3e2d7bfd1d79c522aaa5702fdf75205224a9afd3674f1880b9946746557a"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq00_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "2286cf386dc52e0a97bb3f19b8d1fd90752e58c2c3f369aeeb9794e042b04e9e"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq00_kind04.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "9a442963ba8c9fe843c811fd6c8dee39ed8fed5e3b52eb5bdc0c5ceb6135a744"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq00_kind05.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "461540a895a243b1f70a8514b43876c8218edfd3715ecdee75f4315003ae81bd"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 6,
+      "kind_name": "Токсичная жидкость (практически не испаряемая)",
+      "file": "event_tree_eq00_kind06.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "47b8456b2bfd74f216b00610ce1055fd32e1af262a5aca6bf85ff5ea10eef68b"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq00_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "e089e8872a7e0d0394062edda50c257b701413304952fc50b9c67f1c2507cbb1"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq00_kind08.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "309989b21d86eefe3ef28cbd125fc40ec9b3d8a3cfd6fcc5ac128437c205e72b"
+    },
+    {
+      "equipment_type": 0,
+      "equipment_name": "Трубопровод",
+      "kind": 9,
+      "kind_name": "Горючая жидкость (практически неиспаряемая)",
+      "file": "event_tree_eq00_kind09.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "1a7bb381c0ad8fdfe7e498612ae83cd1b38cfaac5e8ff84c36215b525f603f5b"
+    },
+    {
+      "equipment_type": 1,
+      "equipment_name": "Резервуар вертикальный стальной (РВС)",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq01_kind00.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "88fd509ab51fc55b3d01ccd21e1c5fff99be25859574ff5b415c2c302d00caeb"
+    },
+    {
+      "equipment_type": 1,
+      "equipment_name": "Резервуар вертикальный стальной (РВС)",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq01_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "b936b3c30de4786f13a002701868a06229d86d9e8d1bc2a0a54e5e0e05ca8c5e"
+    },
+    {
+      "equipment_type": 1,
+      "equipment_name": "Резервуар вертикальный стальной (РВС)",
+      "kind": 6,
+      "kind_name": "Токсичная жидкость (практически не испаряемая)",
+      "file": "event_tree_eq01_kind06.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичное разрушение": 1.0
+      },
+      "sha256": "1ab0372687fc58780d42d9ac33c04d4a65660aa5e6630d725792199b6f2ba8ad"
+    },
+    {
+      "equipment_type": 1,
+      "equipment_name": "Резервуар вертикальный стальной (РВС)",
+      "kind": 9,
+      "kind_name": "Горючая жидкость (практически неиспаряемая)",
+      "file": "event_tree_eq01_kind09.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "98e2e35da52468f27fdf63ad8c6dc6da4b27a6c7b5faa33cf919ef19131b597d"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq02_kind00.png",
+      "scenario_count": 9,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0,
+        "Полное разрушение при воздействии внешнего источника горения": 1.0
+      },
+      "sha256": "80953e776ffdbb839a11e6e8ea3aabcd1e23e2dc68db363f37520f23922b9224"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq02_kind01.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "1f2736eb65a6941e52b305ef08b27d1027ef10f0f9bb256a65966559b07a9f0e"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq02_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "3d32005d03acec4436f4a0b7813cbbe6be08b21e82bbd41a17ecf2b5a38e461d"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq02_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "c9d664642a5d7452a15b95599029bbb8a620d723223bc3dbb0ee14a12b331807"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq02_kind04.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "a562508a6c74df067af2895235924ecc94a9850f8bf6f2f1cfbb3d5609f7a046"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq02_kind05.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "3b6e34f9fb90b1d249b3bf0ea3f6ecf1a56972e893dff77d0466abe958f5121a"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq02_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "431965e539176f69782557b78ec97aadce605dc1afa8a1cb0967792a2e557b4f"
+    },
+    {
+      "equipment_type": 2,
+      "equipment_name": "Аппарат под давлением",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq02_kind08.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "ed2772092306778555a96e70d329a172787574162b2a7c5e7cd5962ac4ee3412"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq03_kind00.png",
+      "scenario_count": 9,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0,
+        "Полное разрушение при воздействии внешнего источника горения": 1.0
+      },
+      "sha256": "3f64bd140b2256fd0974c30cc2babc213faf56576937531f2c00fbedc4cc7e4b"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq03_kind01.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "bff378c8358c889811215e0bb63d11e05adbfdf1eaa9d36ce1e511438017483e"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq03_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "df60bcd73d147a66d8425d091111c698bc71060d9f7743bebba795f81d55f336"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq03_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "d09c60215ab63673e3c097a5f8ddb645fb84467815c7dd6ee90f02ad42e21d14"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq03_kind04.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "10fa0a27126bdee92482985c1d26fdd3e858d7904fd51dacaa749fc9eec8a7c1"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq03_kind05.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "17fa5ecfa24092c03299bcafc0f55968f91fae9414eb19417b5c3a05d42a3261"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq03_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "be71a543ee34fdb3b9fc00845de96ea5f6960efcc62db9080ad31da36d9558cb"
+    },
+    {
+      "equipment_type": 3,
+      "equipment_name": "Колонна",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq03_kind08.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "65132a0b0bec03a8f558b9178a17af0f4c6960df2df250bbc8a3eca98c0a6aef"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq04_kind00.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "779ac0697be2289cd869339de9d1245292bafc1733a3a77ff45109ae6e2bce4f"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq04_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "5a65f8d5bf6c28467a80b3b88ec9ac77a99a3802eff49bf6728f20525c31e9bd"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq04_kind04.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "d920cde4845920bb6f0b2b3f02aee0c224c13f5adeb76a40f443bd51f7c9667d"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq04_kind05.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "7229494b539a2e6d2c8ec1337e6f087e747d5b4490d7a83a3db724128e2874c3"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 6,
+      "kind_name": "Токсичная жидкость (практически не испаряемая)",
+      "file": "event_tree_eq04_kind06.png",
+      "scenario_count": 1,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "16fcf86b2e57195dbf2207cf78099a76f4723f2f9707da7b970812a9601a7056"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq04_kind08.png",
+      "scenario_count": 1,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "d1f1f3fe3dabae33d41e7ee580fa11b6ec0ee6f7fb32f751d90fb29195f17be2"
+    },
+    {
+      "equipment_type": 4,
+      "equipment_name": "Насос",
+      "kind": 9,
+      "kind_name": "Горючая жидкость (практически неиспаряемая)",
+      "file": "event_tree_eq04_kind09.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрушение отводящего трубопровода": 1.0
+      },
+      "sha256": "78e59b2e84be45e7812270093874162972e18b2fccddcc5a678e6574d8f2ad74"
+    },
+    {
+      "equipment_type": 5,
+      "equipment_name": "Компрессор",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq05_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода компрессора на сечение": 1.0,
+        "Частичная разгерметизация трубопровода компрессора": 1.0
+      },
+      "sha256": "9a6bc9d6fc22079267eb718e5128e39ddb6f0d70a5191f561f591bf8d25997d8"
+    },
+    {
+      "equipment_type": 5,
+      "equipment_name": "Компрессор",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq05_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода компрессора на сечение": 1.0,
+        "Частичная разгерметизация трубопровода компрессора": 1.0
+      },
+      "sha256": "0c1abc4afac907992ccd75ee70beacb2376fd9582d634335c15dabfaf263aa65"
+    },
+    {
+      "equipment_type": 5,
+      "equipment_name": "Компрессор",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq05_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода компрессора на сечение": 1.0,
+        "Частичная разгерметизация трубопровода компрессора": 1.0
+      },
+      "sha256": "b6b9fc9b1c26b6bdadb9494c7bf84233e05e8a6b6f9116191396e9295a610316"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq06_kind00.png",
+      "scenario_count": 9,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0,
+        "Полное разрушение при воздействии внешнего источника горения": 1.0
+      },
+      "sha256": "a76d88408ed6b5ee5a5aa8f8815ad33b3c39714a9fd47805506158224601571a"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq06_kind01.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "81a986ea81a0bd14c127fbab6439744930acd427e6285df07ce2b9b3637952ba"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq06_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "c9a0afa6136704b0e5b6217c215e41d629a0ad12bd947c446cf8775df8534b1a"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq06_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "c99a0c5afef29b58f0e9b221ec089183f8506211861d5ae4fb55562907841bd8"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq06_kind04.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "56971899dea639c8ff772f96b40a1ba2d0e6672fd2ab39fc05f7277d9c9e0251"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq06_kind05.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "521ada20f92209a69e88f596306d287063926263cb056419920d56fab97650ef"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq06_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "ef075207403f71f35edeb1fb90f8290c7c1d8a7936982df5c98affe95bb22dae"
+    },
+    {
+      "equipment_type": 6,
+      "equipment_name": "Теплообменник",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq06_kind08.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "ef791f9ddf19b9a03ebb72a965cab8aa609310e1d15a0e329be8616f7654e64d"
+    },
+    {
+      "equipment_type": 7,
+      "equipment_name": "Цистерна (без давления)",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq07_kind00.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "7541d5c194ccc1d362fc70521e027b2d4325aa884ab41f7b1decdd4cf236b9aa"
+    },
+    {
+      "equipment_type": 7,
+      "equipment_name": "Цистерна (без давления)",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq07_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "0d0158b4ce7c4bb352babe6890bf6bc6d56cb81be82ad4bb9921a3d5a55fedaa"
+    },
+    {
+      "equipment_type": 7,
+      "equipment_name": "Цистерна (без давления)",
+      "kind": 6,
+      "kind_name": "Токсичная жидкость (практически не испаряемая)",
+      "file": "event_tree_eq07_kind06.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичное разрушение": 1.0
+      },
+      "sha256": "c4d28fd70038ab3025a0228f8f39ea57652bc118d63c17058acefbb8367e0160"
+    },
+    {
+      "equipment_type": 7,
+      "equipment_name": "Цистерна (без давления)",
+      "kind": 9,
+      "kind_name": "Горючая жидкость (практически неиспаряемая)",
+      "file": "event_tree_eq07_kind09.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "4b40101f2bdf1ab3a2473f7bbff5478f19a233176c4cd7aaaa1a3adb8bfbbae2"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq08_kind00.png",
+      "scenario_count": 9,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0,
+        "Полное разрушение при воздействии внешнего источника горения": 1.0
+      },
+      "sha256": "dde098e8aa88c4c4530c0ed229bedeed83ad4303fc7faab4a1f75561fffc3df1"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq08_kind01.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "340718d3a226bef8b75fea8671a81c98d6ce2bc5d3f155c1ad6b913cf25eac0d"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 2,
+      "kind_name": "Горючий газ",
+      "file": "event_tree_eq08_kind02.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "a671a3571f430852c2aa40db05af468afd02a0ca30f42495ebb339d0adda0940"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 3,
+      "kind_name": "Горючий газ (токсичный)",
+      "file": "event_tree_eq08_kind03.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "531a4430d6009c48d36d1f9a406711be3a527ec509e4575aa980874dea85e418"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 4,
+      "kind_name": "Сжиженный горючий газ",
+      "file": "event_tree_eq08_kind04.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "9d977eda43912bf6c082fb9b1995b66c54c76888ca0c59eaba3f2e79d8d3f569"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 5,
+      "kind_name": "Сжиженный горючий газ (токсичный)",
+      "file": "event_tree_eq08_kind05.png",
+      "scenario_count": 8,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "80ef8874825cebf4fb184670d9b12b5ebec09f78631425f947387b49fc5e86d3"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 7,
+      "kind_name": "Токсичный газ",
+      "file": "event_tree_eq08_kind07.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "ab838e9cff08d4b27ee7a56868c967209ebf17c92e8ea9194758fe99554deb90"
+    },
+    {
+      "equipment_type": 8,
+      "equipment_name": "Цистерна (с давлением)",
+      "kind": 8,
+      "kind_name": "Сжиженный токсичный газ",
+      "file": "event_tree_eq08_kind08.png",
+      "scenario_count": 2,
+      "initiator_probability_totals": {
+        "Полное разрушение": 1.0,
+        "Частичная разгерметизация": 1.0
+      },
+      "sha256": "082ea931e9955f76686ed9db2cc374bc1e3b3ff1fe4620d5396925a2437264a5"
+    },
+    {
+      "equipment_type": 9,
+      "equipment_name": "Трубопровод ПТ (промысловый трубопровод)",
+      "kind": 0,
+      "kind_name": "Легковоспламеняющаяся жидкость (ЛВЖ)",
+      "file": "event_tree_eq09_kind00.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "8056bbc5f23ef97ff59a0b10fe7b3c8f0ce8c04d80dc658648514027261156fc"
+    },
+    {
+      "equipment_type": 9,
+      "equipment_name": "Трубопровод ПТ (промысловый трубопровод)",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq09_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Разрыв трубопровода на сечение": 1.0,
+        "Частичная разгерметизация трубопровода": 1.0
+      },
+      "sha256": "020fd39aec9b95c03b7ecdecf0e107767d1a18a6312835f29c9fd313711f0b0a"
+    }
+  ]
+}

@@ -47,6 +47,11 @@ from iris_v2.report_equipment import (
     load_project_equipment,
     render_equipment_section,
 )
+from iris_v2.report_event_trees import (
+    ReportEventTreesError,
+    prepare_event_trees,
+    render_event_trees_section,
+)
 from iris_v2.report_fatal_frequency import (
     ReportFatalFrequencyError,
     load_fatal_accident_frequency,
@@ -153,6 +158,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "EVENT_TREES_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
@@ -491,6 +497,13 @@ class ReportGenerationService:
                 if render_scenarios_section(document, rows):
                     filled_sections.append("SCENARIOS_SECTION")
             except ReportScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "EVENT_TREES_SECTION" in marker_names:
+            try:
+                trees = prepare_event_trees(project_root)
+                if render_event_trees_section(document, trees):
+                    filled_sections.append("EVENT_TREES_SECTION")
+            except ReportEventTreesError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         if "OV_AMOUNT_SECTION" in marker_names:
             try:

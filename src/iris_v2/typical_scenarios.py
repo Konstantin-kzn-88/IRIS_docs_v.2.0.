@@ -204,6 +204,19 @@ class TypicalScenarioService:
                     items.append(
                         TypicalScenario(line, text, base, probability, frequency, calc_code)
                     )
+                initiator_totals: dict[str, float] = {}
+                for scenario in items:
+                    initiator = scenario.text.split("→", maxsplit=1)[0].strip()
+                    initiator_totals[initiator] = (
+                        initiator_totals.get(initiator, 0.0)
+                        + scenario.event_probability
+                    )
+                for initiator, total in initiator_totals.items():
+                    if not math.isclose(total, 1.0, rel_tol=1e-9, abs_tol=1e-9):
+                        raise TypicalScenarioError(
+                            f"Для пары {pair}, инициирующее событие «{initiator}»: "
+                            f"сумма вероятностей должна быть равна 1, получено {total:.6g}"
+                        )
                 scenarios[pair] = tuple(items)
 
         all_pairs = {

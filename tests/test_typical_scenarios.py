@@ -27,7 +27,8 @@ def test_forbidden_pair_has_reason() -> None:
 def test_external_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
     source = TypicalScenarioService.bundled_path()
     data = json.loads(source.read_text(encoding="utf-8"))
-    data["scenarios"]["0"]["0"][0]["scenario_text"] = "Локальный сценарий"
+    local_text = "Разрыв трубопровода на сечение → Локальный сценарий"
+    data["scenarios"]["0"]["0"][0]["scenario_text"] = local_text
     directory = tmp_path / "typical_scenarios"
     directory.mkdir()
     (directory / "typical_scenarios.json").write_text(
@@ -37,7 +38,7 @@ def test_external_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
 
     catalog = TypicalScenarioService().load()
 
-    assert catalog.scenarios_for(0, 0)[0].text == "Локальный сценарий"
+    assert catalog.scenarios_for(0, 0)[0].text == local_text
 
 
 def test_wrong_calculated_frequency_is_rejected(tmp_path: Path) -> None:
@@ -49,4 +50,18 @@ def test_wrong_calculated_frequency_is_rejected(tmp_path: Path) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
     with pytest.raises(TypicalScenarioError, match="scenario_frequency"):
+        TypicalScenarioService().load(path)
+
+
+def test_probability_sum_for_each_initiator_is_validated(tmp_path: Path) -> None:
+    data = json.loads(
+        TypicalScenarioService.bundled_path().read_text(encoding="utf-8")
+    )
+    scenario = data["scenarios"]["0"]["0"][0]
+    scenario["accident_event_probability"] = 0.1
+    scenario["scenario_frequency"] = scenario["base_frequency"] * 0.1
+    path = tmp_path / "typical_scenarios.json"
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(TypicalScenarioError, match="сумма вероятностей"):
         TypicalScenarioService().load(path)

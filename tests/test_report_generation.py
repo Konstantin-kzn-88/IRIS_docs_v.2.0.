@@ -63,6 +63,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{EQUIPMENT_SECTION}}")
     document.add_paragraph("{{DISTRIBUTION_SECTION}}")
     document.add_paragraph("{{SCENARIOS_SECTION}}")
+    document.add_paragraph("{{EVENT_TREES_SECTION}}")
     document.add_paragraph("{{OV_AMOUNT_SECTION}}")
     document.add_paragraph("{{IMPACT_ZONES_SECTION}}")
     document.add_paragraph("{{CASUALTIES_SECTION}}")
@@ -226,6 +227,8 @@ def write_scenario_results(project: Path) -> None:
         "equipment_name": "Нефтепровод от скважины № 1",
         "hazard_component": "Участок трубопроводов",
         "scenario_text": "Разрыв трубопровода → пожар пролива",
+        "equipment_type": 0,
+        "kind": 0,
     }
     (project / "calculation_cases.json").write_text(
         json.dumps(
@@ -446,6 +449,8 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Разрыв трубопровода → пожар пролива" in text
     assert "Нефтепровод от скважины № 1 (Участок трубопроводов)" in text
     assert "6.000E-05" in text
+    assert "{{EVENT_TREES_SECTION}}" not in text
+    assert "Дерево событий для типа оборудования" in text
     assert "{{OV_AMOUNT_SECTION}}" not in text
     assert "Количество ОВ, участвующего в аварии, т" in text
     assert "4,321" in text
@@ -572,7 +577,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "3893,8",
         "6.000E-05",
     ]
-    assert len(Document(result.output_path).inline_shapes) == 9
+    assert len(Document(result.output_path).inline_shapes) == 10
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -595,6 +600,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "EVENT_TREES_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
@@ -671,6 +677,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "EQUIPMENT_SECTION",
         "DISTRIBUTION_SECTION",
         "SCENARIOS_SECTION",
+        "EVENT_TREES_SECTION",
         "OV_AMOUNT_SECTION",
         "IMPACT_ZONES_SECTION",
         "CASUALTIES_SECTION",
