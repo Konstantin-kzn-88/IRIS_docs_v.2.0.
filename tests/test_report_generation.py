@@ -84,6 +84,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{RISK_MATRIX_CHART}}")
     document.add_paragraph("{{RISK_MATRIX_DAMAGE_CHART}}")
     document.add_paragraph("{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}")
+    document.add_paragraph("{{COMPONENT_INPUTS_ASSUMPTIONS_SECTION}}")
     table = document.add_table(rows=1, cols=1)
     table.cell(0, 0).text = "Организация: {{ FULL_NAME }}"
     document.sections[0].header.paragraphs[0].text = (
@@ -597,6 +598,35 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "3893,8",
         "6.000E-05",
     ]
+    assert "{{COMPONENT_INPUTS_ASSUMPTIONS_SECTION}}" not in text
+    inputs_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if len(table.columns) == 6
+        and table.cell(0, 2).text == "Вещество; масса ОВ"
+    )
+    assert [cell.text for cell in inputs_table.rows[1].cells] == [
+        "Участок трубопроводов",
+        "Нефтепровод от скважины № 1",
+        "Нефть; 5 т",
+        "ж.ф.; P=1,6 МПа; T=20 °C",
+        "С1: Разрыв трубопровода → пожар пролива",
+        (
+            "отключение: 12 с; испарение: 3600 с; растекание: 20 м⁻¹; "
+            "площадь пролива: 0 м²; загромождённость: 2"
+        ),
+    ]
+    assumptions_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if len(table.columns) == 2
+        and table.cell(0, 0).text == "Параметр"
+        and table.cell(0, 1).text == "Принятое значение"
+    )
+    assert [cell.text for cell in assumptions_table.rows[5].cells] == [
+        "Скорость ветра",
+        "1 м/с",
+    ]
     assert len(Document(result.output_path).inline_shapes) == 11
     assert all(
         row._tr.get_or_add_trPr().find(
@@ -641,6 +671,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
             "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
+        "COMPONENT_INPUTS_ASSUMPTIONS_SECTION",
     )
     assert result.deferred_markers == ()
 
@@ -729,6 +760,7 @@ def test_builtin_default_template_contains_only_supported_markers(
         "TOP_SCENARIOS_FATALITIES_INJURED",
         "TOP_SCENARIOS_DAMAGE",
         "TOP_SCENARIOS_FINAL_CONCLUSION",
+        "COMPONENT_INPUTS_ASSUMPTIONS_SECTION",
     )
     assert "SUBSTANCES_SECTION" not in result.deferred_markers
     assert "EQUIPMENT_SECTION" not in result.deferred_markers
@@ -762,6 +794,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "TOP_SCENARIOS_FATALITIES_INJURED" not in result.deferred_markers
     assert "TOP_SCENARIOS_DAMAGE" not in result.deferred_markers
     assert "TOP_SCENARIOS_FINAL_CONCLUSION" not in result.deferred_markers
+    assert "COMPONENT_INPUTS_ASSUMPTIONS_SECTION" not in result.deferred_markers
 
 
 def test_report_refreshes_old_default_template_and_adds_event_trees(

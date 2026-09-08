@@ -33,6 +33,11 @@ from iris_v2.report_component_impact_zones_chart import (
     MARKER as COMPONENT_IMPACT_ZONES_MARKER,
     prepare_component_impact_zones_chart,
 )
+from iris_v2.report_component_inputs_assumptions import (
+    ReportComponentInputsAssumptionsError,
+    load_component_inputs_assumptions,
+    render_component_inputs_assumptions_section,
+)
 from iris_v2.report_component_risk_summary import (
     ReportComponentRiskSummaryError,
     load_component_risk_summary_rows,
@@ -203,6 +208,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "TOP_SCENARIOS_FATALITIES_INJURED",
         "TOP_SCENARIOS_DAMAGE",
         "TOP_SCENARIOS_FINAL_CONCLUSION",
+        "COMPONENT_INPUTS_ASSUMPTIONS_SECTION",
     }
 )
 
@@ -755,6 +761,15 @@ class ReportGenerationService:
                 if render_key_scenario_conclusions(document, conclusions):
                     filled_sections.append("TOP_SCENARIOS_FINAL_CONCLUSION")
             except ReportKeyScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "COMPONENT_INPUTS_ASSUMPTIONS_SECTION" in marker_names:
+            try:
+                rows, assumptions = load_component_inputs_assumptions(project_root)
+                if render_component_inputs_assumptions_section(
+                    document, rows, assumptions
+                ):
+                    filled_sections.append("COMPONENT_INPUTS_ASSUMPTIONS_SECTION")
+            except ReportComponentInputsAssumptionsError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         remaining = _marker_names(document)
         unexpected = remaining - DEFERRED_MARKERS
