@@ -251,6 +251,12 @@ def test_minimal_window_starts() -> None:
         risk_button = window.findChild(QPushButton, "risk_button")
         assert risk_button is not None
         assert risk_button.text().startswith("4.1 ")
+        zones_chart_button = window.findChild(
+            QPushButton, "component_impact_zones_chart_button"
+        )
+        assert zones_chart_button is not None
+        assert not zones_chart_button.isEnabled()
+        assert zones_chart_button.text().startswith("4.8 ")
         report_button = window.findChild(
             QPushButton, "report_generation_button"
         )

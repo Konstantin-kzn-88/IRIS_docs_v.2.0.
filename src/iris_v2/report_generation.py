@@ -27,6 +27,17 @@ from iris_v2.report_component_damage_chart import (
     MARKER as COMPONENT_DAMAGE_MARKER,
     prepare_component_damage_chart,
 )
+from iris_v2.report_component_impact_zones_chart import (
+    ComponentImpactZonesChartError,
+    EMPTY_TEXT as COMPONENT_IMPACT_ZONES_EMPTY_TEXT,
+    MARKER as COMPONENT_IMPACT_ZONES_MARKER,
+    prepare_component_impact_zones_chart,
+)
+from iris_v2.report_component_risk_summary import (
+    ReportComponentRiskSummaryError,
+    load_component_risk_summary_rows,
+    render_component_risk_summary_table,
+)
 from iris_v2.report_component_fatality_risk import (
     ReportComponentFatalityRiskError,
     load_component_fatality_risk_rows,
@@ -170,6 +181,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "FATAL_ACCIDENT_FREQUENCY",
         "COLLECTIVE_RISK_SECTION",
         "INDIVIDUAL_RISK_SECTION",
+        "COMPONENT_RISK_SUMMARY_TABLE",
         "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
         "FG_CHART",
@@ -178,6 +190,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "PARETO_DAMAGE_CHART",
         "PARETO_ENV_DAMAGE_CHART",
         "DAMAGE_BY_COMPONENT_CHART",
+        "MAX_IMPACT_ZONES_BY_COMPONENT_CHART",
         "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
@@ -562,6 +575,13 @@ class ReportGenerationService:
                     filled_sections.append("INDIVIDUAL_RISK_SECTION")
             except ReportIndividualRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
+        if "COMPONENT_RISK_SUMMARY_TABLE" in marker_names:
+            try:
+                rows = load_component_risk_summary_rows(project_root)
+                if render_component_risk_summary_table(document, rows):
+                    filled_sections.append("COMPONENT_RISK_SUMMARY_TABLE")
+            except ReportComponentRiskSummaryError as exc:
+                raise ReportGenerationError(str(exc)) from exc
         if "MAX_DAMAGE_BY_COMPONENT_SECTION" in marker_names:
             try:
                 rows = load_max_damage_rows(project_root)
@@ -632,6 +652,18 @@ class ReportGenerationService:
                 ):
                     filled_sections.append("DAMAGE_BY_COMPONENT_CHART")
             except (ComponentDamageChartError, ReportMaxDamageError) as exc:
+                raise ReportGenerationError(str(exc)) from exc
+        if "MAX_IMPACT_ZONES_BY_COMPONENT_CHART" in marker_names:
+            try:
+                path = prepare_component_impact_zones_chart(project_root)
+                if render_risk_chart(
+                    document,
+                    COMPONENT_IMPACT_ZONES_MARKER,
+                    path,
+                    COMPONENT_IMPACT_ZONES_EMPTY_TEXT,
+                ):
+                    filled_sections.append("MAX_IMPACT_ZONES_BY_COMPONENT_CHART")
+            except ComponentImpactZonesChartError as exc:
                 raise ReportGenerationError(str(exc)) from exc
         if {"RISK_MATRIX_CHART", "RISK_MATRIX_DAMAGE_CHART"} & marker_names:
             try:

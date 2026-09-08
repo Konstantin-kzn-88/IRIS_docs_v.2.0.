@@ -128,6 +128,7 @@ def workflow_statuses(project_directory: Path) -> dict[str, str]:
         ("risk_matrices_button", ("risk_matrix.png", "risk_matrix_damage.png"), ("risk_results.json",), "risk_button"),
         ("pareto_charts_button", ("pareto_fatalities.png", "pareto_injured.png", "pareto_damage.png", "pareto_environmental_damage.png"), ("risk_results.json",), "risk_button"),
         ("component_damage_chart_button", ("damage_by_component.png",), ("risk_summary.json",), "risk_summary_button"),
+        ("component_impact_zones_chart_button", ("max_impact_zones_by_component.png",), ("impact_zones.json",), "impact_zones_button"),
     )
     for button, output_names, inputs, prerequisite in chart_steps:
         outputs = tuple(str(Path("output") / "charts" / name) for name in output_names)

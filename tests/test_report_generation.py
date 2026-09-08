@@ -71,6 +71,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{FATAL_ACCIDENT_FREQUENCY}}")
     document.add_paragraph("{{COLLECTIVE_RISK_SECTION}}")
     document.add_paragraph("{{INDIVIDUAL_RISK_SECTION}}")
+    document.add_paragraph("{{COMPONENT_RISK_SUMMARY_TABLE}}")
     document.add_paragraph("{{MAX_DAMAGE_BY_COMPONENT_SECTION}}")
     document.add_paragraph("{{FN_CHART}}")
     document.add_paragraph("{{FG_CHART}}")
@@ -79,6 +80,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("{{PARETO_DAMAGE_CHART}}")
     document.add_paragraph("{{PARETO_ENV_DAMAGE_CHART}}")
     document.add_paragraph("{{DAMAGE_BY_COMPONENT_CHART}}")
+    document.add_paragraph("{{MAX_IMPACT_ZONES_BY_COMPONENT_CHART}}")
     document.add_paragraph("{{RISK_MATRIX_CHART}}")
     document.add_paragraph("{{RISK_MATRIX_DAMAGE_CHART}}")
     document.add_paragraph("{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}")
@@ -518,6 +520,23 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "1.800E-04",
     ]
     assert "{{INDIVIDUAL_RISK_SECTION}}" not in text
+    assert "{{COMPONENT_RISK_SUMMARY_TABLE}}" not in text
+    summary_table = next(
+        table
+        for table in Document(result.output_path).tables
+        if len(table.columns) == 8
+        and table.cell(0, 1).text == "Частота сценариев, 1/год"
+    )
+    assert [cell.text for cell in summary_table.rows[1].cells] == [
+        "Участок трубопроводов",
+        "6.000E-05",
+        "1",
+        "3",
+        "4",
+        "3893,8",
+        "6.000E-05",
+        "4.000E-06",
+    ]
     individual_table = next(
         table
         for table in Document(result.output_path).tables
@@ -558,6 +577,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "{{PARETO_DAMAGE_CHART}}" not in text
     assert "{{PARETO_ENV_DAMAGE_CHART}}" not in text
     assert "{{DAMAGE_BY_COMPONENT_CHART}}" not in text
+    assert "{{MAX_IMPACT_ZONES_BY_COMPONENT_CHART}}" not in text
     assert "{{RISK_MATRIX_CHART}}" not in text
     assert "{{RISK_MATRIX_DAMAGE_CHART}}" not in text
     assert "{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}" not in text
@@ -577,7 +597,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "3893,8",
         "6.000E-05",
     ]
-    assert len(Document(result.output_path).inline_shapes) == 10
+    assert len(Document(result.output_path).inline_shapes) == 11
     assert all(
         row._tr.get_or_add_trPr().find(
             "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cantSplit"
@@ -606,17 +626,19 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
-        "COLLECTIVE_RISK_SECTION",
-        "INDIVIDUAL_RISK_SECTION",
-        "MAX_DAMAGE_BY_COMPONENT_SECTION",
+            "COLLECTIVE_RISK_SECTION",
+            "INDIVIDUAL_RISK_SECTION",
+            "COMPONENT_RISK_SUMMARY_TABLE",
+            "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
         "FG_CHART",
         "PARETO_FATALITIES_CHART",
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
-        "PARETO_ENV_DAMAGE_CHART",
-        "DAMAGE_BY_COMPONENT_CHART",
-        "RISK_MATRIX_CHART",
+            "PARETO_ENV_DAMAGE_CHART",
+            "DAMAGE_BY_COMPONENT_CHART",
+            "MAX_IMPACT_ZONES_BY_COMPONENT_CHART",
+            "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
     )
@@ -683,17 +705,19 @@ def test_builtin_default_template_contains_only_supported_markers(
         "CASUALTIES_SECTION",
         "DAMAGE_SECTION",
         "FATAL_ACCIDENT_FREQUENCY",
-        "COLLECTIVE_RISK_SECTION",
-        "INDIVIDUAL_RISK_SECTION",
-        "MAX_DAMAGE_BY_COMPONENT_SECTION",
+            "COLLECTIVE_RISK_SECTION",
+            "INDIVIDUAL_RISK_SECTION",
+            "COMPONENT_RISK_SUMMARY_TABLE",
+            "MAX_DAMAGE_BY_COMPONENT_SECTION",
         "FN_CHART",
         "FG_CHART",
         "PARETO_FATALITIES_CHART",
         "PARETO_INJURED_CHART",
         "PARETO_DAMAGE_CHART",
-        "PARETO_ENV_DAMAGE_CHART",
-        "DAMAGE_BY_COMPONENT_CHART",
-        "RISK_MATRIX_CHART",
+            "PARETO_ENV_DAMAGE_CHART",
+            "DAMAGE_BY_COMPONENT_CHART",
+            "MAX_IMPACT_ZONES_BY_COMPONENT_CHART",
+            "RISK_MATRIX_CHART",
         "RISK_MATRIX_DAMAGE_CHART",
         "TOP_SCENARIOS_BY_COMPONENT_SECTION",
         "FATALITY_RISK_BY_COMPONENT_SECTION",
@@ -725,6 +749,7 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "PARETO_DAMAGE_CHART" not in result.deferred_markers
     assert "PARETO_ENV_DAMAGE_CHART" not in result.deferred_markers
     assert "DAMAGE_BY_COMPONENT_CHART" not in result.deferred_markers
+    assert "MAX_IMPACT_ZONES_BY_COMPONENT_CHART" not in result.deferred_markers
     assert "RISK_MATRIX_CHART" not in result.deferred_markers
     assert "RISK_MATRIX_DAMAGE_CHART" not in result.deferred_markers
     assert "TOP_SCENARIOS_BY_COMPONENT_SECTION" not in result.deferred_markers

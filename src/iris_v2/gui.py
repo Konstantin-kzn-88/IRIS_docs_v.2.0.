@@ -128,6 +128,11 @@ from iris_v2.component_damage_chart import (
     ComponentDamageChartResult,
     ComponentDamageChartService,
 )
+from iris_v2.component_impact_zones_chart import (
+    ComponentImpactZonesChartError,
+    ComponentImpactZonesChartResult,
+    ComponentImpactZonesChartService,
+)
 from iris_v2.key_scenarios import (
     KeyScenariosError,
     KeyScenariosResult,
@@ -2397,6 +2402,46 @@ class ComponentDamageChartDialog(QDialog):
         layout.addLayout(button_layout)
 
 
+class ComponentImpactZonesChartDialog(QDialog):
+    def __init__(
+        self,
+        result: ComponentImpactZonesChartResult,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Максимальные зоны по составляющим ОПО")
+        self.resize(1180, 760)
+
+        status = QLabel(
+            f"Составляющих ОПО на диаграмме: {result.component_count}."
+        )
+        status.setStyleSheet("color: #16803A; font-weight: bold;")
+        image_area = RiskChartsDialog._image_area(result.path)
+        path_label = QLabel(f"Файл: {result.path}")
+        path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        open_button = QPushButton("Открыть папку")
+        open_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl.fromLocalFile(str(result.path.parent))
+            )
+        )
+        close_buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close_buttons.button(QDialogButtonBox.StandardButton.Close).setText("Закрыть")
+        close_buttons.rejected.connect(self.reject)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(open_button)
+        button_layout.addStretch()
+        button_layout.addWidget(close_buttons)
+        layout = QVBoxLayout(self)
+        layout.addWidget(status)
+        layout.addWidget(image_area)
+        layout.addWidget(path_label)
+        layout.addLayout(button_layout)
+
+
 class KeyScenariosDialog(QDialog):
     def __init__(
         self,
@@ -3102,6 +3147,17 @@ class MainWindow(QMainWindow):
             self.calculate_component_damage_chart
         )
 
+        self.component_impact_zones_chart_button = QPushButton(
+            "4.8 Макс. зоны по ОПО"
+        )
+        self.component_impact_zones_chart_button.setObjectName(
+            "component_impact_zones_chart_button"
+        )
+        self.component_impact_zones_chart_button.setEnabled(False)
+        self.component_impact_zones_chart_button.clicked.connect(
+            self.calculate_component_impact_zones_chart
+        )
+
         self.key_scenarios_button = QPushButton("4.3 Ключевые сценарии")
         self.key_scenarios_button.setObjectName("key_scenarios_button")
         self.key_scenarios_button.setEnabled(False)
@@ -3160,7 +3216,8 @@ class MainWindow(QMainWindow):
             (self.risk_button, self.risk_summary_button,
              self.key_scenarios_button, self.risk_charts_button,
              self.risk_matrices_button, self.pareto_charts_button,
-             self.component_damage_chart_button),
+             self.component_damage_chart_button,
+             self.component_impact_zones_chart_button),
             columns=4,
         )
         report_group = self._workflow_group(
@@ -3185,6 +3242,7 @@ class MainWindow(QMainWindow):
             self.risk_summary_button, self.key_scenarios_button,
             self.risk_charts_button, self.risk_matrices_button,
             self.pareto_charts_button, self.component_damage_chart_button,
+            self.component_impact_zones_chart_button,
             self.report_generation_button,
         )
         for button in self._workflow_buttons:
@@ -3324,6 +3382,7 @@ class MainWindow(QMainWindow):
         self.risk_matrices_button.setEnabled(True)
         self.pareto_charts_button.setEnabled(True)
         self.component_damage_chart_button.setEnabled(True)
+        self.component_impact_zones_chart_button.setEnabled(True)
         self.key_scenarios_button.setEnabled(True)
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
@@ -3803,6 +3862,19 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ComponentDamageChartDialog(result, self).exec()
+
+    def calculate_component_impact_zones_chart(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+        try:
+            result = ComponentImpactZonesChartService().calculate(
+                self.current_project_directory
+            )
+        except ComponentImpactZonesChartError as exc:
+            self._show_error(str(exc))
+            return
+        ComponentImpactZonesChartDialog(result, self).exec()
 
     def calculate_key_scenarios(self) -> None:
         if self.current_project_directory is None:
