@@ -205,3 +205,49 @@ class TemplateCatalogService:
             profile_name=selected.name,
             documents=snapshot_documents,
         )
+
+    def refresh_default_if_stale(
+        self,
+        project_directory: Path | str,
+    ) -> bool:
+        """Refresh an old snapshot of the built-in default template.
+
+        Project templates are stored as snapshots.  That is intentional for
+        user-defined profiles, but the bundled ``default`` profile must follow
+        application updates so newly added report sections become available in
+        projects created by an older version.
+        """
+        project = Path(project_directory)
+        config_path = project / CONFIG_FILE_NAME
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if config.get("template_profile") != "default":
+            return False
+
+        current_documents = config.get("documents")
+        if not isinstance(current_documents, list):
+            return False
+        current_hashes = {
+            item.get("name"): item.get("sha256")
+            for item in current_documents
+            if isinstance(item, dict)
+            and isinstance(item.get("name"), str)
+            and isinstance(item.get("sha256"), str)
+        }
+        default_profile = next(
+            (profile for profile in self.load() if profile.name == "default"),
+            None,
+        )
+        if default_profile is None:
+            return False
+        expected_hashes = {
+            document.name: document.sha256
+            for document in default_profile.documents
+        }
+        if current_hashes == expected_hashes:
+            return False
+
+        self.select(project, "default")
+        return True

@@ -739,6 +739,41 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "TOP_SCENARIOS_FINAL_CONCLUSION" not in result.deferred_markers
 
 
+def test_report_refreshes_old_default_template_and_adds_event_trees(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    project = make_project(tmp_path)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+
+    template = (
+        project / "input" / "templates" / "selected" / "template_report.docx"
+    )
+    old_document = Document()
+    old_document.add_paragraph("Старый штатный шаблон без деревьев")
+    old_document.save(template)
+    config_path = project / "report_config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["documents"][0]["size"] = template.stat().st_size
+    config["documents"][0]["sha256"] = hashlib.sha256(
+        template.read_bytes()
+    ).hexdigest()
+    config_path.write_text(
+        json.dumps(config, ensure_ascii=False), encoding="utf-8"
+    )
+
+    result = ReportGenerationService().generate(project)
+
+    assert "EVENT_TREES_SECTION" in result.filled_sections
+    assert len(list((project / "output" / "event_trees").glob("*.png"))) == 1
+    output = Document(result.output_path)
+    assert len(output.inline_shapes) >= 1
+
+
 def test_missing_amount_results_does_not_replace_existing_report(
     tmp_path: Path,
 ) -> None:

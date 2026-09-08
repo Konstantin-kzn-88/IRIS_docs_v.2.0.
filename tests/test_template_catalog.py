@@ -111,3 +111,35 @@ def test_new_project_gets_builtin_default_template(tmp_path: Path, monkeypatch) 
     assert template.is_file()
     assert config["template_profile"] == "default"
     assert config["documents"][0]["name"] == "template_report.docx"
+
+
+def test_stale_default_snapshot_is_refreshed(tmp_path: Path) -> None:
+    root = tmp_path / "templates"
+    source = root / "default" / "template_report.docx"
+    make_docx(source, "Новый шаблон {{EVENT_TREES_SECTION}}")
+    project = make_project(tmp_path / "project")
+    service = TemplateCatalogService(root)
+    service.select(project, "default")
+
+    make_docx(source, "Обновлённый шаблон {{EVENT_TREES_SECTION}}")
+
+    assert service.refresh_default_if_stale(project)
+    selected = project / "input" / "templates" / "selected" / source.name
+    assert selected.read_bytes() == source.read_bytes()
+    assert not service.refresh_default_if_stale(project)
+
+
+def test_custom_snapshot_is_not_refreshed(tmp_path: Path) -> None:
+    root = tmp_path / "templates"
+    source = root / "custom" / "template_report.docx"
+    make_docx(source, "Пользовательский шаблон")
+    project = make_project(tmp_path / "project")
+    service = TemplateCatalogService(root)
+    service.select(project, "custom")
+    selected = project / "input" / "templates" / "selected" / source.name
+    original = selected.read_bytes()
+
+    make_docx(source, "Изменённый пользовательский шаблон")
+
+    assert not service.refresh_default_if_stale(project)
+    assert selected.read_bytes() == original

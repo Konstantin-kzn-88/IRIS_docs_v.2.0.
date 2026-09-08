@@ -147,7 +147,11 @@ from iris_v2.report_scenarios import (
 )
 from iris_v2.service import DATABASE_NAME, ProjectError, ProjectInfo, ProjectService
 from iris_v2.substances import SubstanceError, SubstanceService
-from iris_v2.template_catalog import CONFIG_FILE_NAME
+from iris_v2.template_catalog import (
+    CONFIG_FILE_NAME,
+    TemplateCatalogError,
+    TemplateCatalogService,
+)
 
 
 OUTPUT_FILE_NAME = "template_report_out.docx"
@@ -426,6 +430,10 @@ class ReportGenerationService:
         try:
             project = self.project_service.open(project_root)
         except ProjectError as exc:
+            raise ReportGenerationError(str(exc)) from exc
+        try:
+            TemplateCatalogService().refresh_default_if_stale(project_root)
+        except TemplateCatalogError as exc:
             raise ReportGenerationError(str(exc)) from exc
         template_path = self._template_path(project_root)
         try:
