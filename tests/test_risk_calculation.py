@@ -66,6 +66,16 @@ def test_zero_people_keeps_individual_risk_empty() -> None:
     assert value["individual_risk_injured"] is None
 
 
+def test_presence_probability_reduces_only_individual_risk() -> None:
+    value = calculate_risk(2, 3, 1e-5, 1000.0, 10, 0.25)
+
+    assert value["collective_risk_fatalities"] == pytest.approx(2e-5)
+    assert value["collective_risk_injured"] == pytest.approx(3e-5)
+    assert value["individual_risk_fatalities"] == pytest.approx(5e-7)
+    assert value["individual_risk_injured"] == pytest.approx(7.5e-7)
+    assert value["expected_damage"] == pytest.approx(0.01)
+
+
 def test_service_joins_frequency_and_uses_opo_personnel(tmp_path: Path) -> None:
     project = create_project(tmp_path / "project", 8, 2)
     write_json(project / "damage_results.json", {"results": [result(1)]})

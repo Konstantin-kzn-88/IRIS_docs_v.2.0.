@@ -163,6 +163,7 @@ class ProjectService:
         project_directory: Path | str,
         employees_count: int,
         employees_other_opo_count: int,
+        presence_probability: float = 1.0,
     ) -> ProjectInfo:
         for value, label in (
             (employees_count, "Численность работников ОПО"),
@@ -170,6 +171,12 @@ class ProjectService:
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ProjectError(f"{label} должна быть целым числом не меньше нуля")
+        if (
+            isinstance(presence_probability, bool)
+            or not isinstance(presence_probability, (int, float))
+            or not 0 <= float(presence_probability) <= 1
+        ):
+            raise ProjectError("Вероятность присутствия должна быть от 0 до 1")
 
         root = Path(project_directory).resolve()
         database_path = root / DATABASE_NAME
@@ -196,6 +203,7 @@ class ProjectService:
                     {
                         "employees_count": employees_count,
                         "employees_other_opo_count": employees_other_opo_count,
+                        "presence_probability": float(presence_probability),
                     }
                 )
                 opo_snapshot["personnel"] = personnel

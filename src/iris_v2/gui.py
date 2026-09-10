@@ -286,6 +286,13 @@ class ProjectCommonDialog(QDialog):
         self.other_employees_edit.setValue(
             int(personnel.get("employees_other_opo_count", 0))
         )
+        self.presence_probability_edit = QDoubleSpinBox()
+        self.presence_probability_edit.setRange(0.0, 1.0)
+        self.presence_probability_edit.setDecimals(4)
+        self.presence_probability_edit.setSingleStep(0.05)
+        self.presence_probability_edit.setValue(
+            float(personnel.get("presence_probability", 1.0))
+        )
         self.total_people_label = QLabel()
         self.employees_edit.valueChanged.connect(self._update_total_people)
         self.other_employees_edit.valueChanged.connect(self._update_total_people)
@@ -299,6 +306,10 @@ class ProjectCommonDialog(QDialog):
         personnel_form.addRow(
             "Итого для расчёта индивидуального риска, чел.:",
             self.total_people_label,
+        )
+        personnel_form.addRow(
+            "Вероятность присутствия человека на ОПО:",
+            self.presence_probability_edit,
         )
         personnel_page = QWidget()
         personnel_page.setLayout(personnel_form)
@@ -361,6 +372,7 @@ class ProjectCommonDialog(QDialog):
                 self.project_directory,
                 self.employees_edit.value(),
                 self.other_employees_edit.value(),
+                self.presence_probability_edit.value(),
             )
         except (ProjectCommonError, ProjectError) as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))

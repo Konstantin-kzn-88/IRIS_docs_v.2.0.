@@ -62,12 +62,16 @@ def calculate_risk(
     scenario_frequency: float,
     total_damage: float,
     people_count: int,
+    presence_probability: float = 1.0,
 ) -> dict[str, float | None]:
     fatalities = _count(fatalities_count, "fatalities_count")
     injured = _count(injured_count, "injured_count")
     frequency = _number(scenario_frequency, "scenario_frequency")
     damage = _number(total_damage, "total_damage")
     people = _count(people_count, "people_count")
+    presence = _number(presence_probability, "presence_probability")
+    if presence > 1:
+        raise ValueError("presence_probability должна быть не больше единицы")
 
     collective_fatalities = fatalities * frequency
     collective_injured = injured * frequency
@@ -75,10 +79,10 @@ def calculate_risk(
         "collective_risk_fatalities": collective_fatalities,
         "collective_risk_injured": collective_injured,
         "individual_risk_fatalities": (
-            collective_fatalities / people if people > 0 else None
+            collective_fatalities / people * presence if people > 0 else None
         ),
         "individual_risk_injured": (
-            collective_injured / people if people > 0 else None
+            collective_injured / people * presence if people > 0 else None
         ),
         "expected_damage": damage * frequency,
     }
@@ -150,6 +154,12 @@ class RiskCalculationService:
                 personnel.get("employees_other_opo_count", 0),
                 "employees_other_opo_count",
             )
+            presence_probability = _number(
+                personnel.get("presence_probability", 1.0),
+                "presence_probability",
+            )
+            if presence_probability > 1:
+                raise ValueError("presence_probability должна быть не больше единицы")
         except (ProjectError, ValueError) as exc:
             raise RiskCalculationError(str(exc)) from exc
         people_count = employees + other_employees
@@ -169,6 +179,7 @@ class RiskCalculationService:
                     frequency_item.get("scenario_frequency"),
                     damage_item.get("total_damage"),
                     people_count,
+                    presence_probability,
                 )
             except ValueError as exc:
                 raise RiskCalculationError(
@@ -197,12 +208,12 @@ class RiskCalculationService:
         )
         total_expected_damage = sum(item["expected_damage"] for item in results)
         total_individual_fatalities = (
-            total_collective_fatalities / people_count
+            total_collective_fatalities / people_count * presence_probability
             if people_count > 0
             else None
         )
         total_individual_injured = (
-            total_collective_injured / people_count
+            total_collective_injured / people_count * presence_probability
             if people_count > 0
             else None
         )
@@ -212,6 +223,7 @@ class RiskCalculationService:
             "employees_count": employees,
             "employees_other_opo_count": other_employees,
             "risk_people_count": people_count,
+            "presence_probability": presence_probability,
             "individual_risk_status": (
                 "calculated" if people_count > 0 else "no_people"
             ),

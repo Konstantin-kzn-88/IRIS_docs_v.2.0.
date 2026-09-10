@@ -92,25 +92,29 @@ def test_update_personnel_in_existing_project(tmp_path: Path) -> None:
     service = ProjectService()
     service.create(target, project_data())
 
-    updated = service.update_personnel(target, 120, 35)
+    updated = service.update_personnel(target, 120, 35, 0.25)
 
     assert updated.opo_snapshot["personnel"] == {
         "employees_count": 120,
         "employees_other_opo_count": 35,
+        "presence_probability": 0.25,
     }
     assert service.open(target).opo_snapshot == updated.opo_snapshot
 
 
-@pytest.mark.parametrize("employees, other", [(-1, 0), (0, -1), (1.5, 0)])
+@pytest.mark.parametrize(
+    "employees, other, presence",
+    [(-1, 0, 1.0), (0, -1, 1.0), (1.5, 0, 1.0), (0, 0, -0.1), (0, 0, 1.1)],
+)
 def test_update_personnel_rejects_invalid_counts(
-    tmp_path: Path, employees: int, other: int
+    tmp_path: Path, employees: int, other: int, presence: float
 ) -> None:
     target = tmp_path / "project"
     service = ProjectService()
     service.create(target, project_data())
 
     with pytest.raises(ProjectError):
-        service.update_personnel(target, employees, other)
+        service.update_personnel(target, employees, other, presence)
 
 
 def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
