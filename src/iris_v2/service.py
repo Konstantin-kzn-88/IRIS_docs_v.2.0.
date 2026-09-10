@@ -157,3 +157,51 @@ class ProjectService:
                 )
         finally:
             engine.dispose()
+
+    def update_personnel(
+        self,
+        project_directory: Path | str,
+        employees_count: int,
+        employees_other_opo_count: int,
+    ) -> ProjectInfo:
+        for value, label in (
+            (employees_count, "Численность работников ОПО"),
+            (employees_other_opo_count, "Численность людей на соседних ОПО"),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ProjectError(f"{label} должна быть целым числом не меньше нуля")
+
+        root = Path(project_directory).resolve()
+        database_path = root / DATABASE_NAME
+        if not database_path.is_file():
+            raise ProjectError(f"База проекта не найдена: {database_path}")
+
+        upgrade_database(database_path)
+        engine = create_database_engine(database_path)
+        try:
+            with Session(engine) as session, session.begin():
+                project = session.scalar(select(Project))
+                if project is None:
+                    raise ProjectError("Данные проекта повреждены")
+                try:
+                    opo_snapshot = json.loads(project.opo_snapshot_json)
+                except json.JSONDecodeError as exc:
+                    raise ProjectError("Снимок ОПО в базе проекта повреждён") from exc
+                if not isinstance(opo_snapshot, dict):
+                    raise ProjectError("Снимок ОПО в базе проекта должен быть объектом")
+                personnel = opo_snapshot.get("personnel", {})
+                if not isinstance(personnel, dict):
+                    personnel = {}
+                personnel.update(
+                    {
+                        "employees_count": employees_count,
+                        "employees_other_opo_count": employees_other_opo_count,
+                    }
+                )
+                opo_snapshot["personnel"] = personnel
+                project.opo_snapshot_json = json.dumps(
+                    opo_snapshot, ensure_ascii=False
+                )
+        finally:
+            engine.dispose()
+        return self.open(root)

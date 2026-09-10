@@ -222,6 +222,7 @@ class ProjectCommonDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.project_directory = project_directory
+        self.project_service = ProjectService()
         self.service = ProjectCommonService()
         self.data = self.service.load(
             project_directory, project.name, project.code
@@ -274,9 +275,38 @@ class ProjectCommonDialog(QDialog):
         executor_page = QWidget()
         executor_page.setLayout(executor_form)
 
+        personnel = project.opo_snapshot.get("personnel", {})
+        if not isinstance(personnel, dict):
+            personnel = {}
+        self.employees_edit = QSpinBox()
+        self.employees_edit.setRange(0, 10_000_000)
+        self.employees_edit.setValue(int(personnel.get("employees_count", 0)))
+        self.other_employees_edit = QSpinBox()
+        self.other_employees_edit.setRange(0, 10_000_000)
+        self.other_employees_edit.setValue(
+            int(personnel.get("employees_other_opo_count", 0))
+        )
+        self.total_people_label = QLabel()
+        self.employees_edit.valueChanged.connect(self._update_total_people)
+        self.other_employees_edit.valueChanged.connect(self._update_total_people)
+        self._update_total_people()
+        personnel_form = QFormLayout()
+        personnel_form.addRow("Работники ОПО, чел.:", self.employees_edit)
+        personnel_form.addRow(
+            "Люди на соседних ОПО в зоне воздействия, чел.:",
+            self.other_employees_edit,
+        )
+        personnel_form.addRow(
+            "Итого для расчёта индивидуального риска, чел.:",
+            self.total_people_label,
+        )
+        personnel_page = QWidget()
+        personnel_page.setLayout(personnel_form)
+
         tabs = QTabWidget()
         tabs.addTab(project_page, "Проект и шифры")
         tabs.addTab(executor_page, "Разработчик")
+        tabs.addTab(personnel_page, "Персонал для риска")
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
@@ -304,6 +334,10 @@ class ProjectCommonDialog(QDialog):
             else:
                 edit.setText(value)
 
+    def _update_total_people(self) -> None:
+        total = self.employees_edit.value() + self.other_employees_edit.value()
+        self.total_people_label.setText(str(total))
+
     def _save(self) -> None:
         data = copy.deepcopy(self.data)
         data.update(
@@ -323,7 +357,12 @@ class ProjectCommonDialog(QDialog):
         data["executor"] = executor
         try:
             self.service.save(self.project_directory, data)
-        except ProjectCommonError as exc:
+            self.project_service.update_personnel(
+                self.project_directory,
+                self.employees_edit.value(),
+                self.other_employees_edit.value(),
+            )
+        except (ProjectCommonError, ProjectError) as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))
             return
         self.accept()
@@ -3426,7 +3465,15 @@ class MainWindow(QMainWindow):
         except ProjectCommonError as exc:
             self._show_error(str(exc))
             return
-        dialog.exec()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                self.current_project = self.service.open(
+                    self.current_project_directory
+                )
+            except ProjectError as exc:
+                self._show_error(str(exc))
+                return
+            self._refresh_workflow_status()
 
     def edit_substances(self) -> None:
         if self.current_project_directory is None:

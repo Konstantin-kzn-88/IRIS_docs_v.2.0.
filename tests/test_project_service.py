@@ -87,6 +87,32 @@ def test_snapshots_are_saved_inside_project(tmp_path: Path) -> None:
     assert project.opo_snapshot["site_id"] == "opo_0001"
 
 
+def test_update_personnel_in_existing_project(tmp_path: Path) -> None:
+    target = tmp_path / "project"
+    service = ProjectService()
+    service.create(target, project_data())
+
+    updated = service.update_personnel(target, 120, 35)
+
+    assert updated.opo_snapshot["personnel"] == {
+        "employees_count": 120,
+        "employees_other_opo_count": 35,
+    }
+    assert service.open(target).opo_snapshot == updated.opo_snapshot
+
+
+@pytest.mark.parametrize("employees, other", [(-1, 0), (0, -1), (1.5, 0)])
+def test_update_personnel_rejects_invalid_counts(
+    tmp_path: Path, employees: int, other: int
+) -> None:
+    target = tmp_path / "project"
+    service = ProjectService()
+    service.create(target, project_data())
+
+    with pytest.raises(ProjectError):
+        service.update_personnel(target, employees, other)
+
+
 def test_local_catalog_has_priority(tmp_path: Path, monkeypatch) -> None:
     first_directory = tmp_path / "organizations" / "first"
     first_directory.mkdir(parents=True)
