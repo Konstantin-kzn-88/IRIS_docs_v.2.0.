@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -35,7 +36,12 @@ from PySide6.QtWidgets import (
 )
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectInfo, ProjectService
-from iris_v2.workflow_status import workflow_statuses
+from iris_v2.workflow_status import (
+    REFRESH_STEP_ORDER,
+    WorkflowRefreshError,
+    refresh_workflow,
+    workflow_statuses,
+)
 from iris_v2.catalog import CatalogError, Organization, load_organizations
 from iris_v2.developer_catalog import (
     Developer,
@@ -3224,6 +3230,11 @@ class MainWindow(QMainWindow):
         self.report_generation_button.setEnabled(False)
         self.report_generation_button.clicked.connect(self.generate_report)
 
+        self.refresh_all_button = QPushButton("5.2 Обновить всё")
+        self.refresh_all_button.setObjectName("refresh_all_button")
+        self.refresh_all_button.setEnabled(False)
+        self.refresh_all_button.clicked.connect(self.refresh_all)
+
         project_group = self._workflow_group(
             "Проект и справочники",
             "project_actions_group",
@@ -3275,7 +3286,7 @@ class MainWindow(QMainWindow):
             "Этап 5. Выпуск документа",
             "report_group",
             "Формируйте отчёт после завершения предыдущих этапов.",
-            (self.report_generation_button,),
+            (self.report_generation_button, self.refresh_all_button),
         )
 
         self._workflow_buttons = (
@@ -3438,6 +3449,7 @@ class MainWindow(QMainWindow):
         self.frequency_button.setEnabled(True)
         self.validation_button.setEnabled(True)
         self.report_generation_button.setEnabled(True)
+        self.refresh_all_button.setEnabled(True)
         self.project_label.setText(
             f"Проект: {project.name}\n"
             f"Шифр: {project.code}\n"
@@ -3960,6 +3972,81 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
             return
         ReportGenerationDialog(result, self).exec()
+
+    def refresh_all(self) -> None:
+        if self.current_project_directory is None:
+            self._show_error("Сначала создайте или откройте проект")
+            return
+
+        project = self.current_project_directory
+        runners = {
+            "amount_button": lambda: AmountCalculationService().calculate(project),
+            "calculation_cases_button": lambda: CalculationCasesService().generate(project),
+            "frequency_button": lambda: FrequencyCalculationService().calculate(project),
+            "release_button": lambda: ReleaseCalculationService().calculate(project),
+            "spill_button": lambda: SpillCalculationService().calculate(project),
+            "evaporation_button": lambda: EvaporationCalculationService().calculate(project),
+            "hazard_factor_button": lambda: HazardFactorCalculationService().calculate(project),
+            "pool_fire_button": lambda: PoolFireCalculationService().calculate(project),
+            "explosion_button": lambda: ExplosionCalculationService().calculate(project),
+            "flash_fire_button": lambda: FlashFireCalculationService().calculate(project),
+            "toxic_button": lambda: ToxicCalculationService().calculate(project),
+            "jet_fire_button": lambda: JetFireCalculationService().calculate(project),
+            "fireball_button": lambda: FireballCalculationService().calculate(project),
+            "chemical_spill_button": lambda: ChemicalSpillCalculationService().calculate(project),
+            "impact_zones_button": lambda: ImpactZonesService().calculate(project),
+            "people_button": lambda: PeopleCalculationService().calculate(project),
+            "damage_button": lambda: DamageCalculationService().calculate(project),
+            "risk_button": lambda: RiskCalculationService().calculate(project),
+            "risk_summary_button": lambda: RiskSummaryService().calculate(project),
+            "key_scenarios_button": lambda: KeyScenariosService().calculate(project),
+            "risk_charts_button": lambda: RiskChartsService().calculate(project),
+            "risk_matrices_button": lambda: RiskMatricesService().calculate(project),
+            "pareto_charts_button": lambda: ParetoChartsService().calculate(project),
+            "component_damage_chart_button": lambda: ComponentDamageChartService().calculate(project),
+            "component_impact_zones_chart_button": lambda: ComponentImpactZonesChartService().calculate(project),
+            "report_generation_button": lambda: ReportGenerationService().generate(project),
+        }
+        progress = QProgressDialog(
+            "Подготовка обновления…", "Отмена", 0, len(REFRESH_STEP_ORDER), self
+        )
+        progress.setWindowTitle("Обновить всё")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        self.refresh_all_button.setEnabled(False)
+
+        def show_step(index: int, _total: int, label: str) -> None:
+            progress.setValue(index - 1)
+            progress.setLabelText(f"Выполняется: {label}")
+            QApplication.processEvents()
+
+        try:
+            result = refresh_workflow(
+                project,
+                runners,
+                on_step=show_step,
+                is_cancelled=progress.wasCanceled,
+            )
+        except WorkflowRefreshError as exc:
+            self._show_error(str(exc))
+            return
+        finally:
+            progress.close()
+            self.refresh_all_button.setEnabled(True)
+            self._refresh_workflow_status()
+
+        if result.cancelled:
+            QMessageBox.information(
+                self,
+                "Обновление отменено",
+                f"Выполнено этапов: {len(result.completed)}.",
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Обновление завершено",
+                f"Обновлено этапов: {len(result.completed)}. Word-отчёт актуален.",
+            )
 
     def _show_error(self, message: str) -> None:
         QMessageBox.critical(self, "Ошибка", message)

@@ -292,6 +292,10 @@ def test_minimal_window_starts() -> None:
         )
         assert report_button is not None
         assert report_button.text().startswith("5.1 ")
+        refresh_button = window.findChild(QPushButton, "refresh_all_button")
+        assert refresh_button is not None
+        assert not refresh_button.isEnabled()
+        assert refresh_button.text().startswith("5.2 ")
         explosion_button = window.findChild(QPushButton, "explosion_button")
         assert explosion_button is not None
         assert not explosion_button.isEnabled()

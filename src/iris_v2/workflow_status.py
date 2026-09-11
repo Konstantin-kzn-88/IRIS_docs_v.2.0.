@@ -1,10 +1,91 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 
 DONE = "done"
 PENDING = "pending"
 NOT_REQUIRED = "not_required"
+
+
+REFRESH_STEP_ORDER = (
+    ("amount_button", "Количество ОВ"),
+    ("calculation_cases_button", "Расчётные сценарии"),
+    ("frequency_button", "Расчёт частот"),
+    ("release_button", "Масса в аварии"),
+    ("spill_button", "Площадь пролива"),
+    ("evaporation_button", "Испарение"),
+    ("hazard_factor_button", "Масса поражающего фактора"),
+    ("pool_fire_button", "Пожар пролива"),
+    ("explosion_button", "Взрыв ТВС"),
+    ("flash_fire_button", "Пожар-вспышка"),
+    ("toxic_button", "Токсическое поражение"),
+    ("jet_fire_button", "Факельное горение"),
+    ("fireball_button", "Огненный шар"),
+    ("chemical_spill_button", "Химически опасный пролив"),
+    ("impact_zones_button", "Свод зон"),
+    ("people_button", "Расчёт пострадавших"),
+    ("damage_button", "Расчёт ущерба"),
+    ("risk_button", "Расчёт риска"),
+    ("risk_summary_button", "Свод риска"),
+    ("key_scenarios_button", "Ключевые сценарии"),
+    ("risk_charts_button", "Диаграммы риска"),
+    ("risk_matrices_button", "Матрицы риска"),
+    ("pareto_charts_button", "Диаграммы Парето"),
+    ("component_damage_chart_button", "Ущерб по ОПО"),
+    ("component_impact_zones_chart_button", "Максимальные зоны по ОПО"),
+    ("report_generation_button", "Формирование Word-отчёта"),
+)
+
+
+class WorkflowRefreshError(RuntimeError):
+    """A refresh stage failed."""
+
+
+@dataclass(frozen=True)
+class WorkflowRefreshResult:
+    completed: tuple[str, ...]
+    skipped: tuple[str, ...]
+    cancelled: bool
+
+
+def refresh_workflow(
+    project_directory: Path,
+    runners: dict[str, Callable[[], object]],
+    *,
+    status_provider: Callable[[Path], dict[str, str]] | None = None,
+    on_step: Callable[[int, int, str], None] | None = None,
+    is_cancelled: Callable[[], bool] | None = None,
+) -> WorkflowRefreshResult:
+    """Run stale calculation stages in dependency order."""
+    provider = status_provider or workflow_statuses
+    completed: list[str] = []
+    skipped: list[str] = []
+    total = len(REFRESH_STEP_ORDER)
+
+    for index, (button_name, label) in enumerate(REFRESH_STEP_ORDER, start=1):
+        if is_cancelled is not None and is_cancelled():
+            return WorkflowRefreshResult(tuple(completed), tuple(skipped), True)
+        if on_step is not None:
+            on_step(index, total, label)
+
+        status = provider(Path(project_directory)).get(button_name, PENDING)
+        if status != PENDING:
+            skipped.append(button_name)
+            continue
+        runner = runners.get(button_name)
+        if runner is None:
+            raise WorkflowRefreshError(
+                f"Этап «{label}» не подключён к автоматическому обновлению"
+            )
+        try:
+            runner()
+        except Exception as exc:
+            raise WorkflowRefreshError(f"Этап «{label}»: {exc}") from exc
+        completed.append(button_name)
+
+    return WorkflowRefreshResult(tuple(completed), tuple(skipped), False)
 
 
 _EFFECTS = {
