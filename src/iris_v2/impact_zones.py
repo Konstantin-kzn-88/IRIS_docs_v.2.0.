@@ -9,23 +9,17 @@ from iris_v2.chemical_spill_calculation import (
 from iris_v2.explosion_calculation import FILE_NAME as EXPLOSION_FILE_NAME
 from iris_v2.fireball_calculation import FILE_NAME as FIREBALL_FILE_NAME
 from iris_v2.flash_fire_calculation import FILE_NAME as FLASH_FIRE_FILE_NAME
-from iris_v2.hazard_factor_calculation import FILE_NAME as HAZARD_FACTOR_FILE_NAME
+from iris_v2.hazard_factor_calculation import (
+    CALC_CODE_NAMES,
+    FILE_NAME as HAZARD_FACTOR_FILE_NAME,
+)
 from iris_v2.jet_fire_calculation import FILE_NAME as JET_FIRE_FILE_NAME
 from iris_v2.pool_fire_calculation import FILE_NAME as POOL_FIRE_FILE_NAME
 from iris_v2.toxic_fake_calculation import FILE_NAME as TOXIC_FILE_NAME
+from iris_v2.impact_types import IMPACT_TYPE_NAMES
 
 
 FILE_NAME = "impact_zones.json"
-CALCULATION_NAMES = {
-    0: "Ликвидация аварии",
-    1: "Пожар пролива",
-    2: "Взрыв облака ТВС",
-    3: "Пожар-вспышка",
-    4: "Токсическое поражение",
-    5: "Факельное горение",
-    6: "Огненный шар",
-    7: "Химически опасный пролив",
-}
 MODULES = {
     1: (
         POOL_FIRE_FILE_NAME,
@@ -168,7 +162,7 @@ class ImpactZonesService:
                 continue
             values = _read_results(
                 project / file_name,
-                f"Сначала выполните расчёт «{CALCULATION_NAMES[calc_code]}»",
+                f"Сначала выполните расчёт «{CALC_CODE_NAMES[calc_code]}»",
             )
             module_results[calc_code] = _results_by_id(values, file_name)
 
@@ -199,7 +193,7 @@ class ImpactZonesService:
             if (
                 isinstance(calc_code, bool)
                 or not isinstance(calc_code, int)
-                or calc_code not in CALCULATION_NAMES
+                or calc_code not in IMPACT_TYPE_NAMES
             ):
                 raise ImpactZonesError(
                     f"Сценарий {scenario_code}: calc_code должен быть от 0 до 7"
@@ -247,7 +241,7 @@ class ImpactZonesService:
             result = dict(source)
             result.update(
                 {
-                    "impact_type": CALCULATION_NAMES[calc_code],
+                    "impact_type": IMPACT_TYPE_NAMES[calc_code],
                     "impact_status": status,
                     "impact_status_name": status_name,
                     "impact_values": impact_values,

@@ -78,3 +78,21 @@ def test_stale_hazard_data_does_not_mark_effects_unnecessary(
     statuses = workflow_statuses(tmp_path)
     assert statuses["pool_fire_button"] == PENDING
     assert statuses["toxic_button"] == PENDING
+
+
+def test_old_impact_type_marks_zone_summary_for_update(tmp_path: Path) -> None:
+    prepare_hazard_results(tmp_path, (1,))
+    write_json(tmp_path / "pool_fire_results.json", {})
+    write_json(
+        tmp_path / "impact_zones.json",
+        {
+            "results": [
+                {
+                    "calc_code": 1,
+                    "impact_type": "Пожар пролива",
+                }
+            ]
+        },
+    )
+
+    assert workflow_statuses(tmp_path)["impact_zones_button"] == PENDING

@@ -76,6 +76,16 @@ def test_all_supported_impact_types_are_combined(tmp_path: Path) -> None:
     assert result.unavailable_count == 0
     assert result.results[0]["impact_status"] == "none"
     assert result.results[4]["impact_status"] == "calculated_temporary"
+    assert [item["impact_type"] for item in result.results] == [
+        "Поражающий фактор отсутствует",
+        "Тепловое излучение",
+        "Воздушная ударная волна",
+        "Тепловое излучение",
+        "Токсическое действие",
+        "Тепловое излучение",
+        "Тепловое излучение",
+        "Химически опасный пролив",
+    ]
     assert result.results[7]["impact_values"] == {
         "chemical_spill_area_m2": 125.5
     }

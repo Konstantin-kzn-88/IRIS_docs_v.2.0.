@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from iris_v2.impact_types import IMPACT_TYPE_NAMES
+
 
 DONE = "done"
 PENDING = "pending"
@@ -129,6 +131,23 @@ def _calculation_codes(project: Path) -> set[int] | None:
         return None
 
 
+def _impact_types_current(project: Path) -> bool:
+    path = project / "impact_zones.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    results = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(results, list) or not results:
+        return False
+    return all(
+        isinstance(item, dict)
+        and item.get("calc_code") in IMPACT_TYPE_NAMES
+        and item.get("impact_type") == IMPACT_TYPE_NAMES[item["calc_code"]]
+        for item in results
+    )
+
+
 def workflow_statuses(project_directory: Path) -> dict[str, str]:
     """Return persistent GUI step states derived from project artifacts."""
     project = Path(project_directory)
@@ -202,6 +221,12 @@ def workflow_statuses(project_directory: Path) -> dict[str, str]:
             and _fresh(project, (output,), inputs)
             else PENDING
         )
+        if (
+            button == "impact_zones_button"
+            and statuses[button] == DONE
+            and not _impact_types_current(project)
+        ):
+            statuses[button] = PENDING
 
     chart_directory = project / "output" / "charts"
     chart_steps = (

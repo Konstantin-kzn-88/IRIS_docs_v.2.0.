@@ -214,14 +214,14 @@ def test_pf_rows_use_selected_scenarios_and_calculated_zones(
             "component": "Участок",
             "scenario_type": "Наиболее опасный",
             "scenario_code": "С2",
-            "factor": "взрыв облака",
+            "factor": "Воздушная ударная волна",
             "zones": "зона разрушения остекления (2 кПа) — 42,0 м",
         },
         {
             "component": "Участок",
             "scenario_type": "Наиболее вероятный",
             "scenario_code": "С3",
-            "factor": "ликвидация аварии",
+            "factor": "Поражающий фактор отсутствует",
             "zones": "Зоны поражения отсутствуют",
         },
     )
