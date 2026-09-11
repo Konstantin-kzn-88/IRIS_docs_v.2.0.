@@ -960,3 +960,26 @@ def test_missing_risk_summary_does_not_replace_existing_report(
         ReportGenerationService().generate(project)
 
     assert output.read_bytes() == b"previous report"
+
+
+def test_stale_risk_results_do_not_replace_existing_report(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    risk_path = project / "risk_results.json"
+    damage_path = project / "damage_results.json"
+    risk_mtime = risk_path.stat().st_mtime_ns
+    damage_path.touch()
+    if damage_path.stat().st_mtime_ns <= risk_mtime:
+        damage_path.touch()
+    output = project / "output" / "template_report_out.docx"
+    output.parent.mkdir(exist_ok=True)
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="Риски.*устарели"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"

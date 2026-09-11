@@ -14,11 +14,14 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
 
 
-def component(name: str, direct: float, environmental: float) -> dict:
+def component(
+    name: str, direct: float, environmental: float, total: float | None = None
+) -> dict:
     return {
         "hazard_component": name,
         "max_direct_losses": direct,
         "max_total_environmental_damage": environmental,
+        "max_total_damage": direct + environmental if total is None else total,
     }
 
 
@@ -38,8 +41,8 @@ def test_components_are_sorted_by_combined_damage(tmp_path: Path) -> None:
     rows = _read_components(path)
 
     assert rows == [
-        ("Участок Б", 500.0, 100.0),
-        ("Участок А", 100.0, 50.0),
+        ("Участок Б", 500.0, 100.0, 600.0),
+        ("Участок А", 100.0, 50.0, 150.0),
     ]
 
 

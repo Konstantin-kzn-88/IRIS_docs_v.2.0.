@@ -473,6 +473,7 @@ class ReportGenerationService:
             project, common, generated_at or datetime.now()
         )
         marker_names = _marker_names(document)
+        self._ensure_calculation_chain_is_fresh(project_root, marker_names)
         unknown = (
             marker_names
             - replacements.keys()
@@ -798,6 +799,67 @@ class ReportGenerationService:
             filled_sections=tuple(filled_sections),
             deferred_markers=tuple(sorted(remaining)),
         )
+
+    @staticmethod
+    def _ensure_calculation_chain_is_fresh(
+        project_root: Path, marker_names: set[str]
+    ) -> None:
+        risk_markers = {
+            "COLLECTIVE_RISK_SECTION", "INDIVIDUAL_RISK_SECTION",
+            "COMPONENT_RISK_SUMMARY_TABLE", "MAX_DAMAGE_BY_COMPONENT_SECTION",
+            "FN_CHART", "FG_CHART", "PARETO_FATALITIES_CHART",
+            "PARETO_INJURED_CHART", "PARETO_DAMAGE_CHART",
+            "PARETO_ENV_DAMAGE_CHART", "DAMAGE_BY_COMPONENT_CHART",
+            "RISK_MATRIX_CHART", "RISK_MATRIX_DAMAGE_CHART",
+            "TOP_SCENARIOS_BY_COMPONENT_SECTION",
+            "FATALITY_RISK_BY_COMPONENT_SECTION",
+            "COMPARATIVE_FATALITY_RISK_TABLE",
+            "NGK_BACKGROUND_RISK_COMPARISON",
+            "TOP_SCENARIOS_DESC_BY_COMPONENT", "TOP_SCENARIOS_PF_BY_COMPONENT",
+            "TOP_SCENARIOS_FATALITIES_INJURED", "TOP_SCENARIOS_DAMAGE",
+            "TOP_SCENARIOS_FINAL_CONCLUSION",
+        }
+        if not marker_names & risk_markers:
+            return
+
+        def require_fresh(output: str, inputs: tuple[str, ...], step: str) -> None:
+            output_path = project_root / output
+            input_paths = tuple(project_root / name for name in inputs)
+            if not output_path.is_file() or not all(path.is_file() for path in input_paths):
+                return
+            if output_path.stat().st_mtime_ns < max(
+                path.stat().st_mtime_ns for path in input_paths
+            ):
+                raise ReportGenerationError(
+                    f"Результаты «{step}» устарели. Повторите этот этап и "
+                    "зависящие от него расчёты перед формированием отчёта"
+                )
+
+        require_fresh(
+            "risk_results.json",
+            ("damage_results.json", "frequency_results.json", "project.sqlite3"),
+            "Риски",
+        )
+        summary_markers = {
+            "FATAL_ACCIDENT_FREQUENCY", "COLLECTIVE_RISK_SECTION",
+            "INDIVIDUAL_RISK_SECTION", "COMPONENT_RISK_SUMMARY_TABLE",
+            "MAX_DAMAGE_BY_COMPONENT_SECTION", "FN_CHART", "FG_CHART",
+            "DAMAGE_BY_COMPONENT_CHART", "FATALITY_RISK_BY_COMPONENT_SECTION",
+            "COMPARATIVE_FATALITY_RISK_TABLE", "NGK_BACKGROUND_RISK_COMPARISON",
+        }
+        if marker_names & summary_markers:
+            require_fresh("risk_summary.json", ("risk_results.json",), "Свод риска")
+
+        key_markers = {
+            "TOP_SCENARIOS_BY_COMPONENT_SECTION",
+            "TOP_SCENARIOS_DESC_BY_COMPONENT", "TOP_SCENARIOS_PF_BY_COMPONENT",
+            "TOP_SCENARIOS_FATALITIES_INJURED", "TOP_SCENARIOS_DAMAGE",
+            "TOP_SCENARIOS_FINAL_CONCLUSION",
+        }
+        if marker_names & key_markers:
+            require_fresh(
+                "key_scenarios.json", ("risk_results.json",), "Ключевые сценарии"
+            )
 
     @staticmethod
     def _template_path(project_root: Path) -> Path:

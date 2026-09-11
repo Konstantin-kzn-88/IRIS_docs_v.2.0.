@@ -110,7 +110,7 @@ def workflow_statuses(project_directory: Path) -> dict[str, str]:
         ("impact_zones_button", "impact_zones.json", ("hazard_factor_results.json", *required_effect_outputs), ("hazard_factor_button", *required_effect_buttons)),
         ("people_button", "people_results.json", ("impact_zones.json", "equipments.json"), ("impact_zones_button", "equipment_button")),
         ("damage_button", "damage_results.json", ("people_results.json", "amount_results.json", "calculation_config.json"), ("people_button", "amount_button", "calculation_config_button")),
-        ("risk_button", "risk_results.json", ("damage_results.json", "frequency_results.json", "project_common.json"), ("damage_button", "frequency_button", "project_common_button")),
+        ("risk_button", "risk_results.json", ("damage_results.json", "frequency_results.json", "project_common.json", "project.sqlite3"), ("damage_button", "frequency_button", "project_common_button")),
         ("risk_summary_button", "risk_summary.json", ("risk_results.json",), ("risk_button",)),
         ("key_scenarios_button", "key_scenarios.json", ("risk_results.json",), ("risk_button",)),
     )

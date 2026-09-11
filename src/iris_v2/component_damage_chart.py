@@ -32,7 +32,7 @@ def _number(value: Any, name: str) -> float:
     return float(value)
 
 
-def _read_components(path: Path) -> list[tuple[str, float, float]]:
+def _read_components(path: Path) -> list[tuple[str, float, float, float]]:
     if not path.is_file():
         raise ComponentDamageChartError(
             f"Файл не найден: {SUMMARY_FILE_NAME}. Сначала сформируйте свод риска"
@@ -49,7 +49,7 @@ def _read_components(path: Path) -> list[tuple[str, float, float]]:
             f"{SUMMARY_FILE_NAME} не содержит составляющих ОПО"
         )
 
-    result: list[tuple[str, float, float]] = []
+    result: list[tuple[str, float, float, float]] = []
     names: set[str] = set()
     for index, value in enumerate(values, start=1):
         if not isinstance(value, dict):
@@ -66,22 +66,24 @@ def _read_components(path: Path) -> list[tuple[str, float, float]]:
                 value.get("max_total_environmental_damage"),
                 "max_total_environmental_damage",
             )
+            total = _number(value.get("max_total_damage"), "max_total_damage")
         except ValueError as exc:
             raise ComponentDamageChartError(
                 f"Составляющая {index}: {exc}"
             ) from exc
-        if direct + environmental > 0:
-            result.append((name, direct, environmental))
-    result.sort(key=lambda item: item[1] + item[2], reverse=True)
+        if total > 0:
+            result.append((name, direct, environmental, total))
+    result.sort(key=lambda item: item[3], reverse=True)
     return result
 
 
-def _save_chart(rows: list[tuple[str, float, float]], path: Path) -> None:
+def _save_chart(rows: list[tuple[str, float, float, float]], path: Path) -> None:
     from matplotlib import pyplot as plt
 
     labels = [textwrap.fill(row[0], width=28) for row in rows]
     direct_values = [row[1] for row in rows]
     environmental_values = [row[2] for row in rows]
+    total_values = [row[3] for row in rows]
     minimum_for_log_scale = 1e-6
     direct_plot = [
         value if value > 0 else minimum_for_log_scale for value in direct_values
@@ -90,22 +92,31 @@ def _save_chart(rows: list[tuple[str, float, float]], path: Path) -> None:
         value if value > 0 else minimum_for_log_scale
         for value in environmental_values
     ]
+    total_plot = [
+        value if value > 0 else minimum_for_log_scale for value in total_values
+    ]
 
     positions = list(range(len(rows)))
-    bar_height = 0.35
+    bar_height = 0.24
     figure_height = max(4.5, 0.55 * len(rows))
     figure, axis = plt.subplots(figsize=(14, figure_height))
     axis.barh(
-        [position - bar_height / 2 for position in positions],
+        [position - bar_height for position in positions],
         direct_plot,
         height=bar_height,
         label="Прямой ущерб",
     )
     axis.barh(
-        [position + bar_height / 2 for position in positions],
+        positions,
         environmental_plot,
         height=bar_height,
         label="Экологический ущерб",
+    )
+    axis.barh(
+        [position + bar_height for position in positions],
+        total_plot,
+        height=bar_height,
+        label="Суммарный ущерб",
     )
     axis.set_xscale("log")
     axis.set_yticks(positions)
