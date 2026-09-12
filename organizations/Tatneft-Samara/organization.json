@@ -24,6 +24,11 @@
         "position": "Директор",
         "full_name": "Тарасов Владимир Александрович",
         "short_name": "Тарасов В.А."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

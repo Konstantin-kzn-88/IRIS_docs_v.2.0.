@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Цукер Вадим Леонидович",
         "short_name": "Цукер В.Л."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

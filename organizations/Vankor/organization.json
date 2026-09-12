@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Чернов Владимир Николаевич",
         "short_name": "Чернов В.Н."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

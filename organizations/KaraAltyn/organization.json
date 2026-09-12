@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Саттаров Айдар Ильдарович",
         "short_name": "Саттаров А.И."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

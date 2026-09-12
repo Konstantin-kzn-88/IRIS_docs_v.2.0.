@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Гиматдинов Айрат Анясович",
         "short_name": "Гиматдинов А.А."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

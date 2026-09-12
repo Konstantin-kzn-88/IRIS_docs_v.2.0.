@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Маганов Наиль Ульфатович",
         "short_name": "Маганов Н.У."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

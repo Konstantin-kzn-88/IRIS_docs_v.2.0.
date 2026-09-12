@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Габдулхаков Айдар Халилович",
         "short_name": "Габдулхаков А.Х."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

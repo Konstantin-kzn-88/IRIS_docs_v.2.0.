@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Смыков Юрий Викторович",
         "short_name": "Смыков Ю.В."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {

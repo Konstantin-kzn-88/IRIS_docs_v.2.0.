@@ -24,6 +24,11 @@
         "position": "Генеральный директор",
         "full_name": "Чепкасов Виталий Валерьевич",
         "short_name": "Чепкасов В.В."
+      },
+      "public_information_contact": {
+        "position": "",
+        "full_name": "",
+        "phone": ""
       }
     },
     "permits": {
