@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -972,9 +973,12 @@ def test_stale_risk_results_do_not_replace_existing_report(tmp_path: Path) -> No
     risk_path = project / "risk_results.json"
     damage_path = project / "damage_results.json"
     risk_mtime = risk_path.stat().st_mtime_ns
-    damage_path.touch()
-    if damage_path.stat().st_mtime_ns <= risk_mtime:
-        damage_path.touch()
+    damage_stat = damage_path.stat()
+    os.utime(
+        damage_path,
+        ns=(damage_stat.st_atime_ns, risk_mtime + 1_000_000_000),
+    )
+    assert damage_path.stat().st_mtime_ns > risk_mtime
     output = project / "output" / "template_report_out.docx"
     output.parent.mkdir(exist_ok=True)
     output.write_bytes(b"previous report")
