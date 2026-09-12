@@ -37,6 +37,7 @@ class Organization:
 
     data: dict[str, Any]
     facilities: tuple[HazardousFacility, ...]
+    catalog_path: Path | None = None
 
     @property
     def name(self) -> str:
@@ -55,7 +56,9 @@ class Organization:
         return result
 
 
-def _organization_from_dict(item: dict[str, Any]) -> Organization:
+def _organization_from_dict(
+    item: dict[str, Any], catalog_path: Path | None = None
+) -> Organization:
     sites = item.get("sites")
     if not isinstance(sites, list):
         raise CatalogError("Поле sites должно быть списком ОПО")
@@ -66,6 +69,7 @@ def _organization_from_dict(item: dict[str, Any]) -> Organization:
             for site in sites
             if isinstance(site, dict)
         ),
+        catalog_path=catalog_path,
     )
 
 
@@ -111,12 +115,15 @@ def _validate(organizations: tuple[Organization, ...]) -> None:
 
 
 def _read_catalog_file(catalog_path: Path) -> tuple[Organization, ...]:
+    catalog_path = catalog_path.resolve()
     try:
         raw = json.loads(catalog_path.read_text(encoding="utf-8"))
         if not isinstance(raw, list):
             raise CatalogError("Корневой элемент organization.json должен быть списком")
         return tuple(
-            _organization_from_dict(item) for item in raw if isinstance(item, dict)
+            _organization_from_dict(item, catalog_path)
+            for item in raw
+            if isinstance(item, dict)
         )
     except CatalogError as exc:
         raise CatalogError(f"Ошибка в справочнике {catalog_path}: {exc}") from exc
@@ -145,3 +152,58 @@ def load_organizations(path: Path | str | None = None) -> tuple[Organization, ..
     )
     _validate(organizations)
     return organizations
+
+
+def update_public_information_contact(
+    organization: Organization,
+    *,
+    position: str,
+    full_name: str,
+    phone: str,
+) -> None:
+    """Обновить контакт в исходном справочнике выбранной организации."""
+    catalog_path = organization.catalog_path
+    if catalog_path is None:
+        raise CatalogError("Не определён файл справочника организации")
+    try:
+        raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CatalogError(f"Не удалось прочитать справочник: {catalog_path}") from exc
+    if not isinstance(raw, list):
+        raise CatalogError("Корневой элемент organization.json должен быть списком")
+
+    source_id = organization.data.get("id")
+    source_name = organization.name
+    def is_selected(item: object) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if source_id is not None:
+            return item.get("id") == source_id
+        data = item.get("organization")
+        return (
+            isinstance(data, dict)
+            and str(data.get("short_name", "")).strip() == source_name
+        )
+
+    matches = [item for item in raw if is_selected(item)]
+    if len(matches) != 1:
+        raise CatalogError(
+            f"Не удалось однозначно найти организацию {source_name} в {catalog_path}"
+        )
+    organization_data = matches[0].get("organization")
+    if not isinstance(organization_data, dict):
+        raise CatalogError(f"У организации {source_name} повреждён раздел organization")
+    contact = {
+        "position": position.strip(),
+        "full_name": full_name.strip(),
+        "phone": phone.strip(),
+    }
+    organization_data["public_information_contact"] = contact
+    try:
+        temporary_path = catalog_path.with_suffix(".json.tmp")
+        temporary_path.write_text(
+            json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        temporary_path.replace(catalog_path)
+    except OSError as exc:
+        raise CatalogError(f"Не удалось сохранить справочник: {catalog_path}") from exc

@@ -42,7 +42,12 @@ from iris_v2.workflow_status import (
     refresh_workflow,
     workflow_statuses,
 )
-from iris_v2.catalog import CatalogError, Organization, load_organizations
+from iris_v2.catalog import (
+    CatalogError,
+    Organization,
+    load_organizations,
+    update_public_information_contact,
+)
 from iris_v2.developer_catalog import (
     Developer,
     DeveloperCatalogError,
@@ -224,11 +229,13 @@ class ProjectCommonDialog(QDialog):
         project_directory: Path,
         project: ProjectInfo,
         developers: tuple[Developer, ...],
+        catalog_organization: Organization | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.project_directory = project_directory
         self.project_service = ProjectService()
+        self.catalog_organization = catalog_organization
         self.service = ProjectCommonService()
         self.data = self.service.load(
             project_directory, project.name, project.code
@@ -281,6 +288,25 @@ class ProjectCommonDialog(QDialog):
         executor_page = QWidget()
         executor_page.setLayout(executor_form)
 
+        organization_snapshot = project.organization_snapshot.get("organization", {})
+        if not isinstance(organization_snapshot, dict):
+            organization_snapshot = {}
+        public_contact = organization_snapshot.get("public_information_contact", {})
+        if not isinstance(public_contact, dict):
+            public_contact = {}
+        self.public_contact_edits: dict[str, QLineEdit] = {}
+        public_contact_form = QFormLayout()
+        for key, label in (
+            ("position", "Должность"),
+            ("full_name", "Ф.И.О."),
+            ("phone", "Телефон"),
+        ):
+            edit = QLineEdit(str(public_contact.get(key, "")))
+            self.public_contact_edits[key] = edit
+            public_contact_form.addRow(f"{label}:", edit)
+        public_contact_page = QWidget()
+        public_contact_page.setLayout(public_contact_form)
+
         personnel = project.opo_snapshot.get("personnel", {})
         if not isinstance(personnel, dict):
             personnel = {}
@@ -323,6 +349,7 @@ class ProjectCommonDialog(QDialog):
         tabs = QTabWidget()
         tabs.addTab(project_page, "Проект и шифры")
         tabs.addTab(executor_page, "Разработчик")
+        tabs.addTab(public_contact_page, "Ответственный за информирование")
         tabs.addTab(personnel_page, "Персонал для риска")
 
         buttons = QDialogButtonBox(
@@ -372,6 +399,10 @@ class ProjectCommonDialog(QDialog):
             value = edit.toPlainText() if isinstance(edit, QPlainTextEdit) else edit.text()
             executor[key] = value.strip()
         data["executor"] = executor
+        public_contact = {
+            key: edit.text().strip()
+            for key, edit in self.public_contact_edits.items()
+        }
         try:
             self.service.save(self.project_directory, data)
             self.project_service.update_personnel(
@@ -380,7 +411,23 @@ class ProjectCommonDialog(QDialog):
                 self.other_employees_edit.value(),
                 self.presence_probability_edit.value(),
             )
-        except (ProjectCommonError, ProjectError) as exc:
+            if (
+                self.catalog_organization is not None
+                and self.catalog_organization.catalog_path is not None
+            ):
+                update_public_information_contact(
+                    self.catalog_organization,
+                    position=public_contact["position"],
+                    full_name=public_contact["full_name"],
+                    phone=public_contact["phone"],
+                )
+            self.project_service.update_organization_public_information_contact(
+                self.project_directory,
+                public_contact["position"],
+                public_contact["full_name"],
+                public_contact["phone"],
+            )
+        except (ProjectCommonError, ProjectError, CatalogError) as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))
             return
         self.accept()
@@ -3484,6 +3531,14 @@ class MainWindow(QMainWindow):
                 self.current_project_directory,
                 self.current_project,
                 self.developers,
+                next(
+                    (
+                        organization
+                        for organization in self.organizations
+                        if organization.name == self.current_project.organization_name
+                    ),
+                    None,
+                ),
                 self,
             )
         except ProjectCommonError as exc:
@@ -3498,6 +3553,10 @@ class MainWindow(QMainWindow):
                 self._show_error(str(exc))
                 return
             self._refresh_workflow_status()
+            try:
+                self.organizations = load_organizations()
+            except CatalogError as exc:
+                QMessageBox.warning(self, "Ошибка справочника", str(exc))
 
     def edit_substances(self) -> None:
         if self.current_project_directory is None:

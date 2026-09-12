@@ -5,7 +5,7 @@ import json
 import pytest
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectService
-from iris_v2.catalog import load_organizations
+from iris_v2.catalog import load_organizations, update_public_information_contact
 
 
 EXAMPLE_CATALOG = (
@@ -100,6 +100,60 @@ def test_update_personnel_in_existing_project(tmp_path: Path) -> None:
         "presence_probability": 0.25,
     }
     assert service.open(target).opo_snapshot == updated.opo_snapshot
+
+
+def test_update_public_information_contact_in_existing_project(tmp_path: Path) -> None:
+    target = tmp_path / "project"
+    service = ProjectService()
+    organization = load_organizations(EXAMPLE_CATALOG)[0]
+    facility = organization.facilities[0]
+    service.create(
+        target,
+        CreateProjectData(
+            name="Проект",
+            code="CONTACT-001",
+            organization_name=organization.name,
+            opo_name=facility.name,
+            opo_registration_number=facility.registration_number,
+            organization_snapshot=organization.snapshot(),
+            opo_snapshot=facility.snapshot(),
+        ),
+    )
+
+    updated = service.update_organization_public_information_contact(
+        target, " Начальник ", " Иванов Иван Иванович ", " +7 900 000-00-00 "
+    )
+
+    assert updated.organization_snapshot["organization"][
+        "public_information_contact"
+    ] == {
+        "position": "Начальник",
+        "full_name": "Иванов Иван Иванович",
+        "phone": "+7 900 000-00-00",
+    }
+
+
+def test_update_public_information_contact_in_catalog(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "organization.json"
+    catalog_path.write_text(
+        EXAMPLE_CATALOG.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    organization = load_organizations(catalog_path)[0]
+
+    update_public_information_contact(
+        organization,
+        position="Начальник отдела",
+        full_name="Петров Петр Петрович",
+        phone="+7 900 111-22-33",
+    )
+
+    saved = json.loads(catalog_path.read_text(encoding="utf-8"))[0]
+    assert saved["organization"]["public_information_contact"] == {
+        "position": "Начальник отдела",
+        "full_name": "Петров Петр Петрович",
+        "phone": "+7 900 111-22-33",
+    }
+    assert saved["sites"]
 
 
 @pytest.mark.parametrize(

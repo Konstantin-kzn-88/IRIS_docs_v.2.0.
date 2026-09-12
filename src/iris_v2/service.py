@@ -213,3 +213,52 @@ class ProjectService:
         finally:
             engine.dispose()
         return self.open(root)
+
+    def update_organization_public_information_contact(
+        self,
+        project_directory: Path | str,
+        position: str,
+        full_name: str,
+        phone: str,
+    ) -> ProjectInfo:
+        values = (position, full_name, phone)
+        if any(not isinstance(value, str) for value in values):
+            raise ProjectError("Поля ответственного за информирование должны быть строками")
+
+        root = Path(project_directory).resolve()
+        database_path = root / DATABASE_NAME
+        if not database_path.is_file():
+            raise ProjectError(f"База проекта не найдена: {database_path}")
+
+        upgrade_database(database_path)
+        engine = create_database_engine(database_path)
+        try:
+            with Session(engine) as session, session.begin():
+                project = session.scalar(select(Project))
+                if project is None:
+                    raise ProjectError("Данные проекта повреждены")
+                try:
+                    root_snapshot = json.loads(project.organization_snapshot_json)
+                except json.JSONDecodeError as exc:
+                    raise ProjectError(
+                        "Снимок организации в базе проекта повреждён"
+                    ) from exc
+                if not isinstance(root_snapshot, dict):
+                    raise ProjectError(
+                        "Снимок организации в базе проекта должен быть объектом"
+                    )
+                organization = root_snapshot.get("organization", {})
+                if not isinstance(organization, dict):
+                    organization = {}
+                organization["public_information_contact"] = {
+                    "position": position.strip(),
+                    "full_name": full_name.strip(),
+                    "phone": phone.strip(),
+                }
+                root_snapshot["organization"] = organization
+                project.organization_snapshot_json = json.dumps(
+                    root_snapshot, ensure_ascii=False
+                )
+        finally:
+            engine.dispose()
+        return self.open(root)
