@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,8 @@ from iris_v2.report_impact_zones import (
     ReportImpactZonesError,
     load_impact_zone_rows,
 )
+from iris_v2.report_ov_amount import ReportOvAmountError, load_ov_amount_rows
+from iris_v2.impact_zones import FILE_NAME as IMPACT_ZONES_FILE_NAME
 
 
 MARKER = "{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}"
@@ -23,6 +26,18 @@ PF_MARKER = "{{TOP_SCENARIOS_PF_BY_COMPONENT}}"
 PEOPLE_MARKER = "{{TOP_SCENARIOS_FATALITIES_INJURED}}"
 DAMAGE_MARKER = "{{TOP_SCENARIOS_DAMAGE}}"
 CONCLUSION_MARKER = "{{TOP_SCENARIOS_FINAL_CONCLUSION}}"
+ACCIDENT_DESCRIPTION_MARKER = "{{SITUATION_PLAN_ACCIDENTS_TABLE}}"
+
+CALCULATION_METHODS = {
+    0: "—",
+    1: "Приказ МЧС России от 10.07.2009 № 404",
+    2: "СП 12.13130.2009",
+    3: "Приказ МЧС России от 10.07.2009 № 404",
+    4: "Временная оценка по массе",
+    5: "Приказ МЧС России от 10.07.2009 № 404, формулы П3.71–П3.72",
+    6: "Приказ МЧС России от 10.07.2009 № 404",
+    7: "Расчёт площади химически опасного пролива",
+}
 
 ZONE_DESCRIPTIONS = {
     "q_10_5_m": "зона теплового излучения с интенсивностью 10,5 кВт/м²",
@@ -248,6 +263,88 @@ def load_key_scenario_conclusions(
     return tuple(conclusions)
 
 
+def load_accident_description_rows(
+    project_directory: Path | str,
+) -> tuple[dict[str, str], ...]:
+    project = Path(project_directory)
+    try:
+        selected = KeyScenariosService().calculate(project).rows
+        factors = load_key_scenario_pf_rows(project)
+        masses = load_ov_amount_rows(project)
+    except (KeyScenariosError, ReportOvAmountError) as exc:
+        raise ReportKeyScenariosError(str(exc)) from exc
+
+    try:
+        raw = json.loads((project / IMPACT_ZONES_FILE_NAME).read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ReportKeyScenariosError(
+            "Зоны поражающих факторов не рассчитаны. "
+            "Сначала выполните модуль «Зоны ПФ»"
+        ) from exc
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReportKeyScenariosError(
+            f"Не удалось прочитать {IMPACT_ZONES_FILE_NAME}"
+        ) from exc
+    impact_values = raw.get("results") if isinstance(raw, dict) else None
+    if not isinstance(impact_values, list):
+        raise ReportKeyScenariosError(
+            f"Файл {IMPACT_ZONES_FILE_NAME} повреждён: results должен быть списком"
+        )
+
+    factor_by_code = {item["scenario_code"]: item for item in factors}
+    mass_by_code = {item["code"]: item for item in masses}
+    method_by_code: dict[str, str] = {}
+    for item in impact_values:
+        if not isinstance(item, dict):
+            raise ReportKeyScenariosError(
+                f"Файл {IMPACT_ZONES_FILE_NAME} содержит запись неверного формата"
+            )
+        code = str(item.get("scenario_code", "")).strip()
+        calc_code = item.get("calc_code")
+        if (
+            not code
+            or code in method_by_code
+            or isinstance(calc_code, bool)
+            or calc_code not in CALCULATION_METHODS
+        ):
+            raise ReportKeyScenariosError(
+                f"Файл {IMPACT_ZONES_FILE_NAME} содержит некорректный сценарий"
+            )
+        method_by_code[code] = CALCULATION_METHODS[calc_code]
+
+    rows: list[dict[str, str]] = []
+    for item in selected:
+        code = str(item["scenario_code"])
+        factor = factor_by_code.get(code)
+        mass = mass_by_code.get(code)
+        method = method_by_code.get(code)
+        if factor is None or mass is None or method is None:
+            raise ReportKeyScenariosError(
+                f"Для ключевого сценария {code} отсутствуют актуальные результаты расчёта"
+            )
+        fatalities = int(item["fatalities_count"])
+        injured = int(item["injured_count"])
+        rows.append(
+            {
+                "component": str(item["hazard_component"]),
+                "scenario_type": str(item["scenario_type_name"]),
+                "scenario_code": code,
+                "equipment": str(item["equipment_name"]),
+                "description": str(item["scenario_text"]),
+                "frequency": f"{float(item['scenario_frequency']):.3E}",
+                "accident_mass": mass["accident_mass"],
+                "zones": factor["zones"],
+                "method": method,
+                "people": (
+                    f"Пострадавшие: {fatalities + injured}\n"
+                    f"Раненые: {injured}\nПогибшие: {fatalities}"
+                ),
+                "damage": f"{float(item['total_damage']):.1f}".replace(".", ","),
+            }
+        )
+    return tuple(rows)
+
+
 def _shade(cell: Any, color: str) -> None:
     properties = cell._tc.get_or_add_tcPr()
     shading = properties.find(qn("w:shd"))
@@ -464,6 +561,41 @@ def _set_damage_table_geometry(section: Any, table: Any) -> None:
         row_properties = row._tr.get_or_add_trPr()
         if row_properties.find(qn("w:cantSplit")) is None:
             row_properties.append(OxmlElement("w:cantSplit"))
+        for cell, width in zip(row._tr.tc_lst, widths):
+            cell_width = cell.get_or_add_tcPr().get_or_add_tcW()
+            cell_width.set(qn("w:w"), str(width))
+            cell_width.set(qn("w:type"), "dxa")
+
+
+def _set_accident_description_table_geometry(section: Any, table: Any) -> None:
+    total_twips = int(
+        (section.page_width - section.left_margin - section.right_margin) / 635
+    )
+    proportions = (
+        0.11, 0.08, 0.045, 0.13, 0.15, 0.07,
+        0.07, 0.14, 0.10, 0.065, 0.04,
+    )
+    widths = [int(total_twips * value) for value in proportions[:-1]]
+    widths.append(total_twips - sum(widths))
+    table.autofit = False
+    properties = table._tbl.tblPr
+    table_width = properties.find(qn("w:tblW"))
+    if table_width is None:
+        table_width = OxmlElement("w:tblW")
+        properties.append(table_width)
+    table_width.set(qn("w:w"), str(total_twips))
+    table_width.set(qn("w:type"), "dxa")
+    grid = table._tbl.tblGrid
+    for child in list(grid):
+        grid.remove(child)
+    for width in widths:
+        column = OxmlElement("w:gridCol")
+        column.set(qn("w:w"), str(width))
+        grid.append(column)
+    for row in table.rows:
+        _prevent_split = row._tr.get_or_add_trPr()
+        if _prevent_split.find(qn("w:cantSplit")) is None:
+            _prevent_split.append(OxmlElement("w:cantSplit"))
         for cell, width in zip(row._tr.tc_lst, widths):
             cell_width = cell.get_or_add_tcPr().get_or_add_tcW()
             cell_width.set(qn("w:w"), str(width))
@@ -754,7 +886,73 @@ def render_key_scenario_conclusions(
     return True
 
 
+def render_accident_description_table(
+    document: DocumentType,
+    rows: tuple[dict[str, str], ...],
+) -> bool:
+    marker_paragraph = next(
+        (
+            paragraph
+            for paragraph in document.paragraphs
+            if ACCIDENT_DESCRIPTION_MARKER in paragraph.text
+        ),
+        None,
+    )
+    if marker_paragraph is None:
+        return False
+
+    section = _paragraph_section(document, marker_paragraph._p)
+    table = document.add_table(rows=1, cols=11)
+    table.style = "Table Grid"
+    marker_paragraph._p.addnext(table._tbl)
+    headers = (
+        "Составляющая объекта",
+        "Тип сценария",
+        "Номер сценария",
+        "Наименование оборудования",
+        "Краткое описание сценария",
+        "Частота, 1/год",
+        "Количество ОВ, участвующего в аварии, т",
+        "Зоны действия поражающих факторов",
+        "Метод расчёта",
+        "Количество людей",
+        "Ущерб, тыс. руб.",
+    )
+    for cell, value in zip(table.rows[0].cells, headers):
+        _set_cell_text(cell, value, bold=True, centered=True, font_size=6.5)
+    repeat_header = OxmlElement("w:tblHeader")
+    repeat_header.set(qn("w:val"), "true")
+    table.rows[0]._tr.get_or_add_trPr().append(repeat_header)
+
+    for item in rows:
+        values = (
+            item["component"],
+            item["scenario_type"],
+            item["scenario_code"],
+            item["equipment"],
+            item["description"],
+            item["frequency"],
+            item["accident_mass"],
+            item["zones"],
+            item["method"],
+            item["people"],
+            item["damage"],
+        )
+        for column, (cell, value) in enumerate(zip(table.add_row().cells, values)):
+            _set_cell_text(
+                cell,
+                value,
+                centered=column in (2, 5, 6, 9, 10),
+                font_size=6.5,
+            )
+
+    marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    _set_accident_description_table_geometry(section, table)
+    return True
+
+
 __all__ = [
+    "ACCIDENT_DESCRIPTION_MARKER",
     "CONCLUSION_MARKER",
     "DAMAGE_MARKER",
     "DESCRIPTION_MARKER",
@@ -763,12 +961,14 @@ __all__ = [
     "PEOPLE_MARKER",
     "ReportKeyScenariosError",
     "load_key_scenario_conclusions",
+    "load_accident_description_rows",
     "load_key_scenario_damage_rows",
     "load_key_scenario_description_rows",
     "load_key_scenario_people_rows",
     "load_key_scenario_pf_rows",
     "load_key_scenario_rows",
     "render_key_scenario_conclusions",
+    "render_accident_description_table",
     "render_key_scenario_damage",
     "render_key_scenario_descriptions",
     "render_key_scenario_hazard_factors",

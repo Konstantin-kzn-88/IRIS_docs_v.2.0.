@@ -67,6 +67,12 @@ def short_substance_characteristic(item: dict[str, Any]) -> str:
     impact = str(item.get("impact", "")).strip()
     if impact and impact != "-":
         parts.append("Воздействие на людей: " + impact.rstrip("."))
+    neutralization = str(item.get("neutralization_methods", "")).strip()
+    if neutralization and neutralization != "-":
+        parts.append("Способы обезвреживания: " + neutralization.rstrip("."))
+    first_aid = str(item.get("first_aid", "")).strip()
+    if first_aid and first_aid != "-":
+        parts.append("Первая помощь: " + first_aid.rstrip("."))
     return ". ".join(parts).strip() + ("." if parts else "Сведения не заполнены.")
 
 

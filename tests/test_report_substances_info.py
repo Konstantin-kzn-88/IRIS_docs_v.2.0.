@@ -15,6 +15,8 @@ def substance() -> dict:
         "explosion": {"flash_point_C": -35},
         "toxicity": {"hazard_class": 3, "pdk_mg_per_m3": 100},
         "impact": "Пары раздражают органы дыхания",
+        "neutralization_methods": "Собрать механическим способом",
+        "first_aid": "Вывести пострадавшего на свежий воздух",
     }
 
 
@@ -25,6 +27,8 @@ def test_short_characteristic_contains_properties_and_human_impact() -> None:
     assert "плотность жидкости 850 кг/м³" in text
     assert "температура вспышки -35 °C" in text
     assert "Воздействие на людей: Пары раздражают органы дыхания" in text
+    assert "Способы обезвреживания: Собрать механическим способом" in text
+    assert "Первая помощь: Вывести пострадавшего на свежий воздух" in text
 
 
 def test_table_replaces_marker_and_has_two_columns() -> None:

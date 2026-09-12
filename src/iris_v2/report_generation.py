@@ -87,6 +87,7 @@ from iris_v2.report_impact_zones import (
 )
 from iris_v2.report_key_scenarios import (
     ReportKeyScenariosError,
+    load_accident_description_rows,
     load_key_scenario_conclusions,
     load_key_scenario_damage_rows,
     load_key_scenario_description_rows,
@@ -94,6 +95,7 @@ from iris_v2.report_key_scenarios import (
     load_key_scenario_pf_rows,
     load_key_scenario_rows,
     render_key_scenario_conclusions,
+    render_accident_description_table,
     render_key_scenario_damage,
     render_key_scenario_descriptions,
     render_key_scenario_hazard_factors,
@@ -214,6 +216,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "TOP_SCENARIOS_FATALITIES_INJURED",
         "TOP_SCENARIOS_DAMAGE",
         "TOP_SCENARIOS_FINAL_CONCLUSION",
+        "SITUATION_PLAN_ACCIDENTS_TABLE",
         "COMPONENT_INPUTS_ASSUMPTIONS_SECTION",
         "SUBSTANCES_INFO_SECTION",
     }
@@ -896,6 +899,13 @@ class ReportGenerationService:
                     filled_sections.append("TOP_SCENARIOS_FINAL_CONCLUSION")
             except ReportKeyScenariosError as exc:
                 raise ReportGenerationError(str(exc)) from exc
+        if "SITUATION_PLAN_ACCIDENTS_TABLE" in marker_names:
+            try:
+                rows = load_accident_description_rows(project_root)
+                if render_accident_description_table(document, rows):
+                    filled_sections.append("SITUATION_PLAN_ACCIDENTS_TABLE")
+            except ReportKeyScenariosError as exc:
+                raise ReportGenerationError(str(exc)) from exc
         if "COMPONENT_INPUTS_ASSUMPTIONS_SECTION" in marker_names:
             try:
                 rows, assumptions = load_component_inputs_assumptions(project_root)
@@ -951,6 +961,7 @@ class ReportGenerationService:
             "TOP_SCENARIOS_DESC_BY_COMPONENT", "TOP_SCENARIOS_PF_BY_COMPONENT",
             "TOP_SCENARIOS_FATALITIES_INJURED", "TOP_SCENARIOS_DAMAGE",
             "TOP_SCENARIOS_FINAL_CONCLUSION",
+            "SITUATION_PLAN_ACCIDENTS_TABLE",
         }
         if not marker_names & risk_markers:
             return
@@ -988,6 +999,7 @@ class ReportGenerationService:
             "TOP_SCENARIOS_DESC_BY_COMPONENT", "TOP_SCENARIOS_PF_BY_COMPONENT",
             "TOP_SCENARIOS_FATALITIES_INJURED", "TOP_SCENARIOS_DAMAGE",
             "TOP_SCENARIOS_FINAL_CONCLUSION",
+            "SITUATION_PLAN_ACCIDENTS_TABLE",
         }
         if marker_names & key_markers:
             require_fresh(

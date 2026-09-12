@@ -8,6 +8,7 @@ from iris_v2.calculation_config import (
     new_calculation_config,
 )
 from iris_v2.report_key_scenarios import (
+    load_accident_description_rows,
     load_key_scenario_conclusions,
     load_key_scenario_damage_rows,
     load_key_scenario_description_rows,
@@ -20,6 +21,7 @@ from iris_v2.report_key_scenarios import (
     render_key_scenario_hazard_factors,
     render_key_scenario_people,
     render_key_scenarios_section,
+    render_accident_description_table,
 )
 
 
@@ -461,3 +463,57 @@ def test_conclusion_replaces_marker_with_formatted_paragraph() -> None:
     assert paragraph.alignment == 3
     assert paragraph.runs[0].font.name == "Times New Roman"
     assert paragraph.runs[0].font.size.pt == 10
+
+
+def test_accident_description_table_has_three_people_counts() -> None:
+    document = Document()
+    document.add_paragraph("{{SITUATION_PLAN_ACCIDENTS_TABLE}}")
+    rows = (
+        {
+            "component": "Участок",
+            "scenario_type": "Наиболее опасный",
+            "scenario_code": "С2",
+            "equipment": "Нефтепровод",
+            "description": "Разрыв трубопровода → пожар пролива",
+            "frequency": "2.000E-05",
+            "accident_mass": "4,321",
+            "zones": "зона теплового излучения — 40,0 м",
+            "method": "Приказ МЧС России от 10.07.2009 № 404",
+            "people": "Пострадавшие: 6\nРаненые: 4\nПогибшие: 2",
+            "damage": "900,0",
+        },
+    )
+
+    assert render_accident_description_table(document, rows)
+    assert len(document.tables[0].columns) == 11
+    assert document.tables[0].rows[1].cells[9].text == (
+        "Пострадавшие: 6\nРаненые: 4\nПогибшие: 2"
+    )
+
+
+def test_accident_description_rows_combine_current_calculations(
+    tmp_path: Path,
+) -> None:
+    risk = row("С1", "Участок", 2, 4, 900.0, 2e-5)
+    write_json(tmp_path / "risk_results.json", {"results": [risk]})
+    common = {
+        "id": 1,
+        "scenario_code": "С1",
+        "equipment_name": "Оборудование С1",
+        "hazard_component": "Участок",
+        "calc_code": 1,
+        "ov_in_accident_t": 4.321,
+    }
+    factor = dict(common, ov_in_hazard_factor_t=1.234)
+    write_json(tmp_path / "release_results.json", {"results": [common]})
+    write_json(tmp_path / "hazard_factor_results.json", {"results": [factor]})
+    impact = dict(common, impact_values={"q_10_5_m": 10.0})
+    write_json(tmp_path / "impact_zones.json", {"results": [impact]})
+
+    rows = load_accident_description_rows(tmp_path)
+
+    assert len(rows) == 2
+    assert rows[0]["scenario_code"] == "С1"
+    assert rows[0]["accident_mass"] == "4,321"
+    assert rows[0]["method"] == "Приказ МЧС России от 10.07.2009 № 404"
+    assert rows[0]["people"] == "Пострадавшие: 6\nРаненые: 4\nПогибшие: 2"

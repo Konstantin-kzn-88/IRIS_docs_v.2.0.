@@ -132,11 +132,11 @@ def _save_chart(
     from matplotlib import pyplot as plt
 
     limited = limit_pareto_series(series)
-    if limited and limited[-1][0] == "Прочие":
-        drawn = limited[:-1]
-    else:
-        drawn = limited
-    labels = [label for label, _ in drawn]
+    drawn = limited[:-1] if limited and limited[-1][0] == "Прочие" else limited
+    labels = [
+        label if label == "Прочие" else label.rsplit(" / ", 1)[-1]
+        for label, _ in drawn
+    ]
     values = [value for _, value in drawn]
     total = sum(value for _, value in series)
     cumulative: list[float] = []
@@ -146,26 +146,61 @@ def _save_chart(
         cumulative.append(100.0 * running / total if total > 0 else 0.0)
 
     positions = list(range(len(values)))
-    figure, axis = plt.subplots(figsize=(12, 6))
-    axis.bar(positions, values)
-    axis.set_ylabel(ylabel)
-    axis.set_title(title)
+    plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 9})
+    figure, axis = plt.subplots(figsize=(12, 5.8), facecolor="white")
+    bars = axis.bar(
+        positions,
+        values,
+        color="#4472C4",
+        edgecolor="#2F5597",
+        linewidth=0.5,
+        width=0.72,
+        label="Значение показателя",
+    )
+    axis.set_ylabel(ylabel, fontsize=10)
+    axis.set_title(title, fontsize=13, fontweight="bold", pad=14)
     axis.set_xticks(positions)
-    axis.set_xticklabels(labels, rotation=90, fontsize=7)
-    axis.grid(True, axis="y")
+    axis.set_xticklabels(labels, rotation=0, fontsize=9)
+    axis.grid(True, axis="y", color="#D9E2F3", linewidth=0.7)
+    axis.set_axisbelow(True)
+    axis.spines[["top", "right"]].set_visible(False)
+    axis.tick_params(axis="both", colors="#404040")
+    axis.margins(x=0.02)
 
     share_axis = axis.twinx()
     share_axis.plot(
         positions,
         cumulative,
-        color="orange",
+        color="#ED7D31",
         marker="o",
-        linewidth=2,
+        markersize=4.5,
+        linewidth=2.2,
+        label="Накопленная доля",
     )
-    share_axis.set_ylabel("Накопленная доля, %")
+    share_axis.set_ylabel("Накопленная доля, %", fontsize=10)
     share_axis.set_ylim(0, 105)
-    share_axis.axhline(80, color="red", linestyle="--", linewidth=1.5)
-    figure.tight_layout()
+    share_axis.set_yticks((0, 20, 40, 60, 80, 100))
+    share_axis.spines["top"].set_visible(False)
+    threshold = share_axis.axhline(
+        80,
+        color="#A5A5A5",
+        linestyle="--",
+        linewidth=1.4,
+        label="Порог 80 %",
+    )
+    handles = [bars, share_axis.lines[0], threshold]
+    labels_legend = [item.get_label() for item in handles]
+    axis.legend(
+        handles,
+        labels_legend,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 1.01),
+        ncol=3,
+        frameon=False,
+        fontsize=8.5,
+    )
+    axis.set_xlabel("Сценарий", labelpad=7)
+    figure.tight_layout(pad=1.3)
     figure.savefig(path, format="png", dpi=200, bbox_inches="tight")
     plt.close(figure)
 

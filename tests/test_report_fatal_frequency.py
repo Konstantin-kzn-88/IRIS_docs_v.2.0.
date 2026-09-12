@@ -2,8 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
+from docx import Document
 
-from iris_v2.report_fatal_frequency import load_fatal_accident_frequency
+from iris_v2.report_fatal_frequency import (
+    load_fatal_accident_frequency,
+    render_fatal_accident_frequency,
+)
 
 
 def write_json(path: Path, value: object) -> None:
@@ -60,3 +64,11 @@ def test_fatal_frequency_text_variants(
     )
 
     assert load_fatal_accident_frequency(tmp_path) == expected
+
+
+def test_fatal_frequency_is_rendered_with_eleven_point_font() -> None:
+    document = Document()
+    document.add_paragraph("{{FATAL_ACCIDENT_FREQUENCY}}")
+
+    assert render_fatal_accident_frequency(document, "Частота: 1.000E-05 1/год.")
+    assert document.paragraphs[0].runs[0].font.size.pt == 11

@@ -161,7 +161,7 @@ def render_fatal_accident_frequency(
     marker_paragraph.clear()
     run = marker_paragraph.add_run(value)
     run.font.name = "Times New Roman"
-    run.font.size = Pt(12)
+    run.font.size = Pt(11)
     fonts = run._element.get_or_add_rPr().get_or_add_rFonts()
     for name in ("ascii", "hAnsi", "eastAsia"):
         fonts.set(qn(f"w:{name}"), "Times New Roman")
