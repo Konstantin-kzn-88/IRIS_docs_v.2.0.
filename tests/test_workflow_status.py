@@ -96,3 +96,42 @@ def test_old_impact_type_marks_zone_summary_for_update(tmp_path: Path) -> None:
     )
 
     assert workflow_statuses(tmp_path)["impact_zones_button"] == PENDING
+
+
+def test_report_status_requires_every_document_in_selected_set(
+    tmp_path: Path,
+) -> None:
+    selected = tmp_path / "input" / "templates" / "selected"
+    selected.mkdir(parents=True)
+    documents = []
+    for name in (
+        "DPB_template_promyslovye_truboprovody.docx",
+        "IFL_template_promyslovye_truboprovody.docx",
+        "RPZ_template_promyslovye_truboprovody.docx",
+    ):
+        path = selected / name
+        path.write_bytes(b"template")
+        documents.append(
+            {
+                "name": name,
+                "path": f"input/templates/selected/{name}",
+                "sha256": "test",
+            }
+        )
+    write_json(
+        tmp_path / "report_config.json",
+        {"format_version": 1, "documents": documents},
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+    for name in (
+        "DPB_promyslovye_truboprovody.docx",
+        "IFL_promyslovye_truboprovody.docx",
+        "RPZ_promyslovye_truboprovody.docx",
+    ):
+        (output / name).write_bytes(b"report")
+
+    assert workflow_statuses(tmp_path)["report_generation_button"] == DONE
+
+    (output / "IFL_promyslovye_truboprovody.docx").unlink()
+    assert workflow_statuses(tmp_path)["report_generation_button"] == PENDING

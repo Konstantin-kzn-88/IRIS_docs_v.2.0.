@@ -2748,12 +2748,18 @@ class ReportGenerationDialog(QDialog):
             else "Все маркеры заполнены"
         )
 
-        path_label = QLabel(f"Файл: {result.output_path}")
+        path_label = QLabel(
+            "Файлы:\n" + "\n".join(str(path) for path in result.output_paths)
+        )
         path_label.setWordWrap(True)
         path_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        open_document = QPushButton("Открыть документ")
+        open_document = QPushButton(
+            "Открыть документ"
+            if len(result.output_paths) == 1
+            else "Открыть первый документ"
+        )
         open_document.clicked.connect(
             lambda: QDesktopServices.openUrl(
                 QUrl.fromLocalFile(str(result.output_path))

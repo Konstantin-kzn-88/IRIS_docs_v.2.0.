@@ -28,6 +28,11 @@ def make_project(tmp_path: Path) -> Path:
                     "short_name": "АО Короткое",
                     "ids": {"inn": "1234567890"},
                     "contacts": {"phone": "+7 000 000-00-00"},
+                    "public_information_contact": {
+                        "position": "Начальник отдела",
+                        "full_name": "Иванов Иван Иванович",
+                        "phone": "+7 000 000-00-01",
+                    },
                 },
                 "permits": {"license_number": "Лицензия № 1"},
             },
@@ -396,6 +401,110 @@ def all_text(document: Document) -> str:
     for section in document.sections:
         values.extend(paragraph.text for paragraph in section.header.paragraphs)
     return "\n".join(values)
+
+
+def install_ifl_template(project: Path) -> Path:
+    path = project / "input" / "templates" / "selected" / "template_report.docx"
+    document = Document()
+    document.add_paragraph("Должность: {{PUBLIC_INFORMATION_CONTACT_POSITION}}")
+    document.add_paragraph("Ф.И.О.: {{PUBLIC_INFORMATION_CONTACT_FULL_NAME}}")
+    document.add_paragraph("Телефон: {{PUBLIC_INFORMATION_CONTACT_PHONE}}")
+    document.add_paragraph("{{SUBSTANCES_INFO_SECTION}}")
+    document.add_paragraph("Пострадавших: {{MAX_PEOPLE_VICTIMS}} чел.")
+    document.add_paragraph("{{SAFETY_MEASURES_SECTION}}")
+    document.add_paragraph("{{PUBLIC_WARNING_AND_ACTIONS_SECTION}}")
+    document.save(path)
+    config = {
+        "format_version": 1,
+        "template_profile": "test-ifl",
+        "documents": [
+            {
+                "name": path.name,
+                "path": "input/templates/selected/template_report.docx",
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        ],
+    }
+    (project / "report_config.json").write_text(
+        json.dumps(config, ensure_ascii=False), encoding="utf-8"
+    )
+    return path
+
+
+def test_ifl_markers_are_filled(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    install_ifl_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_scenario_results(project)
+
+    result = ReportGenerationService().generate(project)
+
+    document = Document(result.output_path)
+    text = all_text(document)
+    assert "{{" not in text
+    assert "Должность: Начальник отдела" in text
+    assert "Ф.И.О.: Иванов Иван Иванович" in text
+    assert "Телефон: +7 000 000-00-01" in text
+    assert "Пострадавших: 4 чел." in text
+    assert "производственный контроль" in text
+    assert "Оповещение населения" in text
+    assert [cell.text for cell in document.tables[0].rows[0].cells] == [
+        "Наименование вещества",
+        "Краткая характеристика",
+    ]
+    assert result.filled_sections == ("SUBSTANCES_INFO_SECTION",)
+
+
+def test_template_set_creates_three_reports(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    selected = project / "input" / "templates" / "selected"
+    documents = (
+        ("DPB_template_promyslovye_truboprovody.docx", "{{PROJECT_NAME}}"),
+        ("IFL_template_promyslovye_truboprovody.docx", "{{SHORT_NAME}}"),
+        ("RPZ_template_promyslovye_truboprovody.docx", "{{SITE_NAME}}"),
+    )
+    config_documents = []
+    for name, marker in documents:
+        path = selected / name
+        document = Document()
+        document.add_paragraph(marker)
+        document.save(path)
+        config_documents.append(
+            {
+                "name": name,
+                "path": f"input/templates/selected/{name}",
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        )
+    (project / "report_config.json").write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "template_profile": "ДПБ_промысловые_трубопроводы",
+                "documents": config_documents,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    result = ReportGenerationService().generate(project)
+
+    assert [path.name for path in result.output_paths] == [
+        "DPB_promyslovye_truboprovody.docx",
+        "IFL_promyslovye_truboprovody.docx",
+        "RPZ_promyslovye_truboprovody.docx",
+    ]
+    assert all(path.is_file() for path in result.output_paths)
+    assert [all_text(Document(path)).strip() for path in result.output_paths] == [
+        "Проект ДПБ",
+        "АО Короткое",
+        "Площадка нефти",
+    ]
+    assert result.replaced_count == 3
 
 
 def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> None:

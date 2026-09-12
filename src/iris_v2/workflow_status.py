@@ -244,17 +244,49 @@ def workflow_statuses(project_directory: Path) -> dict[str, str]:
             else PENDING
         )
 
-    report = project / "output" / "template_report_out.docx"
+    report_config = project / "report_config.json"
+    report_names = ["template_report_out.docx"]
+    selected_templates: list[Path] = []
+    if report_config.is_file():
+        try:
+            config = json.loads(report_config.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            config = {}
+        documents = config.get("documents") if isinstance(config, dict) else None
+        if isinstance(documents, list) and documents:
+            report_names = []
+            for item in documents:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name", "")).strip()
+                relative_path = str(item.get("path", "")).strip()
+                if name == "template_report.docx":
+                    report_names.append("template_report_out.docx")
+                elif name.lower().endswith(".docx"):
+                    stem = Path(name).stem
+                    if "_template_" in stem:
+                        stem = stem.replace("_template_", "_", 1)
+                    elif stem.endswith("_template"):
+                        stem = stem.removesuffix("_template")
+                    else:
+                        stem = f"{stem}_out"
+                    report_names.append(f"{stem}.docx")
+                if relative_path:
+                    selected_templates.append(project / relative_path)
+    reports = tuple(project / "output" / name for name in report_names)
     report_inputs = [path for path in project.glob("*.json") if path.is_file()]
     report_inputs.extend(path for path in chart_directory.glob("*.png") if path.is_file())
-    template = project / "default" / "template_report.docx"
-    if template.is_file():
-        report_inputs.append(template)
+    report_inputs.extend(path for path in selected_templates if path.is_file())
+    if not selected_templates:
+        default_template = project / "default" / "template_report.docx"
+        if default_template.is_file():
+            report_inputs.append(default_template)
     statuses["report_generation_button"] = (
         DONE
-        if report.is_file()
+        if reports
+        and all(report.is_file() for report in reports)
         and report_inputs
-        and report.stat().st_mtime_ns
+        and min(report.stat().st_mtime_ns for report in reports)
         >= max(path.stat().st_mtime_ns for path in report_inputs)
         else PENDING
     )
