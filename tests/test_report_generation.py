@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from docx import Document
+from docx.oxml.ns import qn
 
 from iris_v2.project_common import ProjectCommonService, new_project_common
 from iris_v2.report_generation import ReportGenerationError, ReportGenerationService
@@ -454,6 +455,24 @@ def test_ifl_markers_are_filled(tmp_path: Path) -> None:
         "Наименование вещества",
         "Краткая характеристика",
     ]
+    for paragraph in document.paragraphs:
+        if "производственный контроль" in paragraph.text or (
+            "Оповещение населения" in paragraph.text
+        ):
+            assert paragraph.runs
+            assert all(run.font.name == "Times New Roman" for run in paragraph.runs)
+            assert all(run.font.size.pt == 11 for run in paragraph.runs)
+    table_width = document.tables[0]._tbl.tblPr.find(qn("w:tblW"))
+    assert table_width is not None
+    assert table_width.get(qn("w:type")) == "pct"
+    assert table_width.get(qn("w:w")) == "5000"
+    assert all(
+        run.font.name == "Times New Roman" and run.font.size.pt == 11
+        for row in document.tables[0].rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+    )
     assert result.filled_sections == ("SUBSTANCES_INFO_SECTION",)
 
 
@@ -753,6 +772,35 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         for table in Document(result.output_path).tables
         for row in table.rows
         for cell in row.cells
+    )
+    generated_tables = [
+        table
+        for table in Document(result.output_path).tables
+        if not table.cell(0, 0).text.startswith("Организация:")
+    ]
+    assert generated_tables
+    assert all(
+        (width := table._tbl.tblPr.find(qn("w:tblW"))) is not None
+        and width.get(qn("w:type")) == "pct"
+        and width.get(qn("w:w")) == "5000"
+        for table in generated_tables
+    )
+    assert all(
+        run.font.name == "Times New Roman" and run.font.size.pt == 11
+        for table in generated_tables
+        for row in table.rows
+        for cell in row.cells
+        for paragraph in cell.paragraphs
+        for run in paragraph.runs
+    )
+    fatal_frequency_paragraph = next(
+        paragraph
+        for paragraph in Document(result.output_path).paragraphs
+        if "Частота сценариев с погибшими" in paragraph.text
+    )
+    assert all(
+        run.font.name == "Times New Roman" and run.font.size.pt == 11
+        for run in fatal_frequency_paragraph.runs
     )
     assert result.replaced_count == 7
     assert result.filled_sections == (

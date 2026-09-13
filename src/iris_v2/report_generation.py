@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from docx import Document
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
 
@@ -222,6 +223,25 @@ SUPPORTED_SECTION_MARKERS = frozenset(
     }
 )
 
+GENERATED_TEXT_MARKERS = SUPPORTED_SECTION_MARKERS | frozenset(
+    {
+        "MAX_PEOPLE_VICTIMS",
+        "SITE_DESCRIPTION",
+        "SITE_AREA_CHARACTERISTICS",
+        "SITE_EMERGENCY_RESPONSE_PLAN",
+        "INDUSTRIAL_SAFETY_MANAGEMENT_SYSTEM",
+        "INDUSTRIAL_CONTROL_REGULATION",
+        "ACCIDENT_INVESTIGATION_REGULATION",
+        "OPO_SECURITY",
+        "NASF_INFORMATION",
+        "PASF_INFORMATION",
+        "FINANCIAL_RESERVE_ORDER",
+        "MATERIAL_RESERVE_ORDER",
+        "SAFETY_MEASURES_SECTION",
+        "PUBLIC_WARNING_AND_ACTIONS_SECTION",
+    }
+)
+
 # Эти блоки заполняются отдельными модулями формирования таблиц, выводов и
 # диаграмм. На первом этапе их нельзя удалять из документа.
 DEFERRED_MARKERS = frozenset(
@@ -301,6 +321,100 @@ def _remove_table_shading(document: Any) -> None:
         shading = properties.find(qn("w:shd"))
         if shading is not None:
             properties.remove(shading)
+
+
+@dataclass(frozen=True)
+class _GeneratedContentSnapshot:
+    tables: frozenset[Any]
+    paragraphs: frozenset[Any]
+    marker_paragraphs: frozenset[Any]
+
+
+def _generated_content_snapshot(document: Any) -> _GeneratedContentSnapshot:
+    body = document.element.body
+    paragraphs = frozenset(body.iter(qn("w:p")))
+    marker_paragraphs = frozenset(
+        paragraph
+        for paragraph in paragraphs
+        if {
+            match.group(1).strip()
+            for match in _paragraph_markers(paragraph)
+        }
+        & GENERATED_TEXT_MARKERS
+    )
+    return _GeneratedContentSnapshot(
+        tables=frozenset(body.iter(qn("w:tbl"))),
+        paragraphs=paragraphs,
+        marker_paragraphs=marker_paragraphs,
+    )
+
+
+def _set_generated_run_font(run: Any) -> None:
+    properties = run.get_or_add_rPr()
+    fonts = properties.get_or_add_rFonts()
+    for name in ("ascii", "hAnsi", "eastAsia", "cs"):
+        fonts.set(qn(f"w:{name}"), "Times New Roman")
+    for tag in ("w:sz", "w:szCs"):
+        size = properties.find(qn(tag))
+        if size is None:
+            size = OxmlElement(tag)
+            properties.append(size)
+        size.set(qn("w:val"), "22")
+
+
+def _set_generated_table_full_width(table: Any) -> None:
+    properties = table.tblPr
+    width = properties.find(qn("w:tblW"))
+    if width is None:
+        width = OxmlElement("w:tblW")
+        properties.append(width)
+    width.set(qn("w:w"), "5000")
+    width.set(qn("w:type"), "pct")
+
+    alignment = properties.find(qn("w:jc"))
+    if alignment is None:
+        alignment = OxmlElement("w:jc")
+        properties.append(alignment)
+    alignment.set(qn("w:val"), "center")
+
+    indent = properties.find(qn("w:tblInd"))
+    if indent is None:
+        indent = OxmlElement("w:tblInd")
+        properties.append(indent)
+    indent.set(qn("w:w"), "0")
+    indent.set(qn("w:type"), "dxa")
+
+    layout = properties.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        properties.append(layout)
+    layout.set(qn("w:type"), "autofit")
+
+
+def _normalize_generated_content(
+    document: Any,
+    snapshot: _GeneratedContentSnapshot,
+) -> None:
+    body = document.element.body
+    generated_tables = [
+        table
+        for table in body.iter(qn("w:tbl"))
+        if table not in snapshot.tables
+    ]
+    for table in generated_tables:
+        _set_generated_table_full_width(table)
+
+    generated_paragraphs = {
+        paragraph
+        for paragraph in body.iter(qn("w:p"))
+        if paragraph not in snapshot.paragraphs
+        or paragraph in snapshot.marker_paragraphs
+    }
+    for table in generated_tables:
+        generated_paragraphs.update(table.iter(qn("w:p")))
+    for paragraph in generated_paragraphs:
+        for run in paragraph.iter(qn("w:r")):
+            _set_generated_run_font(run)
 
 
 def _build_replacements(
@@ -591,6 +705,8 @@ class ReportGenerationService:
             raise ReportGenerationError(
                 f"Не удалось открыть шаблон: {template_path.name}"
             ) from exc
+
+        generated_content_snapshot = _generated_content_snapshot(document)
 
         replacements = _build_replacements(project, common, generated_at)
         marker_names = _marker_names(document)
@@ -921,6 +1037,7 @@ class ReportGenerationService:
             names = ", ".join(sorted(unexpected))
             raise ReportGenerationError(f"Не удалось заполнить маркеры: {names}")
 
+        _normalize_generated_content(document, generated_content_snapshot)
         _remove_table_shading(document)
 
         output_directory = output_path.parent
