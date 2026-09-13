@@ -52,10 +52,12 @@ project_common.json
 ```text
 developers/
 ├─ Ecopromproject/developer.json
+├─ Kuznetsov/developer.json
 └─ Другой разработчик/developer.json
 ```
 
-За основу можно взять обезличенный пример:
+В комплект программы включена карточка ООО «Экопромпроект». Для добавления
+другого постоянного разработчика её можно скопировать и заменить реквизиты:
 
 ```powershell
 New-Item -ItemType Directory .\developers\Example

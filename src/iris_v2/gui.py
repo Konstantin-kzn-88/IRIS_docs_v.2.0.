@@ -211,12 +211,15 @@ from iris_v2.typical_scenarios import (
 
 class ProjectCommonDialog(QDialog):
     EXECUTOR_FIELDS = (
-        ("name", "Наименование разработчика"),
-        ("address", "Адрес"),
+        ("name", "Сокращённое наименование разработчика"),
+        ("full_name", "Полное наименование разработчика"),
+        ("address", "Юридический адрес"),
         ("sro", "СРО"),
         ("inn", "ИНН"),
         ("ogrn", "ОГРН"),
+        ("ogrnip", "ОГРНИП"),
         ("tel", "Телефон"),
+        ("fax", "Факс"),
         ("head_position", "Должность руководителя"),
         ("head_full_name", "Ф.И.О. руководителя"),
         ("specialist_info", "Сведения о специалисте"),
@@ -271,7 +274,7 @@ class ProjectCommonDialog(QDialog):
             self.developer_combo.addItem(developer.name, developer)
         executor_form.addRow("Постоянный разработчик:", self.developer_combo)
         for key, label in self.EXECUTOR_FIELDS:
-            if key in {"address", "specialist_info"}:
+            if key in {"address", "sro", "specialist_info"}:
                 edit = QPlainTextEdit(str(executor.get(key, "")))
                 edit.setMaximumHeight(100)
             else:
