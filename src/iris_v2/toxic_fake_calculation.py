@@ -12,6 +12,7 @@ TOXIC_CALC_CODE = 4
 LETHAL_COEFFICIENT = 5.0
 THRESHOLD_COEFFICIENT = 15.0
 MASS_POWER = 0.33
+TOXIC_ZONE_RADIUS_SCALE = 0.5
 METHOD_NAME = "temporary_mass_scaling"
 WARNING = (
     "Временная оценка по массе. Не является моделью рассеивания "
@@ -39,8 +40,16 @@ def calculate_temporary_toxic_zones(mass_kg: float) -> tuple[int, int]:
         or mass_kg <= 0
     ):
         raise ValueError("mass_kg должна быть больше нуля")
-    lethal = round(LETHAL_COEFFICIENT * float(mass_kg) ** MASS_POWER)
-    threshold = round(THRESHOLD_COEFFICIENT * float(mass_kg) ** MASS_POWER)
+    lethal = round(
+        LETHAL_COEFFICIENT
+        * TOXIC_ZONE_RADIUS_SCALE
+        * float(mass_kg) ** MASS_POWER
+    )
+    threshold = round(
+        THRESHOLD_COEFFICIENT
+        * TOXIC_ZONE_RADIUS_SCALE
+        * float(mass_kg) ** MASS_POWER
+    )
     return lethal, threshold
 
 
@@ -136,7 +145,7 @@ class ToxicCalculationService:
                     "lethal_radius_m": lethal,
                     "threshold_radius_m": threshold,
                     "toxic_formula": (
-                        "R_lethal=5*m^0.33; R_threshold=15*m^0.33; m, кг"
+                        "R_lethal=2.5*m^0.33; R_threshold=7.5*m^0.33; m, кг"
                         if applicable
                         else "не применяется"
                     ),

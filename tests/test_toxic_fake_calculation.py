@@ -27,11 +27,11 @@ def hazard_result(case_id: int, calc_code: int, mass_t: float = 1.0) -> dict:
     }
 
 
-def test_old_temporary_formula_is_preserved() -> None:
+def test_temporary_toxic_zone_radii_are_reduced_by_half() -> None:
     lethal, threshold = calculate_temporary_toxic_zones(1000.0)
 
-    assert lethal == round(5 * 1000 ** 0.33)
-    assert threshold == round(15 * 1000 ** 0.33)
+    assert lethal == round(2.5 * 1000 ** 0.33)
+    assert threshold == round(7.5 * 1000 ** 0.33)
 
 
 def test_service_calculates_only_calc_code_4(tmp_path: Path) -> None:
