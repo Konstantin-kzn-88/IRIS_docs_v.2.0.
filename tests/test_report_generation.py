@@ -1063,6 +1063,31 @@ def test_missing_impact_zones_does_not_replace_existing_report(
     assert output.read_bytes() == b"previous report"
 
 
+def test_old_toxic_scale_does_not_replace_existing_report(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    install_template(project)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    hazard_path = project / "hazard_factor_results.json"
+    hazard = json.loads(hazard_path.read_text(encoding="utf-8"))
+    hazard["results"][0]["calc_code"] = 4
+    hazard_path.write_text(json.dumps(hazard), encoding="utf-8")
+    (project / "toxic_results.json").write_text(
+        json.dumps({"radius_scale": 0.5, "results": []}), encoding="utf-8"
+    )
+    output = project / "output" / "template_report_out.docx"
+    output.write_bytes(b"previous report")
+
+    with pytest.raises(ReportGenerationError, match="устаревшим масштабом"):
+        ReportGenerationService().generate(project)
+
+    assert output.read_bytes() == b"previous report"
+
+
 def test_missing_people_results_does_not_replace_existing_report(
     tmp_path: Path,
 ) -> None:

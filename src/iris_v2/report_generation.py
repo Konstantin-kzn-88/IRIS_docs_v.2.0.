@@ -14,6 +14,7 @@ from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
 
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
+from iris_v2.toxic_fake_calculation import toxic_result_uses_current_scale
 from iris_v2.report_casualties import (
     ReportCasualtiesError,
     load_casualty_rows,
@@ -1084,6 +1085,33 @@ class ReportGenerationService:
             "TOP_SCENARIOS_FINAL_CONCLUSION",
             "SITUATION_PLAN_ACCIDENTS_TABLE",
         }
+        toxic_dependent_markers = {
+            "IMPACT_ZONES_SECTION",
+            "CASUALTIES_SECTION",
+            *risk_markers,
+        }
+        hazard_path = project_root / "hazard_factor_results.json"
+        toxic_path = project_root / "toxic_results.json"
+        try:
+            hazard_data = json.loads(hazard_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            hazard_data = {}
+        hazard_results = (
+            hazard_data.get("results") if isinstance(hazard_data, dict) else None
+        )
+        requires_toxic = isinstance(hazard_results, list) and any(
+            isinstance(item, dict) and item.get("calc_code") == 4
+            for item in hazard_results
+        )
+        if (
+            marker_names & toxic_dependent_markers
+            and requires_toxic
+            and not toxic_result_uses_current_scale(toxic_path)
+        ):
+            raise ReportGenerationError(
+                "Результаты «Токсическое поражение» рассчитаны с устаревшим "
+                "масштабом зон. Выполните «Обновить всё» перед формированием отчёта"
+            )
         if not marker_names & risk_markers:
             return
 

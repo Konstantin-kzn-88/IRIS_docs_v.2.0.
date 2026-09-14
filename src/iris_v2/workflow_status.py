@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from iris_v2.impact_types import IMPACT_TYPE_NAMES
+from iris_v2.toxic_fake_calculation import toxic_result_uses_current_scale
 
 
 DONE = "done"
@@ -200,6 +201,14 @@ def workflow_statuses(project_directory: Path) -> dict[str, str]:
                 if _fresh(project, (output,), ("hazard_factor_results.json",))
                 else PENDING
             )
+            if (
+                button == "toxic_button"
+                and statuses[button] == DONE
+                and not toxic_result_uses_current_scale(
+                    project / "toxic_results.json"
+                )
+            ):
+                statuses[button] = PENDING
             if codes is not None and code in codes:
                 required_effect_outputs.append(output)
 

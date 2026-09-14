@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from iris_v2.toxic_fake_calculation import (
+    TOXIC_ZONE_RADIUS_SCALE,
     ToxicCalculationError,
     ToxicCalculationService,
     calculate_temporary_toxic_zones,
@@ -27,11 +28,12 @@ def hazard_result(case_id: int, calc_code: int, mass_t: float = 1.0) -> dict:
     }
 
 
-def test_temporary_toxic_zone_radii_are_reduced_by_half() -> None:
+def test_temporary_toxic_zone_radii_use_configured_scale() -> None:
     lethal, threshold = calculate_temporary_toxic_zones(1000.0)
 
-    assert lethal == round(2.5 * 1000 ** 0.33)
-    assert threshold == round(7.5 * 1000 ** 0.33)
+    assert TOXIC_ZONE_RADIUS_SCALE == 0.1
+    assert lethal == round(0.5 * 1000 ** 0.33)
+    assert threshold == round(1.5 * 1000 ** 0.33)
 
 
 def test_service_calculates_only_calc_code_4(tmp_path: Path) -> None:
@@ -51,6 +53,8 @@ def test_service_calculates_only_calc_code_4(tmp_path: Path) -> None:
     assert result.results[1]["toxic_status"] == "not_applicable"
     saved = json.loads(result.path.read_text(encoding="utf-8"))
     assert saved["method"] == "temporary_mass_scaling"
+    assert saved["radius_scale"] == TOXIC_ZONE_RADIUS_SCALE
+    assert result.results[0]["toxic_formula"].startswith("R_lethal=0.5*")
     assert "Временная оценка" in saved["warning"]
 
 

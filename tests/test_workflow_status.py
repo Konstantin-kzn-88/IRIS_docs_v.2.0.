@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from iris_v2.workflow_status import DONE, NOT_REQUIRED, PENDING, workflow_statuses
+from iris_v2.toxic_fake_calculation import TOXIC_ZONE_RADIUS_SCALE
 
 
 def write_json(path: Path, value: object) -> None:
@@ -96,6 +97,27 @@ def test_old_impact_type_marks_zone_summary_for_update(tmp_path: Path) -> None:
     )
 
     assert workflow_statuses(tmp_path)["impact_zones_button"] == PENDING
+
+
+def test_changed_toxic_radius_scale_marks_toxic_chain_for_update(
+    tmp_path: Path,
+) -> None:
+    prepare_hazard_results(tmp_path, (4,))
+    write_json(
+        tmp_path / "toxic_results.json",
+        {"radius_scale": TOXIC_ZONE_RADIUS_SCALE * 2, "results": []},
+    )
+
+    statuses = workflow_statuses(tmp_path)
+
+    assert statuses["toxic_button"] == PENDING
+    assert statuses["impact_zones_button"] == PENDING
+
+    write_json(
+        tmp_path / "toxic_results.json",
+        {"radius_scale": TOXIC_ZONE_RADIUS_SCALE, "results": []},
+    )
+    assert workflow_statuses(tmp_path)["toxic_button"] == DONE
 
 
 def test_report_status_requires_every_document_in_selected_set(

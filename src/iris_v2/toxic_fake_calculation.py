@@ -53,6 +53,22 @@ def calculate_temporary_toxic_zones(mass_kg: float) -> tuple[int, int]:
     return lethal, threshold
 
 
+def toxic_result_uses_current_scale(path: Path) -> bool:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    value = data.get("radius_scale") if isinstance(data, dict) else None
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(float(value))
+        and math.isclose(
+            float(value), TOXIC_ZONE_RADIUS_SCALE, rel_tol=0.0, abs_tol=1e-12
+        )
+    )
+
+
 class ToxicCalculationService:
     def calculate(self, project_directory: Path | str) -> ToxicCalculationResult:
         project = Path(project_directory)
@@ -145,7 +161,10 @@ class ToxicCalculationService:
                     "lethal_radius_m": lethal,
                     "threshold_radius_m": threshold,
                     "toxic_formula": (
-                        "R_lethal=2.5*m^0.33; R_threshold=7.5*m^0.33; m, кг"
+                        f"R_lethal={LETHAL_COEFFICIENT * TOXIC_ZONE_RADIUS_SCALE:g}"
+                        f"*m^0.33; R_threshold="
+                        f"{THRESHOLD_COEFFICIENT * TOXIC_ZONE_RADIUS_SCALE:g}"
+                        "*m^0.33; m, кг"
                         if applicable
                         else "не применяется"
                     ),
@@ -156,6 +175,7 @@ class ToxicCalculationService:
         result_data = {
             "format_version": 1,
             "method": METHOD_NAME,
+            "radius_scale": TOXIC_ZONE_RADIUS_SCALE,
             "warning": WARNING,
             "case_count": len(results),
             "toxic_count": toxic_count,
