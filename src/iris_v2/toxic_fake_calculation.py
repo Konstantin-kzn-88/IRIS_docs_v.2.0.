@@ -12,7 +12,7 @@ TOXIC_CALC_CODE = 4
 LETHAL_COEFFICIENT = 5.0
 THRESHOLD_COEFFICIENT = 15.0
 MASS_POWER = 0.33
-TOXIC_ZONE_RADIUS_SCALE = 0.5
+TOXIC_ZONE_RADIUS_SCALE = 0.1
 METHOD_NAME = "temporary_mass_scaling"
 WARNING = (
     "Временная оценка по массе. Не является моделью рассеивания "
