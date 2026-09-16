@@ -158,6 +158,57 @@ class ProjectService:
         finally:
             engine.dispose()
 
+    def update_project_facility(
+        self,
+        project_directory: Path | str,
+        *,
+        organization_name: str,
+        opo_name: str,
+        opo_registration_number: str,
+        organization_snapshot: dict,
+        opo_snapshot: dict,
+    ) -> ProjectInfo:
+        """Заменить организацию и снимок ОПО в существующем проекте."""
+        values = {
+            "organization_name": organization_name,
+            "opo_name": opo_name,
+            "opo_registration_number": opo_registration_number,
+        }
+        for field_name, value in values.items():
+            if not isinstance(value, str) or not value.strip():
+                raise ProjectError(f"Не заполнено поле: {field_name}")
+        if not isinstance(organization_snapshot, dict):
+            raise ProjectError("Снимок организации должен быть объектом")
+        if not isinstance(opo_snapshot, dict):
+            raise ProjectError("Снимок ОПО должен быть объектом")
+
+        root = Path(project_directory).resolve()
+        database_path = root / DATABASE_NAME
+        if not database_path.is_file():
+            raise ProjectError(f"База проекта не найдена: {database_path}")
+
+        upgrade_database(database_path)
+        engine = create_database_engine(database_path)
+        try:
+            with Session(engine) as session, session.begin():
+                project = session.scalar(select(Project))
+                if project is None:
+                    raise ProjectError("Данные проекта повреждены")
+                project.organization_name = organization_name.strip()
+                project.opo_name = opo_name.strip()
+                project.opo_registration_number = (
+                    opo_registration_number.strip()
+                )
+                project.organization_snapshot_json = json.dumps(
+                    organization_snapshot, ensure_ascii=False
+                )
+                project.opo_snapshot_json = json.dumps(
+                    opo_snapshot, ensure_ascii=False
+                )
+        finally:
+            engine.dispose()
+        return self.open(root)
+
     def update_personnel(
         self,
         project_directory: Path | str,

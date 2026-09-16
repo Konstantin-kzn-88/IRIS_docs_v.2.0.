@@ -237,12 +237,17 @@ class ProjectCommonDialog(QDialog):
         developers: tuple[Developer, ...],
         catalog_organization: Organization | None = None,
         parent: QWidget | None = None,
+        organizations: tuple[Organization, ...] | None = None,
     ) -> None:
         super().__init__(parent)
         self.project_directory = project_directory
         self.project = project
         self.project_service = ProjectService()
         self.catalog_organization = catalog_organization
+        self.organizations = organizations or (
+            (catalog_organization,) if catalog_organization is not None else ()
+        )
+        self.site_changed = False
         self.service = ProjectCommonService()
         self.data = self.service.load(
             project_directory, project.name, project.code
@@ -268,6 +273,60 @@ class ProjectCommonDialog(QDialog):
         project_form.addRow("Шифр ПБ:", self.pb_code_edit)
         project_page = QWidget()
         project_page.setLayout(project_form)
+
+        self.organization_combo = QComboBox()
+        self.organization_combo.setObjectName("project_organization_combo")
+        self.opo_combo = QComboBox()
+        self.opo_combo.setObjectName("project_opo_combo")
+        self.opo_registration_edit = QLineEdit()
+        self.opo_registration_edit.setObjectName("project_opo_registration_edit")
+        self.opo_registration_edit.setReadOnly(True)
+        for organization in self.organizations:
+            self.organization_combo.addItem(organization.name, organization)
+        organization_index = next(
+            (
+                index
+                for index, organization in enumerate(self.organizations)
+                if organization.name == project.organization_name
+            ),
+            0,
+        )
+        if self.organization_combo.count():
+            self.organization_combo.setCurrentIndex(organization_index)
+        selected_organization = self.organization_combo.currentData()
+        if selected_organization is not None:
+            for facility in selected_organization.facilities:
+                self.opo_combo.addItem(facility.name, facility)
+        current_site_id = str(project.opo_snapshot.get("site_id", "")).strip()
+        facility_index = 0
+        for index in range(self.opo_combo.count()):
+            facility = self.opo_combo.itemData(index)
+            if (
+                (current_site_id and facility.site_id == current_site_id)
+                or facility.registration_number == project.opo_registration_number
+            ):
+                facility_index = index
+                break
+        if self.opo_combo.count():
+            self.opo_combo.setCurrentIndex(facility_index)
+            facility = self.opo_combo.currentData()
+            self.opo_registration_edit.setText(facility.registration_number)
+
+        site_form = QFormLayout()
+        site_form.addRow("Организация:", self.organization_combo)
+        site_form.addRow("Наименование ОПО:", self.opo_combo)
+        site_form.addRow(
+            "Регистрационный номер ОПО:", self.opo_registration_edit
+        )
+        site_hint = QLabel(
+            "При смене ОПО оборудование и настройки сохраняются, а расчёт риска "
+            "и документы требуется обновить кнопкой «Обновить всё»."
+        )
+        site_hint.setWordWrap(True)
+        site_hint.setStyleSheet("color: #555;")
+        site_form.addRow(site_hint)
+        site_page = QWidget()
+        site_page.setLayout(site_form)
 
         executor = self.data["executor"]
         self.executor_edits: dict[str, QLineEdit | QPlainTextEdit] = {}
@@ -378,7 +437,13 @@ class ProjectCommonDialog(QDialog):
         personnel_page = QWidget()
         personnel_page.setLayout(personnel_form)
 
+        self.organization_combo.currentIndexChanged.connect(
+            self._organization_changed
+        )
+        self.opo_combo.currentIndexChanged.connect(self._facility_changed)
+
         tabs = QTabWidget()
+        tabs.addTab(site_page, "Организация и ОПО")
         tabs.addTab(project_page, "Проект и шифры")
         tabs.addTab(executor_page, "Разработчик")
         tabs.addTab(public_contact_page, "Безопасность и информирование")
@@ -411,11 +476,68 @@ class ProjectCommonDialog(QDialog):
             else:
                 edit.setText(value)
 
+    def _organization_changed(self) -> None:
+        organization = self.organization_combo.currentData()
+        self.opo_combo.blockSignals(True)
+        self.opo_combo.clear()
+        if organization is not None:
+            for facility in organization.facilities:
+                self.opo_combo.addItem(facility.name, facility)
+        self.opo_combo.blockSignals(False)
+        self._facility_changed()
+
+    def _facility_changed(self) -> None:
+        organization = self.organization_combo.currentData()
+        facility = self.opo_combo.currentData()
+        if organization is None or facility is None:
+            self.opo_registration_edit.clear()
+            return
+        self.opo_registration_edit.setText(facility.registration_number)
+
+        organization_data = organization.data.get("organization", {})
+        if not isinstance(organization_data, dict):
+            organization_data = {}
+        contact = organization_data.get("public_information_contact", {})
+        if not isinstance(contact, dict):
+            contact = {}
+        for key, edit in self.public_contact_edits.items():
+            edit.setText(str(contact.get(key, "")))
+
+        self.safety_measures_edit.setPlainText(
+            str(
+                facility.data.get("safety_measures")
+                or DEFAULT_SAFETY_MEASURES_TEXT
+            )
+        )
+        self.public_warning_actions_edit.setPlainText(
+            str(
+                facility.data.get("public_warning_and_actions")
+                or DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
+            )
+        )
+        personnel = facility.data.get("personnel", {})
+        if not isinstance(personnel, dict):
+            personnel = {}
+        self.employees_edit.setValue(int(personnel.get("employees_count", 0)))
+        self.other_employees_edit.setValue(
+            int(personnel.get("employees_other_opo_count", 0))
+        )
+        self.presence_probability_edit.setValue(
+            float(personnel.get("presence_probability", 1.0))
+        )
+
     def _update_total_people(self) -> None:
         total = self.employees_edit.value() + self.other_employees_edit.value()
         self.total_people_label.setText(str(total))
 
     def _save(self) -> None:
+        organization = self.organization_combo.currentData()
+        facility = self.opo_combo.currentData()
+        if organization is None or facility is None:
+            QMessageBox.critical(
+                self, "Ошибка", "Необходимо выбрать организацию и ОПО"
+            )
+            return
         data = copy.deepcopy(self.data)
         data.update(
             {
@@ -440,28 +562,41 @@ class ProjectCommonDialog(QDialog):
         public_warning_and_actions = (
             self.public_warning_actions_edit.toPlainText().strip()
         )
+        current_site_id = str(self.project.opo_snapshot.get("site_id", "")).strip()
+        self.site_changed = (
+            organization.name != self.project.organization_name
+            or facility.name != self.project.opo_name
+            or facility.registration_number != self.project.opo_registration_number
+            or bool(current_site_id and facility.site_id != current_site_id)
+        )
         try:
             self.service.save(self.project_directory, data)
+            if self.site_changed:
+                self.project = self.project_service.update_project_facility(
+                    self.project_directory,
+                    organization_name=organization.name,
+                    opo_name=facility.name,
+                    opo_registration_number=facility.registration_number,
+                    organization_snapshot=organization.snapshot(),
+                    opo_snapshot=facility.snapshot(),
+                )
             self.project_service.update_personnel(
                 self.project_directory,
                 self.employees_edit.value(),
                 self.other_employees_edit.value(),
                 self.presence_probability_edit.value(),
             )
-            if (
-                self.catalog_organization is not None
-                and self.catalog_organization.catalog_path is not None
-            ):
+            if organization.catalog_path is not None:
                 update_public_information_contact(
-                    self.catalog_organization,
+                    organization,
                     position=public_contact["position"],
                     full_name=public_contact["full_name"],
                     phone=public_contact["phone"],
                 )
                 update_site_information_sections(
-                    self.catalog_organization,
-                    site_id=str(self.project.opo_snapshot.get("site_id", "")),
-                    registration_number=self.project.opo_registration_number,
+                    organization,
+                    site_id=facility.site_id,
+                    registration_number=facility.registration_number,
                     safety_measures=safety_measures,
                     public_warning_and_actions=public_warning_and_actions,
                 )
@@ -3595,6 +3730,7 @@ class MainWindow(QMainWindow):
                     None,
                 ),
                 self,
+                organizations=self.organizations,
             )
         except ProjectCommonError as exc:
             self._show_error(str(exc))
@@ -3607,11 +3743,13 @@ class MainWindow(QMainWindow):
             except ProjectError as exc:
                 self._show_error(str(exc))
                 return
-            self._refresh_workflow_status()
             try:
                 self.organizations = load_organizations()
             except CatalogError as exc:
                 QMessageBox.warning(self, "Ошибка справочника", str(exc))
+            self.show_project(
+                self.current_project, self.current_project_directory
+            )
 
     def edit_substances(self) -> None:
         if self.current_project_directory is None:

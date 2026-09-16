@@ -188,6 +188,42 @@ def test_update_opo_information_sections_in_existing_project(tmp_path: Path) -> 
     )
 
 
+def test_update_project_facility_preserves_project_files(tmp_path: Path) -> None:
+    target = tmp_path / "project"
+    service = ProjectService()
+    service.create(target, project_data())
+    equipment = target / "equipments.json"
+    equipment.write_text('{"equipment": "keep"}', encoding="utf-8")
+    risk = target / "risk_results.json"
+    risk.write_text('{"results": []}', encoding="utf-8")
+    os.utime(risk, ns=(2_000_000_000, 2_000_000_000))
+    database = target / "project.sqlite3"
+    os.utime(database, ns=(1_000_000_000, 1_000_000_000))
+
+    updated = service.update_project_facility(
+        target,
+        organization_name="АО Новая организация",
+        opo_name="Новое ОПО",
+        opo_registration_number="А00-00000-9999",
+        organization_snapshot={
+            "organization": {"short_name": "АО Новая организация"}
+        },
+        opo_snapshot={
+            "site_id": "opo_new",
+            "name": "Новое ОПО",
+            "reg_number": "А00-00000-9999",
+            "personnel": {"employees_count": 25},
+        },
+    )
+
+    assert updated.organization_name == "АО Новая организация"
+    assert updated.opo_name == "Новое ОПО"
+    assert updated.opo_registration_number == "А00-00000-9999"
+    assert updated.opo_snapshot["site_id"] == "opo_new"
+    assert equipment.read_text(encoding="utf-8") == '{"equipment": "keep"}'
+    assert database.stat().st_mtime_ns > risk.stat().st_mtime_ns
+
+
 def test_update_opo_information_sections_in_catalog(tmp_path: Path) -> None:
     catalog_path = tmp_path / "organization.json"
     catalog_path.write_text(
@@ -475,6 +511,133 @@ def test_project_dialog_shows_safety_and_information_fields(tmp_path: Path) -> N
         assert warning is not None
         assert safety.toPlainText() == DEFAULT_SAFETY_MEASURES_TEXT
         assert warning.toPlainText() == DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
+    finally:
+        dialog.close()
+        application.processEvents()
+
+
+def test_project_dialog_can_switch_organization_and_opo(tmp_path: Path) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    try:
+        from PySide6.QtWidgets import QApplication, QComboBox, QLineEdit
+        from iris_v2.gui import ProjectCommonDialog
+    except ImportError as exc:
+        pytest.skip(f"Qt недоступен в текущей системе: {exc}")
+
+    catalog_path = tmp_path / "organization.json"
+    catalog_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": 1,
+                    "organization": {"short_name": "АО Первая"},
+                    "sites": [
+                        {
+                            "site_id": "opo_first",
+                            "name": "Первое ОПО",
+                            "reg_number": "А00-00001-0001",
+                            "personnel": {
+                                "employees_count": 10,
+                                "employees_other_opo_count": 2,
+                                "presence_probability": 0.5,
+                            },
+                        }
+                    ],
+                },
+                {
+                    "id": 2,
+                    "organization": {
+                        "short_name": "АО Вторая",
+                        "public_information_contact": {
+                            "position": "Начальник отдела",
+                            "full_name": "Петров Петр Петрович",
+                            "phone": "+7 900 111-22-33",
+                        },
+                    },
+                    "sites": [
+                        {
+                            "site_id": "opo_second",
+                            "name": "Второе ОПО",
+                            "reg_number": "А00-00002-0002",
+                            "safety_measures": "Меры второго ОПО",
+                            "public_warning_and_actions": "Оповещение второго ОПО",
+                            "personnel": {
+                                "employees_count": 30,
+                                "employees_other_opo_count": 4,
+                                "presence_probability": 0.25,
+                            },
+                        }
+                    ],
+                },
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    organizations = load_organizations(catalog_path)
+    first = organizations[0]
+    facility = first.facilities[0]
+    target = tmp_path / "project"
+    project = ProjectService().create(
+        target,
+        CreateProjectData(
+            name="Проект",
+            code="SWITCH-001",
+            organization_name=first.name,
+            opo_name=facility.name,
+            opo_registration_number=facility.registration_number,
+            organization_snapshot=first.snapshot(),
+            opo_snapshot=facility.snapshot(),
+        ),
+    )
+    equipment = target / "equipments.json"
+    equipment.write_text('{"equipment": "keep"}', encoding="utf-8")
+
+    application = QApplication.instance() or QApplication([])
+    dialog = ProjectCommonDialog(
+        target,
+        project,
+        (),
+        first,
+        organizations=organizations,
+    )
+    try:
+        organization_combo = dialog.findChild(
+            QComboBox, "project_organization_combo"
+        )
+        opo_combo = dialog.findChild(QComboBox, "project_opo_combo")
+        registration = dialog.findChild(
+            QLineEdit, "project_opo_registration_edit"
+        )
+        assert organization_combo is not None
+        assert opo_combo is not None
+        assert registration is not None
+
+        organization_combo.setCurrentIndex(1)
+        assert opo_combo.currentText() == "Второе ОПО"
+        assert registration.text() == "А00-00002-0002"
+        assert dialog.employees_edit.value() == 30
+        assert dialog.other_employees_edit.value() == 4
+        assert dialog.presence_probability_edit.value() == 0.25
+        assert dialog.safety_measures_edit.toPlainText() == "Меры второго ОПО"
+        assert dialog.public_warning_actions_edit.toPlainText() == (
+            "Оповещение второго ОПО"
+        )
+
+        dialog._save()
+
+        updated = ProjectService().open(target)
+        assert dialog.site_changed
+        assert updated.organization_name == "АО Вторая"
+        assert updated.opo_name == "Второе ОПО"
+        assert updated.opo_registration_number == "А00-00002-0002"
+        assert updated.opo_snapshot["site_id"] == "opo_second"
+        assert updated.opo_snapshot["personnel"] == {
+            "employees_count": 30,
+            "employees_other_opo_count": 4,
+            "presence_probability": 0.25,
+        }
+        assert equipment.read_text(encoding="utf-8") == '{"equipment": "keep"}'
     finally:
         dialog.close()
         application.processEvents()
