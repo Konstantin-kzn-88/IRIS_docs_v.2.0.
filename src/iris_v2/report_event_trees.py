@@ -1,10 +1,12 @@
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from docx.document import Document as DocumentType
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 from PIL import Image
@@ -150,6 +152,132 @@ def _picture_width(path: Path, available_width: int, max_height: int) -> int:
     return min(available_width, int(max_height * width_px / height_px))
 
 
+def _append_field(
+    paragraph: Any,
+    instruction: str,
+    display_text: str,
+    *,
+    bookmark_name: str | None = None,
+    bookmark_id: int | None = None,
+) -> None:
+    if bookmark_name is not None and bookmark_id is not None:
+        bookmark_start = OxmlElement("w:bookmarkStart")
+        bookmark_start.set(qn("w:id"), str(bookmark_id))
+        bookmark_start.set(qn("w:name"), bookmark_name)
+        paragraph._p.append(bookmark_start)
+
+    begin_run = paragraph.add_run()
+    _set_font(begin_run, 11)
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    begin.set(qn("w:dirty"), "true")
+    begin_run._r.append(begin)
+
+    instruction_run = paragraph.add_run()
+    _set_font(instruction_run, 11)
+    instruction_element = OxmlElement("w:instrText")
+    instruction_element.set(qn("xml:space"), "preserve")
+    instruction_element.text = f" {instruction} "
+    instruction_run._r.append(instruction_element)
+
+    separate_run = paragraph.add_run()
+    _set_font(separate_run, 11)
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    separate_run._r.append(separate)
+
+    result_run = paragraph.add_run(display_text)
+    _set_font(result_run, 11)
+
+    end_run = paragraph.add_run()
+    _set_font(end_run, 11)
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    end_run._r.append(end)
+
+    if bookmark_name is not None and bookmark_id is not None:
+        bookmark_end = OxmlElement("w:bookmarkEnd")
+        bookmark_end.set(qn("w:id"), str(bookmark_id))
+        paragraph._p.append(bookmark_end)
+
+
+def _fields_in_paragraph(paragraph: Any) -> list[dict[str, Any]]:
+    fields: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    for element in paragraph.iter():
+        if element.tag == qn("w:fldChar"):
+            field_type = element.get(qn("w:fldCharType"))
+            if field_type == "begin":
+                current = {"instruction": "", "results": [], "separated": False}
+            elif current is not None and field_type == "separate":
+                current["separated"] = True
+            elif current is not None and field_type == "end":
+                fields.append(current)
+                current = None
+        elif current is not None and element.tag == qn("w:instrText"):
+            current["instruction"] += element.text or ""
+        elif (
+            current is not None
+            and current["separated"]
+            and element.tag == qn("w:t")
+        ):
+            current["results"].append(element)
+    return fields
+
+
+def _set_field_result(field: dict[str, Any], value: int) -> None:
+    results = field["results"]
+    if not results:
+        return
+    results[0].text = str(value)
+    for extra in results[1:]:
+        extra.text = ""
+
+
+def _materialize_figure_fields(document: DocumentType) -> None:
+    paragraphs: list[tuple[Any, list[dict[str, Any]]]] = []
+    bookmarks: dict[str, int] = {}
+    figure_number = 0
+    for paragraph in document.element.body.iter(qn("w:p")):
+        fields = _fields_in_paragraph(paragraph)
+        paragraphs.append((paragraph, fields))
+        for field in fields:
+            if not re.search(
+                r"\bSEQ\s+Рисунок\b", field["instruction"], re.IGNORECASE
+            ):
+                continue
+            figure_number += 1
+            _set_field_result(field, figure_number)
+            for bookmark in paragraph.iter(qn("w:bookmarkStart")):
+                name = bookmark.get(qn("w:name"))
+                if name:
+                    bookmarks[name] = figure_number
+
+    for _paragraph, fields in paragraphs:
+        for field in fields:
+            match = re.search(
+                r"\bREF\s+([^\s\\]+)", field["instruction"], re.IGNORECASE
+            )
+            if match and match.group(1) in bookmarks:
+                _set_field_result(field, bookmarks[match.group(1)])
+
+    settings = document.settings.element
+    update_fields = settings.find(qn("w:updateFields"))
+    if update_fields is None:
+        update_fields = OxmlElement("w:updateFields")
+        settings.append(update_fields)
+    update_fields.set(qn("w:val"), "true")
+
+
+def _next_bookmark_id(document: DocumentType) -> int:
+    values = []
+    for bookmark in document.element.body.iter(qn("w:bookmarkStart")):
+        value = bookmark.get(qn("w:id"), "")
+        if value.isdigit():
+            values.append(int(value))
+    return max(values, default=0) + 1
+
+
 def render_event_trees_section(
     document: DocumentType,
     items: tuple[EventTreeReportItem, ...],
@@ -166,19 +294,26 @@ def render_event_trees_section(
     available_width = section.page_width - section.left_margin - section.right_margin
     max_height = Inches(5.5)
     anchor = marker_paragraph._p
+    bookmark_id = _next_bookmark_id(document)
+    bookmark_names = tuple(
+        f"IrisEventTreeFigure{index}" for index in range(1, len(items) + 1)
+    )
     lead = document.add_paragraph()
     lead.paragraph_format.keep_with_next = True
     lead.paragraph_format.space_before = Pt(0)
     lead.paragraph_format.space_after = Pt(0)
     lead.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     if len(items) == 1:
-        lead_text = "Дерево событий представлено на рисунке ДС-1."
+        _set_font(lead.add_run("Дерево событий представлено на рисунке "), 11)
+        _append_field(lead, f"REF {bookmark_names[0]} \\h", "0")
     else:
-        lead_text = (
-            "Деревья событий представлены на рисунках "
-            f"ДС-1–ДС-{len(items)}."
+        _set_font(
+            lead.add_run("Деревья событий представлены на рисунках "), 11
         )
-    _set_font(lead.add_run(lead_text), 11)
+        _append_field(lead, f"REF {bookmark_names[0]} \\h", "0")
+        _set_font(lead.add_run("–"), 11)
+        _append_field(lead, f"REF {bookmark_names[-1]} \\h", "0")
+    _set_font(lead.add_run("."), 11)
     anchor.addnext(lead._p)
     anchor = lead._p
 
@@ -202,8 +337,16 @@ def render_event_trees_section(
         caption.paragraph_format.keep_together = True
         caption.paragraph_format.space_before = Pt(0)
         caption.paragraph_format.space_after = Pt(6)
+        _set_font(caption.add_run("Рисунок "), 11)
+        _append_field(
+            caption,
+            "SEQ Рисунок \\* ARABIC",
+            "0",
+            bookmark_name=bookmark_names[index - 1],
+            bookmark_id=bookmark_id + index - 1,
+        )
         run = caption.add_run(
-            f"Рисунок ДС-{index} – Дерево событий для типа оборудования "
+            " – Дерево событий для типа оборудования "
             f"«{item.equipment_name}» и вида опасного вещества "
             f"«{_short_kind_name(item.kind_name)}»"
         )
@@ -211,4 +354,5 @@ def render_event_trees_section(
         anchor.addnext(caption._p)
         anchor = caption._p
     marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    _materialize_figure_fields(document)
     return True

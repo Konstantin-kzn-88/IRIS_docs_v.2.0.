@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 from iris_v2.report_event_trees import (
     EventTreeReportItem,
@@ -10,6 +12,22 @@ from iris_v2.report_event_trees import (
     render_event_trees_section,
 )
 from iris_v2.service import CreateProjectData, ProjectService
+
+
+def _append_sequence_field(paragraph, value: int) -> None:
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instruction = OxmlElement("w:instrText")
+    instruction.text = " SEQ Рисунок \\* ARABIC "
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    paragraph.add_run()._r.append(begin)
+    paragraph.add_run()._r.append(instruction)
+    paragraph.add_run()._r.append(separate)
+    paragraph.add_run(str(value))
+    paragraph.add_run()._r.append(end)
 
 
 def _project(tmp_path: Path) -> Path:
@@ -57,17 +75,33 @@ def test_render_event_tree_replaces_marker(tmp_path: Path) -> None:
         / "event_tree_eq00_kind00.png"
     )
     document = Document()
+    preceding_caption = document.add_paragraph("Рисунок ")
+    _append_sequence_field(preceding_caption, 1)
+    preceding_caption.add_run(" – Предыдущий рисунок")
     document.add_paragraph(MARKER)
+    following_caption = document.add_paragraph("Рисунок ")
+    _append_sequence_field(following_caption, 2)
+    following_caption.add_run(" – Последующий рисунок")
     items = (
         EventTreeReportItem(0, 0, "Трубопровод", "ЛВЖ", image_path),
     )
 
     assert render_event_trees_section(document, items)
 
-    assert MARKER not in "\n".join(p.text for p in document.paragraphs)
+    text = "\n".join(p.text for p in document.paragraphs)
+    assert MARKER not in text
     assert len(document.inline_shapes) == 1
-    assert "Дерево событий представлено на рисунке ДС-1." in "\n".join(
-        paragraph.text for paragraph in document.paragraphs
+    assert "Дерево событий представлено на рисунке 2." in text
+    event_tree_caption = next(
+        paragraph
+        for paragraph in document.paragraphs
+        if "Дерево событий для типа оборудования" in paragraph.text
     )
-    assert document.paragraphs[-1].text.startswith("Рисунок ДС-1 –")
-    assert "Дерево событий для типа оборудования" in document.paragraphs[-1].text
+    assert event_tree_caption.text.startswith("Рисунок 2 –")
+    assert following_caption.text.startswith("Рисунок 3 –")
+    instructions = "".join(
+        node.text or "" for node in document.element.body.iter(qn("w:instrText"))
+    )
+    assert "SEQ Рисунок" in instructions
+    assert "REF IrisEventTreeFigure1" in instructions
+    assert "ДС-" not in text
