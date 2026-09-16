@@ -207,3 +207,77 @@ def update_public_information_contact(
         temporary_path.replace(catalog_path)
     except OSError as exc:
         raise CatalogError(f"Не удалось сохранить справочник: {catalog_path}") from exc
+
+
+def update_site_information_sections(
+    organization: Organization,
+    *,
+    site_id: str,
+    registration_number: str,
+    safety_measures: str,
+    public_warning_and_actions: str,
+) -> None:
+    """Обновить тексты безопасности и оповещения выбранного ОПО."""
+    catalog_path = organization.catalog_path
+    if catalog_path is None:
+        raise CatalogError("Не определён файл справочника организации")
+    try:
+        raw = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CatalogError(f"Не удалось прочитать справочник: {catalog_path}") from exc
+    if not isinstance(raw, list):
+        raise CatalogError("Корневой элемент organization.json должен быть списком")
+
+    source_id = organization.data.get("id")
+    source_name = organization.name
+
+    def is_selected_organization(item: object) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if source_id is not None:
+            return item.get("id") == source_id
+        data = item.get("organization")
+        return (
+            isinstance(data, dict)
+            and str(data.get("short_name", "")).strip() == source_name
+        )
+
+    organizations = [item for item in raw if is_selected_organization(item)]
+    if len(organizations) != 1:
+        raise CatalogError(
+            f"Не удалось однозначно найти организацию {source_name} в {catalog_path}"
+        )
+    sites = organizations[0].get("sites")
+    if not isinstance(sites, list):
+        raise CatalogError(f"У организации {source_name} повреждён раздел sites")
+
+    normalized_site_id = site_id.strip()
+    normalized_number = registration_number.strip()
+
+    def is_selected_site(item: object) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if normalized_site_id:
+            return str(item.get("site_id", "")).strip() == normalized_site_id
+        return (
+            bool(normalized_number)
+            and str(item.get("reg_number", "")).strip() == normalized_number
+        )
+
+    matches = [item for item in sites if is_selected_site(item)]
+    if len(matches) != 1:
+        raise CatalogError(
+            "Не удалось однозначно найти выбранный ОПО в справочнике организации"
+        )
+    matches[0]["safety_measures"] = safety_measures.strip()
+    matches[0]["public_warning_and_actions"] = (
+        public_warning_and_actions.strip()
+    )
+    try:
+        temporary_path = catalog_path.with_suffix(".json.tmp")
+        temporary_path.write_text(
+            json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        temporary_path.replace(catalog_path)
+    except OSError as exc:
+        raise CatalogError(f"Не удалось сохранить справочник: {catalog_path}") from exc

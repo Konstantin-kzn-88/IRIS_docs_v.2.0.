@@ -47,6 +47,7 @@ from iris_v2.catalog import (
     Organization,
     load_organizations,
     update_public_information_contact,
+    update_site_information_sections,
 )
 from iris_v2.developer_catalog import (
     Developer,
@@ -155,6 +156,8 @@ from iris_v2.template_catalog import (
     TemplateProfile,
 )
 from iris_v2.report_generation import (
+    DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT,
+    DEFAULT_SAFETY_MEASURES_TEXT,
     ReportGenerationError,
     ReportGenerationResult,
     ReportGenerationService,
@@ -237,6 +240,7 @@ class ProjectCommonDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.project_directory = project_directory
+        self.project = project
         self.project_service = ProjectService()
         self.catalog_organization = catalog_organization
         self.service = ProjectCommonService()
@@ -307,6 +311,31 @@ class ProjectCommonDialog(QDialog):
             edit = QLineEdit(str(public_contact.get(key, "")))
             self.public_contact_edits[key] = edit
             public_contact_form.addRow(f"{label}:", edit)
+        self.safety_measures_edit = QPlainTextEdit(
+            str(
+                project.opo_snapshot.get("safety_measures")
+                or DEFAULT_SAFETY_MEASURES_TEXT
+            )
+        )
+        self.safety_measures_edit.setObjectName("safety_measures_edit")
+        self.safety_measures_edit.setMaximumHeight(150)
+        public_contact_form.addRow(
+            "Принятые меры безопасности:", self.safety_measures_edit
+        )
+        self.public_warning_actions_edit = QPlainTextEdit(
+            str(
+                project.opo_snapshot.get("public_warning_and_actions")
+                or DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
+            )
+        )
+        self.public_warning_actions_edit.setObjectName(
+            "public_warning_actions_edit"
+        )
+        self.public_warning_actions_edit.setMaximumHeight(180)
+        public_contact_form.addRow(
+            "Способы оповещения и действия населения:",
+            self.public_warning_actions_edit,
+        )
         public_contact_page = QWidget()
         public_contact_page.setLayout(public_contact_form)
 
@@ -352,7 +381,7 @@ class ProjectCommonDialog(QDialog):
         tabs = QTabWidget()
         tabs.addTab(project_page, "Проект и шифры")
         tabs.addTab(executor_page, "Разработчик")
-        tabs.addTab(public_contact_page, "Ответственный за информирование")
+        tabs.addTab(public_contact_page, "Безопасность и информирование")
         tabs.addTab(personnel_page, "Персонал для риска")
 
         buttons = QDialogButtonBox(
@@ -360,6 +389,7 @@ class ProjectCommonDialog(QDialog):
             | QDialogButtonBox.StandardButton.Cancel
         )
         buttons.button(QDialogButtonBox.StandardButton.Save).setText("Сохранить")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Отмена")
         buttons.button(QDialogButtonBox.StandardButton.Save).clicked.connect(
             self._save
         )
@@ -406,6 +436,10 @@ class ProjectCommonDialog(QDialog):
             key: edit.text().strip()
             for key, edit in self.public_contact_edits.items()
         }
+        safety_measures = self.safety_measures_edit.toPlainText().strip()
+        public_warning_and_actions = (
+            self.public_warning_actions_edit.toPlainText().strip()
+        )
         try:
             self.service.save(self.project_directory, data)
             self.project_service.update_personnel(
@@ -424,11 +458,23 @@ class ProjectCommonDialog(QDialog):
                     full_name=public_contact["full_name"],
                     phone=public_contact["phone"],
                 )
+                update_site_information_sections(
+                    self.catalog_organization,
+                    site_id=str(self.project.opo_snapshot.get("site_id", "")),
+                    registration_number=self.project.opo_registration_number,
+                    safety_measures=safety_measures,
+                    public_warning_and_actions=public_warning_and_actions,
+                )
             self.project_service.update_organization_public_information_contact(
                 self.project_directory,
                 public_contact["position"],
                 public_contact["full_name"],
                 public_contact["phone"],
+            )
+            self.project_service.update_opo_information_sections(
+                self.project_directory,
+                safety_measures,
+                public_warning_and_actions,
             )
         except (ProjectCommonError, ProjectError, CatalogError) as exc:
             QMessageBox.critical(self, "Ошибка", str(exc))

@@ -262,3 +262,44 @@ class ProjectService:
         finally:
             engine.dispose()
         return self.open(root)
+
+    def update_opo_information_sections(
+        self,
+        project_directory: Path | str,
+        safety_measures: str,
+        public_warning_and_actions: str,
+    ) -> ProjectInfo:
+        values = (safety_measures, public_warning_and_actions)
+        if any(not isinstance(value, str) for value in values):
+            raise ProjectError("Тексты безопасности и оповещения должны быть строками")
+
+        root = Path(project_directory).resolve()
+        database_path = root / DATABASE_NAME
+        if not database_path.is_file():
+            raise ProjectError(f"База проекта не найдена: {database_path}")
+
+        upgrade_database(database_path)
+        engine = create_database_engine(database_path)
+        try:
+            with Session(engine) as session, session.begin():
+                project = session.scalar(select(Project))
+                if project is None:
+                    raise ProjectError("Данные проекта повреждены")
+                try:
+                    opo_snapshot = json.loads(project.opo_snapshot_json)
+                except json.JSONDecodeError as exc:
+                    raise ProjectError(
+                        "Снимок ОПО в базе проекта повреждён"
+                    ) from exc
+                if not isinstance(opo_snapshot, dict):
+                    raise ProjectError("Снимок ОПО в базе проекта должен быть объектом")
+                opo_snapshot["safety_measures"] = safety_measures.strip()
+                opo_snapshot["public_warning_and_actions"] = (
+                    public_warning_and_actions.strip()
+                )
+                project.opo_snapshot_json = json.dumps(
+                    opo_snapshot, ensure_ascii=False
+                )
+        finally:
+            engine.dispose()
+        return self.open(root)

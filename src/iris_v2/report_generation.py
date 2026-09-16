@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
+from docx.text.paragraph import Paragraph
 
 from iris_v2.project_common import ProjectCommonError, ProjectCommonService
 from iris_v2.toxic_fake_calculation import toxic_result_uses_current_scale
@@ -418,6 +420,85 @@ def _normalize_generated_content(
             _set_generated_run_font(run)
 
 
+TABLE_FIGURE_TEXT_RE = re.compile(
+    r"(?<!\w)(?:таблиц\w*|табл\.|рисунок|рисунк\w*|рис\.)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def _normalize_table_figure_text(document: Any) -> None:
+    """Set captions and textual references to tables/figures to 11 pt."""
+    for story in _story_elements(document):
+        for paragraph in story.iter(qn("w:p")):
+            text = "".join(node.text or "" for node in paragraph.iter(qn("w:t")))
+            if not TABLE_FIGURE_TEXT_RE.search(text):
+                continue
+            for run in paragraph.iter(qn("w:r")):
+                _set_generated_run_font(run)
+
+
+def _page_field_paragraph(footer: Any) -> Any | None:
+    for element in footer._element.iter(qn("w:p")):
+        instruction = "".join(
+            node.text or "" for node in element.iter(qn("w:instrText"))
+        )
+        if re.search(r"\bPAGE\b", instruction, re.IGNORECASE):
+            return Paragraph(element, footer)
+    return None
+
+
+def _append_page_field(paragraph: Any) -> None:
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instruction = OxmlElement("w:instrText")
+    instruction.set(qn("xml:space"), "preserve")
+    instruction.text = " PAGE "
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    for element in (begin, instruction, separate):
+        run = paragraph.add_run()
+        run._r.append(element)
+        _set_generated_run_font(run._r)
+    value = paragraph.add_run("1")
+    _set_generated_run_font(value._r)
+    run = paragraph.add_run()
+    run._r.append(end)
+    _set_generated_run_font(run._r)
+
+
+def _normalize_page_numbering(document: Any) -> None:
+    """Keep page numbering visible and continuous through every section."""
+    sections = document.sections
+    if not sections:
+        return
+
+    first = sections[0]
+    first.different_first_page_header_footer = True
+    footer = first.footer
+    paragraph = _page_field_paragraph(footer)
+    if paragraph is None:
+        paragraph = next(
+            (item for item in footer.paragraphs if not item.text.strip()),
+            None,
+        ) or footer.add_paragraph()
+        _append_page_field(paragraph)
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in paragraph._p.iter(qn("w:r")):
+        _set_generated_run_font(run)
+
+    for index, section in enumerate(sections):
+        page_numbering = section._sectPr.find(qn("w:pgNumType"))
+        if page_numbering is not None:
+            page_numbering.attrib.pop(qn("w:start"), None)
+        if index == 0:
+            continue
+        section.different_first_page_header_footer = False
+        for reference in list(section._sectPr.findall(qn("w:footerReference"))):
+            section._sectPr.remove(reference)
+
+
 def _build_replacements(
     project: ProjectInfo,
     common: dict[str, Any],
@@ -508,9 +589,12 @@ def _build_replacements(
             "employees_other_opo_count"
         ),
         "SITE_EMERGENCY_RESPONSE_PLAN": site.get("emergency_response_plan"),
-        "SAFETY_MEASURES_SECTION": DEFAULT_SAFETY_MEASURES_TEXT,
+        "SAFETY_MEASURES_SECTION": (
+            site.get("safety_measures") or DEFAULT_SAFETY_MEASURES_TEXT
+        ),
         "PUBLIC_WARNING_AND_ACTIONS_SECTION": (
-            DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
+            site.get("public_warning_and_actions")
+            or DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
         ),
     }
     return {key: _text(value) for key, value in values.items()}
@@ -1043,6 +1127,8 @@ class ReportGenerationService:
             raise ReportGenerationError(f"Не удалось заполнить маркеры: {names}")
 
         _normalize_generated_content(document, generated_content_snapshot)
+        _normalize_table_figure_text(document)
+        _normalize_page_numbering(document)
         _remove_table_shading(document)
 
         output_directory = output_path.parent

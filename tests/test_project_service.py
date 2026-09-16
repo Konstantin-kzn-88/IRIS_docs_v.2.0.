@@ -5,7 +5,11 @@ import json
 import pytest
 
 from iris_v2.service import CreateProjectData, ProjectError, ProjectService
-from iris_v2.catalog import load_organizations, update_public_information_contact
+from iris_v2.catalog import (
+    load_organizations,
+    update_public_information_contact,
+    update_site_information_sections,
+)
 
 
 EXAMPLE_CATALOG = (
@@ -154,6 +158,60 @@ def test_update_public_information_contact_in_catalog(tmp_path: Path) -> None:
         "phone": "+7 900 111-22-33",
     }
     assert saved["sites"]
+
+
+def test_update_opo_information_sections_in_existing_project(tmp_path: Path) -> None:
+    target = tmp_path / "project"
+    service = ProjectService()
+    organization = load_organizations(EXAMPLE_CATALOG)[0]
+    facility = organization.facilities[0]
+    service.create(
+        target,
+        CreateProjectData(
+            name="Проект",
+            code="INFO-001",
+            organization_name=organization.name,
+            opo_name=facility.name,
+            opo_registration_number=facility.registration_number,
+            organization_snapshot=organization.snapshot(),
+            opo_snapshot=facility.snapshot(),
+        ),
+    )
+
+    updated = service.update_opo_information_sections(
+        target, " Меры безопасности ", " Порядок оповещения "
+    )
+
+    assert updated.opo_snapshot["safety_measures"] == "Меры безопасности"
+    assert updated.opo_snapshot["public_warning_and_actions"] == (
+        "Порядок оповещения"
+    )
+
+
+def test_update_opo_information_sections_in_catalog(tmp_path: Path) -> None:
+    catalog_path = tmp_path / "organization.json"
+    catalog_path.write_text(
+        EXAMPLE_CATALOG.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    organization = load_organizations(catalog_path)[0]
+    facility = organization.facilities[0]
+
+    update_site_information_sections(
+        organization,
+        site_id=facility.site_id,
+        registration_number=facility.registration_number,
+        safety_measures="Меры безопасности",
+        public_warning_and_actions="Порядок оповещения",
+    )
+
+    saved = json.loads(catalog_path.read_text(encoding="utf-8"))[0]
+    assert saved["sites"][0]["safety_measures"] == "Меры безопасности"
+    assert saved["sites"][0]["public_warning_and_actions"] == (
+        "Порядок оповещения"
+    )
+    assert saved["organization"]["public_information_contact"]["full_name"] == (
+        "Петров Петр Петрович"
+    )
 
 
 @pytest.mark.parametrize(
@@ -374,3 +432,49 @@ def test_minimal_window_starts() -> None:
         assert not impact_zones_button.isEnabled()
     finally:
         window.close()
+
+
+def test_project_dialog_shows_safety_and_information_fields(tmp_path: Path) -> None:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    try:
+        from PySide6.QtWidgets import QApplication, QPlainTextEdit, QTabWidget
+        from iris_v2.gui import ProjectCommonDialog
+        from iris_v2.report_generation import (
+            DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT,
+            DEFAULT_SAFETY_MEASURES_TEXT,
+        )
+    except ImportError as exc:
+        pytest.skip(f"Qt недоступен в текущей системе: {exc}")
+
+    organization = load_organizations(EXAMPLE_CATALOG)[0]
+    facility = organization.facilities[0]
+    target = tmp_path / "project"
+    project = ProjectService().create(
+        target,
+        CreateProjectData(
+            name="Проект",
+            code="GUI-001",
+            organization_name=organization.name,
+            opo_name=facility.name,
+            opo_registration_number=facility.registration_number,
+            organization_snapshot=organization.snapshot(),
+            opo_snapshot=facility.snapshot(),
+        ),
+    )
+    application = QApplication.instance() or QApplication([])
+    dialog = ProjectCommonDialog(target, project, (), organization)
+    try:
+        tabs = dialog.findChild(QTabWidget)
+        assert tabs is not None
+        assert "Безопасность и информирование" in [
+            tabs.tabText(index) for index in range(tabs.count())
+        ]
+        safety = dialog.findChild(QPlainTextEdit, "safety_measures_edit")
+        warning = dialog.findChild(QPlainTextEdit, "public_warning_actions_edit")
+        assert safety is not None
+        assert warning is not None
+        assert safety.toPlainText() == DEFAULT_SAFETY_MEASURES_TEXT
+        assert warning.toPlainText() == DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT
+    finally:
+        dialog.close()
+        application.processEvents()

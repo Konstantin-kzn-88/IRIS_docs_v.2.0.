@@ -2,12 +2,16 @@ import json
 from pathlib import Path
 
 from docx import Document
+from docx.enum.section import WD_ORIENT
 
 from iris_v2.calculation_config import (
     CalculationConfigService,
     new_calculation_config,
 )
 from iris_v2.report_key_scenarios import (
+    EXPLOSION_METHOD,
+    FIRE_METHOD,
+    TOXIC_METHOD,
     load_accident_description_rows,
     load_key_scenario_conclusions,
     load_key_scenario_damage_rows,
@@ -92,6 +96,9 @@ def test_rows_use_key_scenario_selection_and_report_formats(tmp_path: Path) -> N
 
 def test_section_replaces_marker_with_repeatable_table() -> None:
     document = Document()
+    document.add_paragraph(
+        "Таблица 1 – Результаты выбора наиболее опасных сценариев"
+    )
     document.add_paragraph("{{TOP_SCENARIOS_BY_COMPONENT_SECTION}}")
     rows = (
         {
@@ -124,6 +131,11 @@ def test_section_replaces_marker_with_repeatable_table() -> None:
     assert properties.find(
         "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblHeader"
     ) is not None
+    assert [section.orientation for section in document.sections] == [
+        WD_ORIENT.PORTRAIT,
+        WD_ORIENT.LANDSCAPE,
+        WD_ORIENT.PORTRAIT,
+    ]
 
 
 def test_description_rows_use_selected_scenarios_and_full_text(
@@ -515,5 +527,54 @@ def test_accident_description_rows_combine_current_calculations(
     assert len(rows) == 2
     assert rows[0]["scenario_code"] == "С1"
     assert rows[0]["accident_mass"] == "4,321"
-    assert rows[0]["method"] == "Приказ МЧС России от 10.07.2009 № 404"
+    assert rows[0]["method"] == FIRE_METHOD
     assert rows[0]["people"] == "Пострадавшие: 6\nРаненые: 4\nПогибшие: 2"
+
+
+def test_accident_description_methods_follow_calculated_factor(
+    tmp_path: Path,
+) -> None:
+    risks = [
+        row("С1", "Пожар", 1, 2, 100.0, 3e-5),
+        row("С2", "Взрыв", 2, 3, 200.0, 2e-5),
+        row("С3", "Токсика", 3, 4, 300.0, 1e-5),
+    ]
+    write_json(tmp_path / "risk_results.json", {"results": risks})
+    base_results = []
+    factor_results = []
+    impact_results = []
+    for index, (risk, calc_code) in enumerate(zip(risks, (1, 2, 4)), start=1):
+        common = {
+            "id": index,
+            "scenario_code": risk["scenario_code"],
+            "equipment_name": risk["equipment_name"],
+            "hazard_component": risk["hazard_component"],
+            "calc_code": calc_code,
+            "ov_in_accident_t": 1.0,
+        }
+        base_results.append(common)
+        factor_results.append(dict(common, ov_in_hazard_factor_t=0.5))
+        impact_results.append(dict(common, impact_values={}))
+    write_json(tmp_path / "release_results.json", {"results": base_results})
+    write_json(
+        tmp_path / "hazard_factor_results.json", {"results": factor_results}
+    )
+    write_json(tmp_path / "impact_zones.json", {"results": impact_results})
+
+    methods = {
+        item["scenario_code"]: item["method"]
+        for item in load_accident_description_rows(tmp_path)
+    }
+
+    assert methods["С1"] == FIRE_METHOD
+    assert methods["С2"] == EXPLOSION_METHOD
+    assert methods["С3"] == TOXIC_METHOD
+
+
+def test_calculation_methods_cover_all_impact_types() -> None:
+    from iris_v2.report_key_scenarios import CALCULATION_METHODS
+
+    assert CALCULATION_METHODS[0] == "—"
+    assert all(CALCULATION_METHODS[code] == FIRE_METHOD for code in (1, 3, 5, 6))
+    assert CALCULATION_METHODS[2] == EXPLOSION_METHOD
+    assert all(CALCULATION_METHODS[code] == TOXIC_METHOD for code in (4, 7))

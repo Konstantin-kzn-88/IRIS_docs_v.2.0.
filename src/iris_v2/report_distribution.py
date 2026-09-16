@@ -1,9 +1,11 @@
 import json
 import math
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from docx.document import Document as DocumentType
+from docx.enum.section import WD_ORIENT
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -15,6 +17,9 @@ from iris_v2.equipment import PIPELINE_TYPES
 
 
 MARKER = "{{DISTRIBUTION_SECTION}}"
+LANDSCAPE_CAPTION_TITLE = (
+    "Данные о распределении опасных веществ по оборудованию"
+)
 
 
 class ReportDistributionError(Exception):
@@ -221,10 +226,53 @@ def _set_cell_text(
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
-def _set_table_geometry(document: DocumentType, table: Any) -> None:
-    section = document.sections[0]
+def _paragraph_section(document: DocumentType, paragraph_element: Any) -> Any:
+    section_index = 0
+    for child in document.element.body:
+        if child is paragraph_element:
+            break
+        if child.tag == qn("w:p") and child.find(
+            f"./{qn('w:pPr')}/{qn('w:sectPr')}"
+        ) is not None:
+            section_index += 1
+    return document.sections[min(section_index, len(document.sections) - 1)]
+
+
+def _section_break(properties: Any) -> Any:
+    paragraph = OxmlElement("w:p")
+    paragraph_properties = OxmlElement("w:pPr")
+    section_properties = deepcopy(properties)
+    section_type = section_properties.find(qn("w:type"))
+    if section_type is None:
+        section_type = OxmlElement("w:type")
+        section_properties.insert(0, section_type)
+    section_type.set(qn("w:val"), "nextPage")
+    paragraph_properties.append(section_properties)
+    paragraph.append(paragraph_properties)
+    return paragraph
+
+
+def _landscape_properties(section: Any) -> Any:
+    properties = deepcopy(section._sectPr)
+    page_size = properties.find(qn("w:pgSz"))
+    width = page_size.get(qn("w:w"))
+    height = page_size.get(qn("w:h"))
+    page_size.set(qn("w:w"), height)
+    page_size.set(qn("w:h"), width)
+    page_size.set(qn("w:orient"), "landscape")
+    margins = properties.find(qn("w:pgMar"))
+    margins.set(qn("w:left"), "720")
+    margins.set(qn("w:right"), "720")
+    return properties
+
+
+def _set_table_geometry(section: Any, table: Any, *, landscape: bool) -> None:
+    page_width = section.page_height if landscape else section.page_width
+    horizontal_margins = 914400 if landscape else (
+        section.left_margin + section.right_margin
+    )
     total_twips = int(
-        (section.page_width - section.left_margin - section.right_margin) / 635
+        (page_width - horizontal_margins) / 635
     )
     proportions = (0.18, 0.27, 0.07, 0.10, 0.10, 0.08, 0.09, 0.11)
     widths = [int(total_twips * value) for value in proportions[:-1]]
@@ -277,6 +325,21 @@ def render_distribution_section(
     if marker_paragraph is None:
         return False
     rows, total_mass_t = distribution_rows(equipment, substances, amounts)
+
+    section = _paragraph_section(document, marker_paragraph._p)
+    caption_paragraph = marker_paragraph._p.getprevious()
+    caption_text = "" if caption_paragraph is None else "".join(
+        node.text or "" for node in caption_paragraph.iter(qn("w:t"))
+    )
+    landscape = (
+        LANDSCAPE_CAPTION_TITLE in caption_text
+        and section.orientation != WD_ORIENT.LANDSCAPE
+    )
+    section_anchor = (
+        caption_paragraph if caption_paragraph is not None else marker_paragraph._p
+    )
+    if landscape:
+        section_anchor.addprevious(_section_break(section._sectPr))
 
     table = document.add_table(rows=2, cols=8)
     table.style = "Table Grid"
@@ -337,10 +400,12 @@ def render_distribution_section(
         total_fonts.set(qn(f"w:{name}"), "Times New Roman")
     table._tbl.addnext(total_paragraph._p)
     marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    if landscape:
+        total_paragraph._p.addnext(_section_break(_landscape_properties(section)))
 
     _set_repeat_header(table.rows[0])
     _set_repeat_header(table.rows[1])
     for row in table.rows:
         _prevent_row_split(row)
-    _set_table_geometry(document, table)
+    _set_table_geometry(section, table, landscape=landscape)
     return True

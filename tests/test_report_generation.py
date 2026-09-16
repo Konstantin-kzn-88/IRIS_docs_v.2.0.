@@ -6,10 +6,17 @@ from pathlib import Path
 
 import pytest
 from docx import Document
+from docx.enum.section import WD_SECTION
 from docx.oxml.ns import qn
+from docx.shared import Pt
 
 from iris_v2.project_common import ProjectCommonService, new_project_common
-from iris_v2.report_generation import ReportGenerationError, ReportGenerationService
+from iris_v2.report_generation import (
+    DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT,
+    DEFAULT_SAFETY_MEASURES_TEXT,
+    ReportGenerationError,
+    ReportGenerationService,
+)
 from iris_v2.service import CreateProjectData, ProjectService
 
 
@@ -474,6 +481,126 @@ def test_ifl_markers_are_filled(tmp_path: Path) -> None:
         for run in paragraph.runs
     )
     assert result.filled_sections == ("SUBSTANCES_INFO_SECTION",)
+
+
+def test_opo_information_sections_override_default_texts(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    install_ifl_template(project)
+    ProjectService().update_opo_information_sections(
+        project,
+        "Индивидуальные меры безопасности ОПО.",
+        "Индивидуальный порядок оповещения населения.",
+    )
+    write_substances(project)
+    write_equipment(project)
+    write_scenario_results(project)
+
+    result = ReportGenerationService().generate(project)
+    text = all_text(Document(result.output_path))
+
+    assert "Индивидуальные меры безопасности ОПО." in text
+    assert "Индивидуальный порядок оповещения населения." in text
+    assert DEFAULT_SAFETY_MEASURES_TEXT not in text
+    assert DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT not in text
+
+
+def test_table_and_figure_related_text_is_times_new_roman_11(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    path = project / "input" / "templates" / "selected" / "references.docx"
+    document = Document()
+    references = (
+        "Описание аварий представлено ниже (Таблица 17)",
+        "Рисунок 4 – Схема расположения оборудования",
+        "Значения приведены в таблице 5 и показаны на рисунке 2",
+    )
+    for text in references:
+        run = document.add_paragraph().add_run(text)
+        run.font.name = "Arial"
+        run.font.size = Pt(14)
+    unrelated = document.add_paragraph().add_run("Обычный текст раздела")
+    unrelated.font.name = "Arial"
+    unrelated.font.size = Pt(14)
+    document.save(path)
+    config = {
+        "format_version": 1,
+        "template_profile": "test",
+        "documents": [
+            {
+                "name": path.name,
+                "path": "input/templates/selected/references.docx",
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        ],
+    }
+    (project / "report_config.json").write_text(
+        json.dumps(config, ensure_ascii=False), encoding="utf-8"
+    )
+
+    result = ReportGenerationService().generate(project)
+
+    output = Document(result.output_path)
+    for text in references:
+        paragraph = next(item for item in output.paragraphs if item.text == text)
+        assert paragraph.runs
+        assert all(run.font.name == "Times New Roman" for run in paragraph.runs)
+        assert all(run.font.size.pt == 11 for run in paragraph.runs)
+    ordinary = next(
+        item for item in output.paragraphs if item.text == "Обычный текст раздела"
+    )
+    assert ordinary.runs[0].font.name == "Arial"
+    assert ordinary.runs[0].font.size.pt == 14
+
+
+def test_page_numbers_are_visible_and_continuous_in_all_sections(
+    tmp_path: Path,
+) -> None:
+    project = make_project(tmp_path)
+    path = project / "input" / "templates" / "selected" / "pages.docx"
+    document = Document()
+    document.sections[0].different_first_page_header_footer = True
+    document.add_paragraph("Титульный лист")
+    document.add_page_break()
+    document.add_paragraph("Вторая страница")
+    second = document.add_section(WD_SECTION.NEW_PAGE)
+    second.different_first_page_header_footer = True
+    document.add_paragraph("Новая секция")
+    document.save(path)
+    config = {
+        "format_version": 1,
+        "template_profile": "test",
+        "documents": [
+            {
+                "name": path.name,
+                "path": "input/templates/selected/pages.docx",
+                "size": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+        ],
+    }
+    (project / "report_config.json").write_text(
+        json.dumps(config, ensure_ascii=False), encoding="utf-8"
+    )
+
+    result = ReportGenerationService().generate(project)
+
+    output = Document(result.output_path)
+    assert output.sections[0].different_first_page_header_footer
+    assert not output.sections[1].different_first_page_header_footer
+    for section in output.sections[1:]:
+        assert section.footer.is_linked_to_previous
+    instruction = "".join(
+        node.text or ""
+        for node in output.sections[0].footer._element.iter(qn("w:instrText"))
+    )
+    assert "PAGE" in instruction
+    assert all(
+        section._sectPr.find(qn("w:pgNumType")) is None
+        or section._sectPr.find(qn("w:pgNumType")).get(qn("w:start")) is None
+        for section in output.sections
+    )
 
 
 def test_template_set_creates_three_reports(tmp_path: Path) -> None:

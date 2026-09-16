@@ -1,8 +1,10 @@
 import json
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from docx.document import Document as DocumentType
+from docx.enum.section import WD_ORIENT
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -28,15 +30,31 @@ DAMAGE_MARKER = "{{TOP_SCENARIOS_DAMAGE}}"
 CONCLUSION_MARKER = "{{TOP_SCENARIOS_FINAL_CONCLUSION}}"
 ACCIDENT_DESCRIPTION_MARKER = "{{SITUATION_PLAN_ACCIDENTS_TABLE}}"
 
+EXPLOSION_METHOD = (
+    "Руководство по безопасности «Методика оценки последствий аварийных "
+    "взрывов топливно-воздушных смесей» (утв. приказом Ростехнадзора "
+    "от 28.11.2022 г. № 412)"
+)
+FIRE_METHOD = (
+    "Методика определения расчетных величин пожарного риска на "
+    "производственных объектах. Утверждена приказом МЧС РФ "
+    "от 26 июня 2024 г. № 533"
+)
+TOXIC_METHOD = (
+    "Приказ Федеральной службы по экологическому, технологическому и "
+    "атомному надзору от 02.11.2022 № 385 «Об утверждении Руководства "
+    "по безопасности «Методика моделирования распространения аварийных "
+    "выбросов опасных веществ»»"
+)
 CALCULATION_METHODS = {
     0: "—",
-    1: "Приказ МЧС России от 10.07.2009 № 404",
-    2: "СП 12.13130.2009",
-    3: "Приказ МЧС России от 10.07.2009 № 404",
-    4: "Временная оценка по массе",
-    5: "Приказ МЧС России от 10.07.2009 № 404, формулы П3.71–П3.72",
-    6: "Приказ МЧС России от 10.07.2009 № 404",
-    7: "Расчёт площади химически опасного пролива",
+    1: FIRE_METHOD,
+    2: EXPLOSION_METHOD,
+    3: FIRE_METHOD,
+    4: TOXIC_METHOD,
+    5: FIRE_METHOD,
+    6: FIRE_METHOD,
+    7: TOXIC_METHOD,
 }
 
 ZONE_DESCRIPTIONS = {
@@ -407,11 +425,20 @@ def _paragraph_section(document: DocumentType, paragraph_element: Any) -> Any:
     return document.sections[min(section_index, len(document.sections) - 1)]
 
 
-def _set_table_geometry(section: Any, table: Any) -> None:
-    total_twips = int(
-        (section.page_width - section.left_margin - section.right_margin) / 635
+def _set_table_geometry(
+    section: Any,
+    table: Any,
+    *,
+    landscape: bool = False,
+) -> None:
+    page_width = section.page_height if landscape else section.page_width
+    horizontal_margins = 914400 if landscape else (
+        section.left_margin + section.right_margin
     )
-    proportions = (0.12, 0.11, 0.06, 0.17, 0.09, 0.09, 0.10, 0.14, 0.12)
+    total_twips = int(
+        (page_width - horizontal_margins) / 635
+    )
+    proportions = (0.18, 0.13, 0.05, 0.22, 0.07, 0.07, 0.08, 0.11, 0.09)
     widths = [int(total_twips * value) for value in proportions[:-1]]
     widths.append(total_twips - sum(widths))
     table.autofit = False
@@ -437,6 +464,34 @@ def _set_table_geometry(section: Any, table: Any) -> None:
             cell_width = cell.get_or_add_tcPr().get_or_add_tcW()
             cell_width.set(qn("w:w"), str(width))
             cell_width.set(qn("w:type"), "dxa")
+
+
+def _section_break(properties: Any) -> Any:
+    paragraph = OxmlElement("w:p")
+    paragraph_properties = OxmlElement("w:pPr")
+    section_properties = deepcopy(properties)
+    section_type = section_properties.find(qn("w:type"))
+    if section_type is None:
+        section_type = OxmlElement("w:type")
+        section_properties.insert(0, section_type)
+    section_type.set(qn("w:val"), "nextPage")
+    paragraph_properties.append(section_properties)
+    paragraph.append(paragraph_properties)
+    return paragraph
+
+
+def _landscape_properties(section: Any) -> Any:
+    properties = deepcopy(section._sectPr)
+    page_size = properties.find(qn("w:pgSz"))
+    width = page_size.get(qn("w:w"))
+    height = page_size.get(qn("w:h"))
+    page_size.set(qn("w:w"), height)
+    page_size.set(qn("w:h"), width)
+    page_size.set(qn("w:orient"), "landscape")
+    margins = properties.find(qn("w:pgMar"))
+    margins.set(qn("w:left"), "720")
+    margins.set(qn("w:right"), "720")
+    return properties
 
 
 def _set_description_table_geometry(section: Any, table: Any) -> None:
@@ -614,15 +669,18 @@ def render_key_scenarios_section(
         return False
 
     section = _paragraph_section(document, marker_paragraph._p)
+    landscape = section.orientation != WD_ORIENT.LANDSCAPE
+    caption_paragraph = marker_paragraph._p.getprevious()
+    section_anchor = (
+        caption_paragraph
+        if caption_paragraph is not None
+        else marker_paragraph._p
+    )
+    if landscape:
+        section_anchor.addprevious(_section_break(section._sectPr))
     table = document.add_table(rows=1, cols=9)
     table.style = "Table Grid"
     marker_paragraph._p.addnext(table._tbl)
-    for run in marker_paragraph.runs:
-        run.text = ""
-    marker_paragraph.paragraph_format.page_break_before = True
-    marker_paragraph.paragraph_format.keep_with_next = True
-    marker_paragraph.paragraph_format.space_before = Pt(0)
-    marker_paragraph.paragraph_format.space_after = Pt(0)
     headers = (
         "Составляющая\nОПО",
         "Тип сценария",
@@ -657,7 +715,10 @@ def render_key_scenarios_section(
         for column, (cell, value) in enumerate(zip(cells, values)):
             _set_cell_text(cell, value, centered=column not in (0, 1, 3))
 
-    _set_table_geometry(section, table)
+    marker_paragraph._element.getparent().remove(marker_paragraph._element)
+    if landscape:
+        table._tbl.addnext(_section_break(_landscape_properties(section)))
+    _set_table_geometry(section, table, landscape=landscape)
     return True
 
 
