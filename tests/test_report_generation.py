@@ -73,6 +73,7 @@ def install_template(project: Path, unknown_marker: bool = False) -> Path:
     document.add_paragraph("Шифр: {{ DPB_CODE }}")
     document.add_paragraph("Дата: {{ generated_at }}")
     document.add_paragraph("СЗЗ: {{ SITE_SANITARY_PROTECTION_ZONE_M }}")
+    document.add_paragraph("{{SITE_SANITARY_PROTECTION_ZONE_TEXT}}")
     document.add_paragraph("{{SUBSTANCES_SECTION}}")
     document.add_paragraph("{{EQUIPMENT_SECTION}}")
     document.add_paragraph("{{DISTRIBUTION_SECTION}}")
@@ -414,11 +415,14 @@ def all_text(document: Document) -> str:
 def install_ifl_template(project: Path) -> Path:
     path = project / "input" / "templates" / "selected" / "template_report.docx"
     document = Document()
+    document.styles["Normal"].font.size = Pt(12)
     document.add_paragraph("Должность: {{PUBLIC_INFORMATION_CONTACT_POSITION}}")
     document.add_paragraph("Ф.И.О.: {{PUBLIC_INFORMATION_CONTACT_FULL_NAME}}")
     document.add_paragraph("Телефон: {{PUBLIC_INFORMATION_CONTACT_PHONE}}")
     document.add_paragraph("{{SUBSTANCES_INFO_SECTION}}")
-    document.add_paragraph("Пострадавших: {{MAX_PEOPLE_VICTIMS}} чел.")
+    document.add_paragraph(
+        "Пострадавших: {{MAX_PEOPLE_VICTIMS_WITH_UNIT}}."
+    )
     document.add_paragraph("{{SAFETY_MEASURES_SECTION}}")
     document.add_paragraph("{{PUBLIC_WARNING_AND_ACTIONS_SECTION}}")
     document.save(path)
@@ -455,7 +459,7 @@ def test_ifl_markers_are_filled(tmp_path: Path) -> None:
     assert "Должность: Начальник отдела" in text
     assert "Ф.И.О.: Иванов Иван Иванович" in text
     assert "Телефон: +7 000 000-00-01" in text
-    assert "Пострадавших: 4 чел." in text
+    assert "Пострадавших: 4 человека." in text
     assert "производственный контроль" in text
     assert "Оповещение населения" in text
     assert [cell.text for cell in document.tables[0].rows[0].cells] == [
@@ -468,7 +472,7 @@ def test_ifl_markers_are_filled(tmp_path: Path) -> None:
         ):
             assert paragraph.runs
             assert all(run.font.name == "Times New Roman" for run in paragraph.runs)
-            assert all(run.font.size.pt == 11 for run in paragraph.runs)
+            assert all(run.font.size.pt == 12 for run in paragraph.runs)
     table_width = document.tables[0]._tbl.tblPr.find(qn("w:tblW"))
     assert table_width is not None
     assert table_width.get(qn("w:type")) == "pct"
@@ -670,6 +674,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     assert "Шифр: ДПБ-01" in text
     assert "Дата: 06.09.2026 12:30" in text
     assert "СЗЗ: отсутствует" in text
+    assert "Для объекта санитарно-защитная зона отсутствует." in text
     assert "Организация: Акционерное общество Короткое" in text
     assert "АО Короткое — Площадка нефти" in text
     assert "{{SUBSTANCES_SECTION}}" not in text
@@ -929,7 +934,7 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
         run.font.name == "Times New Roman" and run.font.size.pt == 11
         for run in fatal_frequency_paragraph.runs
     )
-    assert result.replaced_count == 7
+    assert result.replaced_count == 8
     assert result.filled_sections == (
         "SUBSTANCES_SECTION",
         "EQUIPMENT_SECTION",

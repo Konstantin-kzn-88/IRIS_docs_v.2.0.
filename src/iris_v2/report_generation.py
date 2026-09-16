@@ -229,6 +229,8 @@ SUPPORTED_SECTION_MARKERS = frozenset(
 GENERATED_TEXT_MARKERS = SUPPORTED_SECTION_MARKERS | frozenset(
     {
         "MAX_PEOPLE_VICTIMS",
+        "MAX_PEOPLE_VICTIMS_WITH_UNIT",
+        "SITE_SANITARY_PROTECTION_ZONE_TEXT",
         "SITE_DESCRIPTION",
         "SITE_AREA_CHARACTERISTICS",
         "SITE_EMERGENCY_RESPONSE_PLAN",
@@ -315,6 +317,33 @@ def _sanitary_zone(value: Any) -> str:
     return _text(value)
 
 
+def _sanitary_zone_text(value: Any) -> str:
+    zone = _sanitary_zone(value)
+    if zone == "отсутствует":
+        return "Для объекта санитарно-защитная зона отсутствует."
+    return (
+        "Для объекта предусмотрена зона с особыми условиями использования "
+        "территорий – санитарно-защитная зона. Размер санитарно-защитной "
+        f"зоны составляет {zone} м."
+    )
+
+
+def _victim_count_with_unit(value: int) -> str:
+    remainder_100 = value % 100
+    remainder_10 = value % 10
+    if remainder_10 == 1 and remainder_100 != 11:
+        unit = "человек"
+    elif remainder_10 in (2, 3, 4) and remainder_100 not in (12, 13, 14):
+        unit = "человека"
+    else:
+        unit = "человек"
+    return f"{value} {unit}"
+
+
+def _clean_inline_spacing(value: Any) -> str:
+    return re.sub(r"[ \t]{2,}", " ", _text(value))
+
+
 def _remove_table_shading(document: Any) -> None:
     """Remove cell fills from every table in the generated document."""
     for cell in document.element.iter(qn("w:tc")):
@@ -331,6 +360,7 @@ class _GeneratedContentSnapshot:
     tables: frozenset[Any]
     paragraphs: frozenset[Any]
     marker_paragraphs: frozenset[Any]
+    marker_font_sizes: tuple[tuple[Any, int], ...]
 
 
 def _generated_content_snapshot(document: Any) -> _GeneratedContentSnapshot:
@@ -345,14 +375,38 @@ def _generated_content_snapshot(document: Any) -> _GeneratedContentSnapshot:
         }
         & GENERATED_TEXT_MARKERS
     )
+    marker_font_sizes: list[tuple[Any, int]] = []
+    styles_by_id = {style.style_id: style for style in document.styles}
+    for paragraph in marker_paragraphs:
+        half_points = 22
+        direct_size = next(
+            (
+                run.find(f"./{qn('w:rPr')}/{qn('w:sz')}")
+                for run in paragraph.iter(qn("w:r"))
+                if run.find(f"./{qn('w:rPr')}/{qn('w:sz')}") is not None
+            ),
+            None,
+        )
+        if direct_size is not None:
+            half_points = int(direct_size.get(qn("w:val")))
+        else:
+            style_node = paragraph.find(f"./{qn('w:pPr')}/{qn('w:pStyle')}")
+            style = styles_by_id.get(
+                "Normal" if style_node is None else style_node.get(qn("w:val"))
+            )
+            if style is not None and style.font.size is not None:
+                half_points = int(style.font.size.pt * 2)
+        marker_font_sizes.append((paragraph, half_points))
+
     return _GeneratedContentSnapshot(
         tables=frozenset(body.iter(qn("w:tbl"))),
         paragraphs=paragraphs,
         marker_paragraphs=marker_paragraphs,
+        marker_font_sizes=tuple(marker_font_sizes),
     )
 
 
-def _set_generated_run_font(run: Any) -> None:
+def _set_generated_run_font(run: Any, half_points: int = 22) -> None:
     properties = run.get_or_add_rPr()
     fonts = properties.get_or_add_rFonts()
     for name in ("ascii", "hAnsi", "eastAsia", "cs"):
@@ -362,7 +416,7 @@ def _set_generated_run_font(run: Any) -> None:
         if size is None:
             size = OxmlElement(tag)
             properties.append(size)
-        size.set(qn("w:val"), "22")
+        size.set(qn("w:val"), str(half_points))
 
 
 def _set_generated_table_full_width(table: Any) -> None:
@@ -415,9 +469,11 @@ def _normalize_generated_content(
     }
     for table in generated_tables:
         generated_paragraphs.update(table.iter(qn("w:p")))
+    marker_font_sizes = dict(snapshot.marker_font_sizes)
     for paragraph in generated_paragraphs:
+        half_points = marker_font_sizes.get(paragraph, 22)
         for run in paragraph.iter(qn("w:r")):
-            _set_generated_run_font(run)
+            _set_generated_run_font(run, half_points)
 
 
 TABLE_FIGURE_TEXT_RE = re.compile(
@@ -582,7 +638,10 @@ def _build_replacements(
         "SITE_SANITARY_PROTECTION_ZONE_M": _sanitary_zone(
             site.get("sanitary_protection_zone_m")
         ),
-        "SITE_DESCRIPTION": site.get("description"),
+        "SITE_SANITARY_PROTECTION_ZONE_TEXT": _sanitary_zone_text(
+            site.get("sanitary_protection_zone_m")
+        ),
+        "SITE_DESCRIPTION": _clean_inline_spacing(site.get("description")),
         "SITE_AREA_CHARACTERISTICS": site.get("area_characteristics"),
         "SITE_EMPLOYEES_COUNT": personnel.get("employees_count"),
         "SITE_EMPLOYEES_OTHER_OPO_COUNT": personnel.get(
@@ -800,11 +859,18 @@ class ReportGenerationService:
         replacements = _build_replacements(project, common, generated_at)
         marker_names = _marker_names(document)
         self._ensure_calculation_chain_is_fresh(project_root, marker_names)
-        if "MAX_PEOPLE_VICTIMS" in marker_names:
+        if {
+            "MAX_PEOPLE_VICTIMS",
+            "MAX_PEOPLE_VICTIMS_WITH_UNIT",
+        } & marker_names:
             try:
                 casualty_rows = load_casualty_rows(project_root)
-                replacements["MAX_PEOPLE_VICTIMS"] = str(
-                    max(int(item["affected"]) for item in casualty_rows)
+                victim_count = max(
+                    int(item["affected"]) for item in casualty_rows
+                )
+                replacements["MAX_PEOPLE_VICTIMS"] = str(victim_count)
+                replacements["MAX_PEOPLE_VICTIMS_WITH_UNIT"] = (
+                    _victim_count_with_unit(victim_count)
                 )
             except ReportCasualtiesError as exc:
                 raise ReportGenerationError(str(exc)) from exc

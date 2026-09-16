@@ -166,7 +166,23 @@ def render_event_trees_section(
     available_width = section.page_width - section.left_margin - section.right_margin
     max_height = Inches(5.5)
     anchor = marker_paragraph._p
-    for item in items:
+    lead = document.add_paragraph()
+    lead.paragraph_format.keep_with_next = True
+    lead.paragraph_format.space_before = Pt(0)
+    lead.paragraph_format.space_after = Pt(0)
+    lead.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    if len(items) == 1:
+        lead_text = "Дерево событий представлено на рисунке ДС-1."
+    else:
+        lead_text = (
+            "Деревья событий представлены на рисунках "
+            f"ДС-1–ДС-{len(items)}."
+        )
+    _set_font(lead.add_run(lead_text), 11)
+    anchor.addnext(lead._p)
+    anchor = lead._p
+
+    for index, item in enumerate(items, start=1):
         picture_paragraph = document.add_paragraph()
         picture_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
         picture_paragraph.paragraph_format.page_break_before = True
@@ -187,11 +203,11 @@ def render_event_trees_section(
         caption.paragraph_format.space_before = Pt(0)
         caption.paragraph_format.space_after = Pt(6)
         run = caption.add_run(
-            "Рисунок – Дерево событий для типа оборудования "
+            f"Рисунок ДС-{index} – Дерево событий для типа оборудования "
             f"«{item.equipment_name}» и вида опасного вещества "
             f"«{_short_kind_name(item.kind_name)}»"
         )
-        _set_font(run, 12)
+        _set_font(run, 11)
         anchor.addnext(caption._p)
         anchor = caption._p
     marker_paragraph._element.getparent().remove(marker_paragraph._element)

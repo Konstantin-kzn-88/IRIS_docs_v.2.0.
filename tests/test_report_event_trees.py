@@ -66,4 +66,8 @@ def test_render_event_tree_replaces_marker(tmp_path: Path) -> None:
 
     assert MARKER not in "\n".join(p.text for p in document.paragraphs)
     assert len(document.inline_shapes) == 1
+    assert "Дерево событий представлено на рисунке ДС-1." in "\n".join(
+        paragraph.text for paragraph in document.paragraphs
+    )
+    assert document.paragraphs[-1].text.startswith("Рисунок ДС-1 –")
     assert "Дерево событий для типа оборудования" in document.paragraphs[-1].text
