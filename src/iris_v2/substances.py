@@ -102,7 +102,12 @@ def _read_substance(path: Path) -> Substance:
 
 class SubstanceService:
     def load_archive(self, path: Path | str | None = None) -> tuple[Substance, ...]:
-        archive = Path(path) if path is not None else Path.cwd() / "substances" / "archive"
+        if path is not None:
+            archive = Path(path)
+        else:
+            archive = Path.cwd() / "substances" / "archive"
+            if not archive.is_dir():
+                archive = Path(__file__).resolve().parents[2] / "substances" / "archive"
         paths = (
             sorted(
                 item
