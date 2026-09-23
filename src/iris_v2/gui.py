@@ -2984,10 +2984,19 @@ class SubstanceDialog(QDialog):
         self.project_directory = project_directory
         self.substances = substances
         self.service = SubstanceService()
-        selected_fingerprints = {
-            substance_fingerprint(item)
-            for item in self.service.load_project(project_directory)
+        selected_fingerprints = set()
+        renamed_so2 = {
+            ("Сернистый ангидрид (Диоксид серы)", 8):
+                "Сернистый ангидрид (диоксид серы, сжиженный газ)",
+            ("Диоксид серы (газ)", 7):
+                "Сернистый ангидрид (диоксид серы, газ)",
         }
+        for item in self.service.load_project(project_directory):
+            selected_fingerprints.add(substance_fingerprint(item))
+            new_name = renamed_so2.get((item.get("name"), item.get("kind")))
+            if item.get("formula") == "SO2" and new_name:
+                renamed = {**item, "name": new_name}
+                selected_fingerprints.add(substance_fingerprint(renamed))
         self.setWindowTitle("Вещества проекта")
         self.resize(980, 650)
 
