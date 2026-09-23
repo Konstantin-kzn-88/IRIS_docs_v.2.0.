@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QComboBox,
@@ -2993,6 +2994,8 @@ class SubstanceDialog(QDialog):
         self.filter_edit = QLineEdit()
         self.filter_edit.setPlaceholderText("Поиск по группе, названию или виду вещества")
         self.filter_edit.textChanged.connect(self._apply_filter)
+        self.selected_only_checkbox = QCheckBox("Только выбранные")
+        self.selected_only_checkbox.toggled.connect(self._apply_filter)
 
         self.table = QTableWidget(len(substances), 5)
         self.table.setHorizontalHeaderLabels(
@@ -3020,6 +3023,7 @@ class SubstanceDialog(QDialog):
             self.table.setItem(row, 2, QTableWidgetItem(str(substance.source_id)))
             self.table.setItem(row, 3, QTableWidgetItem(substance.name))
             self.table.setItem(row, 4, QTableWidgetItem(KIND_NAMES[substance.kind]))
+        self.table.itemChanged.connect(self._on_item_changed)
 
         select_all_button = QPushButton("Выбрать все")
         select_all_button.clicked.connect(lambda: self._set_visible_checked(True))
@@ -3040,18 +3044,28 @@ class SubstanceDialog(QDialog):
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.filter_edit)
+        layout.addWidget(self.selected_only_checkbox)
         layout.addLayout(selection_layout)
         layout.addWidget(self.table)
         layout.addWidget(buttons)
 
-    def _apply_filter(self, text: str) -> None:
-        search = text.strip().lower()
+    def _apply_filter(self, *_args: object) -> None:
+        search = self.filter_edit.text().strip().lower()
         for row in range(self.table.rowCount()):
             row_text = " ".join(
                 self.table.item(row, column).text()
                 for column in range(1, self.table.columnCount())
             ).lower()
-            self.table.setRowHidden(row, search not in row_text)
+            selected = self.table.item(row, 0).checkState() == Qt.CheckState.Checked
+            self.table.setRowHidden(
+                row,
+                search not in row_text
+                or (self.selected_only_checkbox.isChecked() and not selected),
+            )
+
+    def _on_item_changed(self, item: QTableWidgetItem) -> None:
+        if item.column() == 0 and self.selected_only_checkbox.isChecked():
+            self._apply_filter()
 
     def _set_visible_checked(self, checked: bool) -> None:
         state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
