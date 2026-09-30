@@ -891,7 +891,7 @@ def render_key_scenario_damage(
         "Составляющая ОПО",
         "Тип сценария",
         "№",
-    ) + tuple(label for _, label in DAMAGE_FIELDS)
+    ) + tuple(f"{label}, тыс. руб." for _, label in DAMAGE_FIELDS)
     for cell, value in zip(table.rows[0].cells, headers):
         _set_cell_text(cell, value, bold=True, centered=True, font_size=7)
         _shade(cell, "D9E1F2")

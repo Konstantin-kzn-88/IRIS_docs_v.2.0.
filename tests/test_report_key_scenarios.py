@@ -418,6 +418,17 @@ def test_damage_table_replaces_marker_and_repeats_header() -> None:
     assert "TOP_SCENARIOS_DAMAGE" not in "\n".join(
         paragraph.text for paragraph in document.paragraphs
     )
+    assert [cell.text for cell in document.tables[0].rows[0].cells] == [
+        "Составляющая ОПО",
+        "Тип сценария",
+        "№",
+        "Прямые потери, тыс. руб.",
+        "Затраты на ЛЛА, тыс. руб.",
+        "Социальные потери, тыс. руб.",
+        "Косвенный ущерб, тыс. руб.",
+        "Экологический ущерб, тыс. руб.",
+        "Суммарный ущерб, тыс. руб.",
+    ]
     assert [cell.text for cell in document.tables[0].rows[1].cells] == [
         "Участок",
         "Наиболее опасный",
