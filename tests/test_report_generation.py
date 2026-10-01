@@ -751,8 +751,18 @@ def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> N
     damage_table = next(
         table
         for table in Document(result.output_path).tables
-        if table.cell(0, 2).text == "Прямые потери"
+        if table.cell(0, 2).text == "Прямые потери, тыс. руб."
     )
+    assert [cell.text for cell in damage_table.rows[0].cells] == [
+        "№ сценария",
+        "Оборудование (составляющая)",
+        "Прямые потери, тыс. руб.",
+        "Затраты на ЛЛА, тыс. руб.",
+        "Социальные потери, тыс. руб.",
+        "Косвенный ущерб, тыс. руб.",
+        "Экологический ущерб, тыс. руб.",
+        "Суммарный ущерб, тыс. руб.",
+    ]
     assert [cell.text for cell in damage_table.rows[1].cells] == [
         "С1",
         "Нефтепровод от скважины № 1 (Участок трубопроводов)",

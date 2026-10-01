@@ -290,7 +290,7 @@ def render_damage_section(
     section = _paragraph_section(document, marker_paragraph._p)
 
     headers = ("№ сценария", "Оборудование (составляющая)") + tuple(
-        label for _, label in DAMAGE_FIELDS
+        f"{label}, тыс. руб." for _, label in DAMAGE_FIELDS
     )
     for cell, value in zip(table.rows[0].cells, headers):
         _set_cell_text(cell, value, bold=True, centered=True, font_size=7.5)
