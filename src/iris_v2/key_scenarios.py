@@ -106,9 +106,14 @@ def select_key_scenarios(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
 
         dangerous = selected[component]["dangerous"]
-        if row["fatalities_count"] > dangerous["fatalities_count"] or (
-            row["fatalities_count"] == dangerous["fatalities_count"]
-            and row["total_damage"] > dangerous["total_damage"]
+        if (
+            row["fatalities_count"],
+            row["injured_count"],
+            row["total_damage"],
+        ) > (
+            dangerous["fatalities_count"],
+            dangerous["injured_count"],
+            dangerous["total_damage"],
         ):
             selected[component]["dangerous"] = row
 
@@ -143,7 +148,10 @@ class KeyScenariosService:
             "damage_unit": "тыс. руб.",
             "frequency_unit": "1/год",
             "selection_rules": {
-                "dangerous": "максимум погибших, затем максимум ущерба",
+                "dangerous": (
+                    "максимум погибших, затем максимум раненых, "
+                    "затем максимум ущерба"
+                ),
                 "probable": "максимум частоты сценария",
             },
             "rows": rows,

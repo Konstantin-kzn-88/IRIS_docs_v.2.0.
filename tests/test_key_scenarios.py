@@ -61,6 +61,20 @@ def test_complete_tie_keeps_first_scenario() -> None:
     assert selected[1]["scenario_code"] == "С1"
 
 
+def test_injured_count_breaks_fatality_tie_before_damage() -> None:
+    pool_fire = row(1, "Промысловый трубопровод", 0, 100.0, 1e-5)
+    pool_fire["injured_count"] = 5
+    explosion = row(2, "Промысловый трубопровод", 0, 1000.0, 2e-5)
+    explosion["injured_count"] = 4
+
+    selected = select_key_scenarios([explosion, pool_fire])
+
+    assert selected[0]["scenario_type"] == "dangerous"
+    assert selected[0]["scenario_code"] == "С1"
+    assert selected[1]["scenario_type"] == "probable"
+    assert selected[1]["scenario_code"] == "С2"
+
+
 def test_service_saves_two_rows_per_component(tmp_path: Path) -> None:
     write_json(
         tmp_path / "risk_results.json",

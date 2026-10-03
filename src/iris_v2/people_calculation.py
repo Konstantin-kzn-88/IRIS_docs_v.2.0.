@@ -81,6 +81,24 @@ def calculate_people_damage(
             return 1, 1, "pump_local_impact"
         return 0, 1, "pump_limited_impact"
 
+    # Для промыслового трубопровода на открытой местности наиболее тяжёлым
+    # принимается полный разрыв с последующим пожаром пролива. В отличие от
+    # технологического трубопровода, взрыв облака здесь не является базовым
+    # наиболее опасным исходом.
+    if equipment_type == 9 and kind in {0, 1}:
+        if scenario_line == 1 and calc_code == 1:
+            return (
+                possible_dead,
+                possible_injured,
+                "field_pipeline_full_pool_fire",
+            )
+        if scenario_line == 2 and calc_code == 2:
+            return (
+                max(0, possible_dead - 1),
+                max(0, possible_injured - 1),
+                "field_pipeline_full_explosion",
+            )
+
     if calc_code == 2:
         if equipment_type in {0, 9} and kind in {4, 5} and scenario_line == 6:
             return 0, 1, "pipeline_lpg_partial_explosion"
