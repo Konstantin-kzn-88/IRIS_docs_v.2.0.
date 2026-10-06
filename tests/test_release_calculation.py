@@ -113,7 +113,7 @@ def test_rules_cover_every_typical_scenario() -> None:
                 assert release_mode(equipment_type, kind, scenario.line)
                 checked += 1
 
-    assert checked == catalog.scenario_count == 370
+    assert checked == catalog.scenario_count == 376
 
 
 def test_pipeline_liquid_full_and_partial_release(tmp_path: Path) -> None:
@@ -130,6 +130,21 @@ def test_pipeline_liquid_full_and_partial_release(tmp_path: Path) -> None:
         full_mass * 0.125
     )
     assert result.results[1]["flow_kg_s"] == pytest.approx(flow * 0.125)
+
+
+def test_well_uses_existing_liquid_release_formula(tmp_path: Path) -> None:
+    write_project(tmp_path, equipment_type=10, kind=1, lines=[1, 4])
+
+    result = ReleaseCalculationService().calculate(tmp_path)
+
+    flow = liquid_leak_mass_flow_kg_s(1.0, 100.0, 800.0)
+    full_mass = 10.0 + flow * 10.0 / 1000.0
+    assert result.results[0]["release_mode"] == "well_liquid_full"
+    assert result.results[0]["ov_in_accident_t"] == pytest.approx(full_mass)
+    assert result.results[1]["release_mode"] == "well_liquid_partial"
+    assert result.results[1]["ov_in_accident_t"] == pytest.approx(
+        full_mass * 0.125
+    )
 
 
 def test_gas_full_and_partial_scale_only_supply_flow(tmp_path: Path) -> None:

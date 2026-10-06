@@ -38,7 +38,7 @@ def calculate_people_damage(
 ) -> tuple[int, int, str]:
     """Возвращает погибших, пострадавших и код применённого правила."""
     for value, name, valid_range in (
-        (equipment_type, "equipment_type", range(10)),
+        (equipment_type, "equipment_type", range(11)),
         (kind, "kind", range(10)),
         (calc_code, "calc_code", range(8)),
     ):

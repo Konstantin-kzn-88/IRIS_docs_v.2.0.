@@ -15,6 +15,7 @@ JSON_FILE_NAME = "equipments.json"
 ERROR_FILE_NAME = "equipment_import_errors.txt"
 SHEET_NAME = "Equipment Data"
 PIPELINE_TYPES = {0, 9}
+WELL_TYPE = 10
 PHASE_STATES = {"ж.ф.", "г.ф.", "ж.ф.+г.ф."}
 PHASE_STATE_BY_KIND = {
     0: "ж.ф.",
@@ -188,7 +189,7 @@ class EquipmentService:
                         sheet.cell(row, column).value
                         for column in range(1, len(HEADERS) + 1)
                     ]
-                    for row in range(2, 12)
+                    for row in range(2, len(catalog.equipment_types) + 2)
                 }
                 generated_rows: list[list[Any]] = []
                 source_id = 1
@@ -232,7 +233,9 @@ class EquipmentService:
                         source_id += 1
 
                 last_data_row = len(generated_rows) + 1
-                for row in range(2, max(11, last_data_row) + 1):
+                for row in range(
+                    2, max(len(catalog.equipment_types) + 1, last_data_row) + 1
+                ):
                     for column in range(1, len(HEADERS) + 1):
                         sheet.cell(row, column).value = None
                 for row_number, values in enumerate(generated_rows, start=2):
@@ -242,21 +245,22 @@ class EquipmentService:
                     table.ref = f"A1:X{last_data_row}"
 
                 instruction = workbook["Инструкция"]
+                instruction_row = instruction.max_row + 1
                 for column in range(1, 4):
-                    instruction.cell(25, column)._style = copy(
-                        instruction.cell(24, column)._style
+                    instruction.cell(instruction_row, column)._style = copy(
+                        instruction.cell(instruction_row - 1, column)._style
                     )
-                instruction.cell(25, 1).value = "Типовое заполнение"
-                instruction.cell(25, 2).value = "Автоматически"
-                instruction.cell(25, 3).value = (
+                instruction.cell(instruction_row, 1).value = "Типовое заполнение"
+                instruction.cell(instruction_row, 2).value = "Автоматически"
+                instruction.cell(instruction_row, 3).value = (
                     "Для каждого substance_id созданы только разрешённые пары "
                     "equipment_type × kind."
                 )
-                alignment = copy(instruction.cell(24, 3).alignment)
+                alignment = copy(instruction.cell(instruction_row - 1, 3).alignment)
                 alignment.wrap_text = True
                 alignment.vertical = "top"
-                instruction.cell(25, 3).alignment = alignment
-                instruction.row_dimensions[25].height = 30
+                instruction.cell(instruction_row, 3).alignment = alignment
+                instruction.row_dimensions[instruction_row].height = 30
                 workbook.save(temporary)
             except EquipmentError:
                 temporary.unlink(missing_ok=True)
@@ -383,9 +387,9 @@ class EquipmentService:
             equipment_type = _integer(
                 row["equipment_type"], "equipment_type", errors, row_number
             )
-            if equipment_type is not None and equipment_type not in range(10):
+            if equipment_type is not None and equipment_type not in range(11):
                 errors.append(
-                    f"строка {row_number}, equipment_type: ожидается код от 0 до 9"
+                    f"строка {row_number}, equipment_type: ожидается код от 0 до 10"
                 )
             phase_state = _text(
                 row["phase_state"], "phase_state", errors, row_number
@@ -421,7 +425,10 @@ class EquipmentService:
                 "diameter_mm",
                 errors,
                 row_number,
-                required=equipment_type in PIPELINE_TYPES,
+                required=(
+                    equipment_type in PIPELINE_TYPES
+                    or equipment_type == WELL_TYPE
+                ),
             )
             wall = _number(
                 row["wall_thickness_mm"],
@@ -472,6 +479,13 @@ class EquipmentService:
                     row_number,
                 )
                 _positive(volume, "volume_m3", errors, row_number)
+                if equipment_type == WELL_TYPE:
+                    _positive(diameter, "diameter_mm", errors, row_number)
+                    if wall is not None:
+                        errors.append(
+                            f"строка {row_number}, wall_thickness_mm: "
+                            "для скважины поле не заполняется"
+                        )
                 if total_length is not None or accident_length is not None:
                     errors.append(
                         f"строка {row_number}: total_length_m и accident_section_length_m "

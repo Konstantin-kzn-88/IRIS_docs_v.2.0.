@@ -16,6 +16,7 @@ FILE_NAME = "release_results.json"
 PIPELINE_TYPES = {0, 9}
 STORAGE_TYPES = {1, 7}
 PRESSURE_EQUIPMENT_TYPES = {2, 3, 6, 8}
+WELL_TYPE = 10
 PURE_GAS_KINDS = {2, 3, 7}
 DISCHARGE_COEFFICIENT = 0.62
 UNIVERSAL_GAS_CONSTANT = 8.314462618
@@ -32,6 +33,10 @@ RELEASE_MODE_NAMES = {
     "liquid_phase_leak": "Истечение ниже уровня жидкости",
     "gas_phase_leak": "Истечение выше уровня жидкости",
     "pump_release": "Разрушение отводящего трубопровода насоса",
+    "well_liquid_full": (
+        "Полная разгерметизация скважины — масса в оборудовании и приток жидкости"
+    ),
+    "well_liquid_partial": "Частичная разгерметизация скважины",
 }
 
 
@@ -147,6 +152,12 @@ def gas_leak_mass_flow_kg_s(
 
 def release_mode(equipment_type: int, kind: int, scenario_line: int) -> str:
     """Return the old IRIS release rule without equipment/kind modules."""
+    if equipment_type == WELL_TYPE and kind == 1:
+        if scenario_line in {1, 2, 3}:
+            return "well_liquid_full"
+        if scenario_line in {4, 5, 6}:
+            return "well_liquid_partial"
+
     if equipment_type in PIPELINE_TYPES:
         if kind in PURE_GAS_KINDS:
             full = {1, 2, 3, 4} if kind in {2, 3} else {1}
@@ -396,25 +407,33 @@ class ReleaseCalculationService:
                 "pipeline_liquid_partial",
                 "liquid_phase_leak",
                 "pump_release",
+                "well_liquid_full",
+                "well_liquid_partial",
             }:
                 density = _number(
                     physical.get("density_liquid_kg_per_m3"),
                     f"Сценарий {scenario_code}: density_liquid_kg_per_m3",
                     positive=True,
                 )
+                uses_equipment_diameter = mode in {
+                    "pipeline_liquid_full",
+                    "pipeline_liquid_partial",
+                    "well_liquid_full",
+                    "well_liquid_partial",
+                }
                 diameter = (
                     _number(
                         item.get("diameter_mm"),
                         f"Сценарий {scenario_code}: diameter_mm",
                         positive=True,
                     )
-                    if mode.startswith("pipeline_liquid")
+                    if uses_equipment_diameter
                     else liquid_hole
                 )
                 flow_kg_s = liquid_leak_mass_flow_kg_s(
                     pressure, diameter, density
                 )
-                if mode == "pipeline_liquid_partial":
+                if mode in {"pipeline_liquid_partial", "well_liquid_partial"}:
                     flow_kg_s *= partial_fraction
                 flow_mass_t = flow_kg_s * shutdown_time * KG_TO_T
             elif mode in {"gas_supply_full", "gas_supply_partial", "gas_phase_leak"}:
@@ -437,12 +456,17 @@ class ReleaseCalculationService:
             if mode in {
                 "inventory_full",
                 "pipeline_liquid_full",
+                "well_liquid_full",
                 "gas_supply_full",
                 "gas_supply_partial",
                 "pump_release",
             }:
                 inventory_release_t = amount_t
-            elif mode in {"inventory_partial", "pipeline_liquid_partial"}:
+            elif mode in {
+                "inventory_partial",
+                "pipeline_liquid_partial",
+                "well_liquid_partial",
+            }:
                 inventory_release_t = amount_t * partial_fraction
             else:
                 inventory_release_t = 0.0

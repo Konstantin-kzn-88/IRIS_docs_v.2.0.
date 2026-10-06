@@ -281,8 +281,12 @@ class ProjectValidationService:
                         errors.append(f"{prefix}: ожидается объект")
                         continue
                     equipment_type = equipment.get("equipment_type")
-                    if isinstance(equipment_type, bool) or not isinstance(equipment_type, int) or equipment_type not in range(10):
-                        errors.append(f"{prefix}: equipment_type должен быть от 0 до 9")
+                    if (
+                        isinstance(equipment_type, bool)
+                        or not isinstance(equipment_type, int)
+                        or equipment_type not in range(11)
+                    ):
+                        errors.append(f"{prefix}: equipment_type должен быть от 0 до 10")
                     substance_id = equipment.get("substance_id")
                     if not substance_ids:
                         errors.append(f"{prefix}: невозможно проверить substance_id — вещества не готовы")
@@ -341,11 +345,22 @@ class ProjectValidationService:
                             errors.append(f"{prefix}: аварийный участок больше полной длины")
                         if _number(diameter) and _number(wall) and float(wall) * 2 >= float(diameter):
                             errors.append(f"{prefix}: толщина стенки недопустима")
-                    elif isinstance(equipment_type, int) and equipment_type in range(1, 9):
+                    elif isinstance(equipment_type, int) and equipment_type in range(1, 11):
                         if not _positive(equipment.get("equipment_count")):
                             errors.append(f"{prefix}: equipment_count должен быть больше нуля")
                         if not _positive(equipment.get("volume_m3")):
                             errors.append(f"{prefix}: volume_m3 должен быть больше нуля")
+                        if equipment_type == 10 and not _positive(
+                            equipment.get("diameter_mm")
+                        ):
+                            errors.append(f"{prefix}: diameter_mm должен быть больше нуля")
+                        if equipment_type == 10 and equipment.get(
+                            "wall_thickness_mm"
+                        ) is not None:
+                            errors.append(
+                                f"{prefix}: wall_thickness_mm для скважины "
+                                "не заполняется"
+                            )
         return ValidationItem(
             "Оборудование",
             not errors,

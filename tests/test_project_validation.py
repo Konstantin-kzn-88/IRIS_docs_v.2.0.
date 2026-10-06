@@ -84,7 +84,7 @@ def test_ready_project_passes_all_checks(tmp_path: Path) -> None:
     assert report.ready
     assert len(report.items) == 6
     assert all(item.ok for item in report.items)
-    assert "370 сценариев" in report.items[4].message
+    assert "376 сценариев" in report.items[4].message
 
 
 def test_missing_files_block_calculation(tmp_path: Path) -> None:

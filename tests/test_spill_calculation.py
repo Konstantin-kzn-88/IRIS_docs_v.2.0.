@@ -96,7 +96,7 @@ def test_spill_classification_covers_all_typical_scenarios() -> None:
                 assert isinstance(spill_is_applicable(mode), bool)
                 checked += 1
 
-    assert checked == catalog.scenario_count == 370
+    assert checked == catalog.scenario_count == 376
 
 
 def test_calculated_area_uses_release_mass_and_coefficient(

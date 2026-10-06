@@ -145,7 +145,7 @@ class CalculationCasesService:
                 or equipment_type not in catalog.equipment_types
             ):
                 raise CalculationCasesError(
-                    f"Оборудование {equipment_index}: equipment_type должен быть от 0 до 9"
+                    f"Оборудование {equipment_index}: equipment_type должен быть от 0 до 10"
                 )
             if not hazard_component:
                 raise CalculationCasesError(

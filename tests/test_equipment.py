@@ -118,6 +118,50 @@ def test_template_uses_every_selected_substance(tmp_path: Path) -> None:
     assert "Бензин" in rows[9][2]
 
 
+def test_template_adds_well_only_for_kind_one_and_documents_fields(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    write_project(
+        project,
+        [{"id": 1, "name": "Газоводонефтяная эмульсия", "kind": 1}],
+    )
+
+    template = EquipmentService().ensure_template(project)
+    workbook = load_workbook(template, read_only=True, data_only=True)
+    try:
+        rows = [
+            row
+            for row in workbook["Equipment Data"].iter_rows(
+                min_row=2, max_col=len(HEADERS), values_only=True
+            )
+            if any(value is not None for value in row)
+        ]
+        instructions = "\n".join(
+            str(value)
+            for row in workbook["Инструкция"].iter_rows(values_only=True)
+            for value in row
+            if value is not None
+        )
+    finally:
+        workbook.close()
+
+    well = next(row for row in rows if row[3] == 10)
+    assert well[2] == "Скважина — Газоводонефтяная эмульсия"
+    assert well[6] == 1
+    assert well[8] == 100
+    assert well[10] == 1
+    assert "объём жидкости в стволе" in instructions
+    assert "эффективный диаметр выходного сечения" in instructions
+
+    result = EquipmentService().import_excel(project, template)
+    imported = json.loads(result.json_path.read_text(encoding="utf-8"))
+    imported_well = next(item for item in imported if item["equipment_type"] == 10)
+    assert imported_well["equipment_count"] == 1
+    assert imported_well["diameter_mm"] == 100.0
+    assert imported_well["volume_m3"] == 1.0
+
+
 def test_existing_template_is_not_replaced_by_default(tmp_path: Path) -> None:
     project = tmp_path / "project"
     write_project(project)

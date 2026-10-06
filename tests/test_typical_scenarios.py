@@ -9,12 +9,16 @@ from iris_v2.typical_scenarios import TypicalScenarioError, TypicalScenarioServi
 def test_bundled_catalog_is_complete() -> None:
     catalog = TypicalScenarioService().load(TypicalScenarioService.bundled_path())
 
-    assert len(catalog.equipment_types) == 10
+    assert len(catalog.equipment_types) == 11
     assert len(catalog.kinds) == 10
-    assert catalog.pair_count == 62
-    assert len(catalog.forbidden_pairs) == 38
-    assert catalog.scenario_count == 370
+    assert catalog.pair_count == 63
+    assert len(catalog.forbidden_pairs) == 47
+    assert catalog.scenario_count == 376
     assert catalog.scenarios_for(0, 0)[0].calc_code == 1
+    well = catalog.scenarios_for(10, 1)
+    assert [item.base_frequency for item in well[:3]] == [1.5e-5] * 3
+    assert [item.base_frequency for item in well[3:]] == [3e-5] * 3
+    assert well[1].calc_code == 3
 
 
 def test_forbidden_pair_has_reason() -> None:

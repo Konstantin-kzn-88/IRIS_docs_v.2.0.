@@ -149,6 +149,31 @@ def test_pump_uses_full_volume_of_liquid(tmp_path: Path) -> None:
     assert item["amount_t"] == pytest.approx(0.96)
 
 
+def test_well_uses_existing_volume_and_fill_fields(tmp_path: Path) -> None:
+    write_project(
+        tmp_path,
+        [substance(1, "Газоводонефтяная эмульсия", 1, 850.0, 3.45)],
+        [
+            equipment(
+                1,
+                1,
+                10,
+                volume_m3=5.0,
+                fill_fraction=1.0,
+                equipment_count=4,
+                diameter_mm=100.0,
+            )
+        ],
+    )
+
+    item = AmountCalculationService().calculate(tmp_path).results[0]
+
+    assert item["volume_m3"] == pytest.approx(5.0)
+    assert item["liquid_mass_t"] == pytest.approx(4.25)
+    assert item["gas_mass_t"] == 0
+    assert item["amount_t"] == pytest.approx(4.25)
+
+
 def test_missing_density_does_not_replace_existing_result(tmp_path: Path) -> None:
     write_project(
         tmp_path,

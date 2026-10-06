@@ -103,6 +103,27 @@ def test_forbidden_equipment_and_substance_pair_is_rejected(
     assert not (tmp_path / "calculation_cases.json").exists()
 
 
+def test_well_frequency_is_based_on_equipment_count(tmp_path: Path) -> None:
+    write_json(
+        tmp_path / "substances.json",
+        [{"id": 1, "name": "Газоводонефтяная эмульсия", "kind": 1}],
+    )
+    well = pipeline(1, "Фонд скважин", equipment_type=10)
+    well["total_length_m"] = None
+    well["equipment_count"] = 12
+    write_json(tmp_path / "equipments.json", [well])
+    CalculationConfigService().save(tmp_path, new_calculation_config())
+
+    result = CalculationCasesService().generate(tmp_path)
+
+    assert result.case_count == 6
+    assert all(case["frequency_basis"] == 12 for case in result.cases)
+    assert all(case["frequency_basis_unit"] == "шт." for case in result.cases)
+    assert sum(case["unit_scenario_frequency"] for case in result.cases) == pytest.approx(
+        4.5e-5
+    )
+
+
 def test_error_does_not_damage_existing_cases_file(tmp_path: Path) -> None:
     write_json(
         tmp_path / "substances.json",

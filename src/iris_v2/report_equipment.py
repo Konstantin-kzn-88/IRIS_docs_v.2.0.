@@ -9,7 +9,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
 
-from iris_v2.equipment import JSON_FILE_NAME, PIPELINE_TYPES
+from iris_v2.equipment import JSON_FILE_NAME, PIPELINE_TYPES, WELL_TYPE
 
 
 MARKER = "{{EQUIPMENT_SECTION}}"
@@ -126,6 +126,14 @@ def equipment_sections(
         )
         _append(geometry, item, "volume_m3", "Объём оборудования", "м³")
         _append(geometry, item, "fill_fraction", "Степень заполнения")
+        if equipment_type == WELL_TYPE:
+            _append(
+                geometry,
+                item,
+                "diameter_mm",
+                "Эффективный диаметр выходного сечения",
+                "мм",
+            )
 
     regime: list[tuple[str, str]] = []
     _append(regime, item, "pressure_mpa", "Давление", "МПа")

@@ -115,7 +115,7 @@ class TypicalScenarioService:
             raise TypicalScenarioError("Обязательны разделы meta и scenarios")
 
         equipment_types = _mapping(
-            meta.get("equipment_type_mapping"), "equipment_type_mapping", set(range(10))
+            meta.get("equipment_type_mapping"), "equipment_type_mapping", set(range(11))
         )
         kinds = _mapping(meta.get("kind_mapping"), "kind_mapping", set(range(10)))
         calculation_types = _mapping(

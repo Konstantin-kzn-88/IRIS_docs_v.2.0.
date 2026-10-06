@@ -149,7 +149,7 @@ class AmountCalculationService:
                 or equipment_type not in catalog.equipment_types
             ):
                 raise AmountCalculationError(
-                    f"Оборудование {index}: equipment_type должен быть от 0 до 9"
+                    f"Оборудование {index}: equipment_type должен быть от 0 до 10"
                 )
 
             substance = substance_by_id[substance_id]

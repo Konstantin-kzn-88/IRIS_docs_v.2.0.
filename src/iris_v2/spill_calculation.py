@@ -22,11 +22,14 @@ SPILL_RELEASE_MODES = {
     "pipeline_liquid_partial",
     "liquid_phase_leak",
     "pump_release",
+    "well_liquid_full",
+    "well_liquid_partial",
 }
 FULL_SPILL_MODES = {
     "inventory_full",
     "pipeline_liquid_full",
     "pump_release",
+    "well_liquid_full",
 }
 SPILL_SOURCE_NAMES = {
     "calculated": "Расчёт по коэффициенту",

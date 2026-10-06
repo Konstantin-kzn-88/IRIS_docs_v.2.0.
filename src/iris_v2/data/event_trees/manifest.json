@@ -3,7 +3,7 @@
   "source": "typical_scenarios.json",
   "image_format": "PNG",
   "probability_note": "Pитог — accident_event_probability из typical_scenarios.json",
-  "image_count": 62,
+  "image_count": 63,
   "warnings": [],
   "items": [
     {
@@ -808,6 +808,19 @@
         "Частичная разгерметизация трубопровода": 1.0
       },
       "sha256": "020fd39aec9b95c03b7ecdecf0e107767d1a18a6312835f29c9fd313711f0b0a"
+    },
+    {
+      "equipment_type": 10,
+      "equipment_name": "Скважина",
+      "kind": 1,
+      "kind_name": "Токсичная ЛВЖ",
+      "file": "event_tree_eq10_kind01.png",
+      "scenario_count": 6,
+      "initiator_probability_totals": {
+        "Полная разгерметизация устьевого оборудования скважины": 1.0,
+        "Частичная разгерметизация устьевого оборудования скважины": 1.0
+      },
+      "sha256": "a15e126ff5a725dedcfbe4437656a5324fbaf4afb54fc52541a6b33760f23848"
     }
   ]
 }

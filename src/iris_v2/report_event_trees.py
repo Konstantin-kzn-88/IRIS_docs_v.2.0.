@@ -70,10 +70,10 @@ def prepare_event_trees(
         if (
             isinstance(equipment_type, bool)
             or not isinstance(equipment_type, int)
-            or equipment_type not in range(10)
+            or equipment_type not in range(11)
         ):
             raise ReportEventTreesError(
-                f"Сценарий {index}: equipment_type должен быть от 0 до 9"
+                f"Сценарий {index}: equipment_type должен быть от 0 до 10"
             )
         if isinstance(kind, bool) or not isinstance(kind, int) or kind not in range(10):
             raise ReportEventTreesError(
