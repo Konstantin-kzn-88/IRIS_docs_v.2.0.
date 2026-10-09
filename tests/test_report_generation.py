@@ -18,6 +18,7 @@ from iris_v2.report_generation import (
     ReportGenerationService,
 )
 from iris_v2.service import CreateProjectData, ProjectService
+from iris_v2.template_catalog import TemplateCatalogService
 
 
 def make_project(tmp_path: Path) -> Path:
@@ -1095,6 +1096,26 @@ def test_builtin_default_template_contains_only_supported_markers(
     assert "TOP_SCENARIOS_DAMAGE" not in result.deferred_markers
     assert "TOP_SCENARIOS_FINAL_CONCLUSION" not in result.deferred_markers
     assert "COMPONENT_INPUTS_ASSUMPTIONS_SECTION" not in result.deferred_markers
+
+
+def test_well_safety_case_template_is_generated(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    templates_root = Path(__file__).parents[1] / "templates"
+    TemplateCatalogService(templates_root).select(
+        project, "ОБ_нефтяная_скважина"
+    )
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+
+    result = ReportGenerationService().generate(project)
+
+    assert result.output_path.name == "OB_neft_well_out.docx"
+    assert result.output_path.is_file()
+    assert result.deferred_markers == ()
+    assert "EVENT_TREES_SECTION" in result.filled_sections
+    assert "TOP_SCENARIOS_DAMAGE" in result.filled_sections
 
 
 def test_report_refreshes_old_default_template_and_adds_event_trees(

@@ -312,41 +312,42 @@ def render_individual_risk_section(
     document: DocumentType,
     section_data: IndividualRiskSection,
 ) -> bool:
-    marker_paragraph = next(
-        (paragraph for paragraph in document.paragraphs if MARKER in paragraph.text),
-        None,
+    marker_paragraphs = tuple(
+        paragraph for paragraph in document.paragraphs if MARKER in paragraph.text
     )
-    if marker_paragraph is None:
+    if not marker_paragraphs:
         return False
     if section_data.no_people:
-        marker_paragraph.clear()
-        run = marker_paragraph.add_run(NO_PEOPLE_TEXT)
-        _set_font(run, 12)
+        for marker_paragraph in marker_paragraphs:
+            marker_paragraph.clear()
+            run = marker_paragraph.add_run(NO_PEOPLE_TEXT)
+            _set_font(run, 12)
         return True
 
-    table = document.add_table(rows=1, cols=3)
-    table.style = "Table Grid"
-    marker_paragraph._p.addnext(table._tbl)
-    headers = (
-        "Составляющая ОПО",
-        "Индивидуальный риск гибели, 1/год",
-        "Индивидуальный риск травмирования, 1/год",
-    )
-    for cell, value in zip(table.rows[0].cells, headers):
-        _set_cell_text(cell, value, bold=True, centered=True)
-        _shade(cell, "D9E1F2")
-    header_properties = table.rows[0]._tr.get_or_add_trPr()
-    repeat_header = OxmlElement("w:tblHeader")
-    repeat_header.set(qn("w:val"), "true")
-    header_properties.append(repeat_header)
-    for row_index, item in enumerate(section_data.rows):
-        cells = table.add_row().cells
-        values = (item["component"], item["fatalities"], item["injured"])
-        is_total = row_index == len(section_data.rows) - 1
-        for column, (cell, value) in enumerate(zip(cells, values)):
-            _set_cell_text(cell, value, bold=is_total, centered=column > 0)
-            if is_total:
-                _shade(cell, "E2F0D9")
-    marker_paragraph._element.getparent().remove(marker_paragraph._element)
-    _set_table_geometry(_paragraph_section(document, table._tbl), table)
+    for marker_paragraph in marker_paragraphs:
+        table = document.add_table(rows=1, cols=3)
+        table.style = "Table Grid"
+        marker_paragraph._p.addnext(table._tbl)
+        headers = (
+            "Составляющая ОПО",
+            "Индивидуальный риск гибели, 1/год",
+            "Индивидуальный риск травмирования, 1/год",
+        )
+        for cell, value in zip(table.rows[0].cells, headers):
+            _set_cell_text(cell, value, bold=True, centered=True)
+            _shade(cell, "D9E1F2")
+        header_properties = table.rows[0]._tr.get_or_add_trPr()
+        repeat_header = OxmlElement("w:tblHeader")
+        repeat_header.set(qn("w:val"), "true")
+        header_properties.append(repeat_header)
+        for row_index, item in enumerate(section_data.rows):
+            cells = table.add_row().cells
+            values = (item["component"], item["fatalities"], item["injured"])
+            is_total = row_index == len(section_data.rows) - 1
+            for column, (cell, value) in enumerate(zip(cells, values)):
+                _set_cell_text(cell, value, bold=is_total, centered=column > 0)
+                if is_total:
+                    _shade(cell, "E2F0D9")
+        marker_paragraph._element.getparent().remove(marker_paragraph._element)
+        _set_table_geometry(_paragraph_section(document, table._tbl), table)
     return True

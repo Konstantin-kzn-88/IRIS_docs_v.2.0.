@@ -872,45 +872,43 @@ def render_key_scenario_damage(
     document: DocumentType,
     rows: tuple[dict[str, str], ...],
 ) -> bool:
-    marker_paragraph = next(
-        (
-            paragraph
-            for paragraph in document.paragraphs
-            if DAMAGE_MARKER in paragraph.text
-        ),
-        None,
+    marker_paragraphs = tuple(
+        paragraph
+        for paragraph in document.paragraphs
+        if DAMAGE_MARKER in paragraph.text
     )
-    if marker_paragraph is None:
+    if not marker_paragraphs:
         return False
 
-    section = _paragraph_section(document, marker_paragraph._p)
-    table = document.add_table(rows=1, cols=3 + len(DAMAGE_FIELDS))
-    table.style = "Table Grid"
-    marker_paragraph._p.addnext(table._tbl)
-    headers = (
-        "Составляющая ОПО",
-        "Тип сценария",
-        "№",
-    ) + tuple(f"{label}, тыс. руб." for _, label in DAMAGE_FIELDS)
-    for cell, value in zip(table.rows[0].cells, headers):
-        _set_cell_text(cell, value, bold=True, centered=True, font_size=7)
-        _shade(cell, "D9E1F2")
-    repeat_header = OxmlElement("w:tblHeader")
-    repeat_header.set(qn("w:val"), "true")
-    table.rows[0]._tr.get_or_add_trPr().append(repeat_header)
+    for marker_paragraph in marker_paragraphs:
+        section = _paragraph_section(document, marker_paragraph._p)
+        table = document.add_table(rows=1, cols=3 + len(DAMAGE_FIELDS))
+        table.style = "Table Grid"
+        marker_paragraph._p.addnext(table._tbl)
+        headers = (
+            "Составляющая ОПО",
+            "Тип сценария",
+            "№",
+        ) + tuple(f"{label}, тыс. руб." for _, label in DAMAGE_FIELDS)
+        for cell, value in zip(table.rows[0].cells, headers):
+            _set_cell_text(cell, value, bold=True, centered=True, font_size=7)
+            _shade(cell, "D9E1F2")
+        repeat_header = OxmlElement("w:tblHeader")
+        repeat_header.set(qn("w:val"), "true")
+        table.rows[0]._tr.get_or_add_trPr().append(repeat_header)
 
-    for item in rows:
-        cells = table.add_row().cells
-        values = (
-            item["component"],
-            item["scenario_type"],
-            item["scenario_code"],
-        ) + tuple(item[field] for field, _ in DAMAGE_FIELDS)
-        for column, (cell, value) in enumerate(zip(cells, values)):
-            _set_cell_text(cell, value, centered=column >= 2, font_size=7.5)
+        for item in rows:
+            cells = table.add_row().cells
+            values = (
+                item["component"],
+                item["scenario_type"],
+                item["scenario_code"],
+            ) + tuple(item[field] for field, _ in DAMAGE_FIELDS)
+            for column, (cell, value) in enumerate(zip(cells, values)):
+                _set_cell_text(cell, value, centered=column >= 2, font_size=7.5)
 
-    marker_paragraph._element.getparent().remove(marker_paragraph._element)
-    _set_damage_table_geometry(section, table)
+        marker_paragraph._element.getparent().remove(marker_paragraph._element)
+        _set_damage_table_geometry(section, table)
     return True
 
 

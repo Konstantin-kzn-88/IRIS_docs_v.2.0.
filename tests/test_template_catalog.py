@@ -41,6 +41,20 @@ def test_catalog_loads_profiles_and_documents(tmp_path: Path) -> None:
     ]
 
 
+def test_repository_contains_well_safety_case_template() -> None:
+    templates_root = Path(__file__).parents[1] / "templates"
+
+    profiles = TemplateCatalogService(templates_root).load()
+    profile = next(
+        item for item in profiles if item.name == "ОБ_нефтяная_скважина"
+    )
+
+    assert [document.name for document in profile.documents] == [
+        "OB_neft_well.docx"
+    ]
+    assert profile.documents[0].size > 0
+
+
 def test_selection_copies_snapshot_and_writes_hashes(tmp_path: Path) -> None:
     root = tmp_path / "templates"
     source = root / "ДПБ_(экспл_СПТ)" / "Раздел.docx"

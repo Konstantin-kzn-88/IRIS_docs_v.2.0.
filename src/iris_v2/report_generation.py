@@ -759,7 +759,11 @@ class ReportGenerationService:
         template_paths = self._template_paths(project_root)
         timestamp = generated_at or datetime.now()
         if len(template_paths) == 1:
-            output_path = project_root / "output" / OUTPUT_FILE_NAME
+            output_path = (
+                project_root
+                / "output"
+                / self._output_file_name(template_paths[0].name)
+            )
             return self._generate_single(
                 project_root,
                 template_path=template_paths[0],
