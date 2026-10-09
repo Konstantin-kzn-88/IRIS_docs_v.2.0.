@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 from docx import Document
 from docx.enum.section import WD_SECTION
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
-from docx.shared import Pt
+from docx.shared import Cm, Pt
 
 from iris_v2.project_common import ProjectCommonService, new_project_common
 from iris_v2.report_generation import (
@@ -507,6 +508,46 @@ def test_opo_information_sections_override_default_texts(tmp_path: Path) -> None
     assert "Индивидуальный порядок оповещения населения." in text
     assert DEFAULT_SAFETY_MEASURES_TEXT not in text
     assert DEFAULT_PUBLIC_WARNING_AND_ACTIONS_TEXT not in text
+
+
+def test_generated_tables_do_not_inherit_body_paragraph_indents(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    path = install_ifl_template(project)
+    document = Document(path)
+    normal = document.styles["Normal"].paragraph_format
+    normal.first_line_indent = Cm(1.25)
+    normal.left_indent = Cm(0.5)
+    normal.right_indent = Cm(0.25)
+    document.add_paragraph("Обычный абзац")
+    existing = document.add_table(rows=1, cols=1)
+    existing.cell(0, 0).text = "Исходная таблица шаблона"
+    existing.cell(0, 0).paragraphs[0].paragraph_format.first_line_indent = Cm(1)
+    document.save(path)
+    config_path = project / "report_config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    config["documents"][0]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    config_path.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
+    write_substances(project)
+    write_equipment(project)
+    write_scenario_results(project)
+
+    result = ReportGenerationService().generate(project)
+    output = Document(result.output_path)
+    generated = output.tables[0]
+    for row in generated.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                assert paragraph.paragraph_format.first_line_indent == 0
+                assert paragraph.paragraph_format.left_indent == 0
+                assert paragraph.paragraph_format.right_indent == 0
+    assert generated.cell(0, 0).paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.CENTER
+    assert generated.cell(1, 1).paragraphs[0].alignment == WD_ALIGN_PARAGRAPH.LEFT
+    normal_indent = output.styles["Normal"].paragraph_format.first_line_indent
+    assert normal_indent.twips == Cm(1.25).twips
+    ordinary = next(p for p in output.paragraphs if p.text == "Обычный абзац")
+    assert ordinary.paragraph_format.first_line_indent is None
+    existing_paragraph = output.tables[-1].cell(0, 0).paragraphs[0]
+    assert existing_paragraph.paragraph_format.first_line_indent.twips == Cm(1).twips
 
 
 def test_table_and_figure_related_text_is_times_new_roman_11(

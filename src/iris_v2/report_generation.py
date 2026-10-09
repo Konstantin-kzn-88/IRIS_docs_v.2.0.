@@ -460,6 +460,19 @@ def _normalize_generated_content(
     ]
     for table in generated_tables:
         _set_generated_table_full_width(table)
+        for paragraph in table.iter(qn("w:p")):
+            # Table cells must not inherit the body text's first-line indent.
+            properties = paragraph.get_or_add_pPr()
+            indent = properties.find(qn("w:ind"))
+            if indent is None:
+                indent = OxmlElement("w:ind")
+                properties.append(indent)
+            indent.attrib.clear()
+            for name in (
+                "left", "right", "firstLine",
+                "leftChars", "rightChars", "firstLineChars",
+            ):
+                indent.set(qn(f"w:{name}"), "0")
 
     generated_paragraphs = {
         paragraph
