@@ -59,9 +59,9 @@
         "eur_account": ""
       },
       "public_information_contact": {
-        "position": "",
-        "full_name": "",
-        "phone": ""
+        "position": "-",
+        "full_name": "-",
+        "phone": "-"
       }
     },
     "permits": {
