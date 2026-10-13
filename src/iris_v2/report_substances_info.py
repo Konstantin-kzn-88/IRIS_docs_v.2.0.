@@ -32,6 +32,20 @@ def _property(value: Any, label: str, unit: str) -> str | None:
     return f"{label} {text} {unit}".strip()
 
 
+def _range_property(value: Any, label: str, unit: str) -> str | None:
+    if (
+        not isinstance(value, list)
+        or len(value) != 2
+        or not all(_is_value(item) for item in value)
+    ):
+        return None
+    limits = (
+        _number(item) if isinstance(item, (int, float)) else str(item).strip()
+        for item in value
+    )
+    return f"{label} {'-'.join(limits)} {unit}".strip()
+
+
 def short_substance_characteristic(item: dict[str, Any]) -> str:
     kind = item.get("kind")
     parts = [KIND_NAMES[kind]] if kind in KIND_NAMES else []
@@ -42,12 +56,24 @@ def short_substance_characteristic(item: dict[str, Any]) -> str:
     toxicity = (
         item.get("toxicity") if isinstance(item.get("toxicity"), dict) else {}
     )
-    properties = [
-        _property(
+    if kind in {2, 3, 7}:
+        density = _range_property(
+            physical.get("density_gas_range_kg_per_m3"),
+            "плотность газа",
+            "кг/м³",
+        ) or _property(
+            physical.get("density_gas_kg_per_m3"),
+            "плотность газа",
+            "кг/м³",
+        )
+    else:
+        density = _property(
             physical.get("density_liquid_kg_per_m3"),
             "плотность жидкости",
             "кг/м³",
-        ),
+        )
+    properties = [
+        density,
         _property(physical.get("boiling_point_C"), "температура кипения", "°C"),
         _property(explosion.get("flash_point_C"), "температура вспышки", "°C"),
         _property(

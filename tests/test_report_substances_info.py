@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from docx import Document
 
 from iris_v2.report_substances_info import (
@@ -29,6 +32,24 @@ def test_short_characteristic_contains_properties_and_human_impact() -> None:
     assert "Воздействие на людей: Пары раздражают органы дыхания" in text
     assert "Способы обезвреживания: Собрать механическим способом" in text
     assert "Первая помощь: Вывести пострадавшего на свежий воздух" in text
+
+
+def test_associated_gas_uses_gas_density_range() -> None:
+    path = (
+        Path(__file__).parents[1]
+        / "substances"
+        / "archive"
+        / "DNS_UPSV"
+        / "41_neft_gas.json"
+    )
+    item = json.loads(path.read_text(encoding="utf-8"))
+
+    text = short_substance_characteristic(item)
+
+    assert text.startswith(
+        "Горючий газ. Основные свойства: плотность газа 1,1-4,5 кг/м³"
+    )
+    assert "плотность жидкости 450 кг/м³" not in text
 
 
 def test_table_replaces_marker_and_has_two_columns() -> None:

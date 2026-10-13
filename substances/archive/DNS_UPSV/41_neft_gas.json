@@ -52,6 +52,10 @@
     "molar_mass_kg_per_mol": 0.022,
     "density_liquid_kg_per_m3": 450,
     "density_gas_kg_per_m3": 1.1,
+    "density_gas_range_kg_per_m3": [
+      1.1,
+      4.5
+    ],
     "evaporation_heat_J_per_kg": 350000,
     "boiling_point_C": null
   },
