@@ -1,0 +1,50 @@
+{
+  "id": 40,
+  "name": "Синтез-газ для производства метанола",
+  "kind": 3,
+  "formula": "CO + H2",
+  "composition": {
+    "components": [
+      {
+        "name": "Оксид углерода (CO)",
+        "mass_fraction": 0.932858189569
+      },
+      {
+        "name": "Водород (H2)",
+        "mass_fraction": 0.067141810431
+      }
+    ]
+  },
+  "notes": "Горючая токсичная смесь CO и H2 в объёмном соотношении 1:1.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.030026,
+    "density_liquid_kg_per_m3": null,
+    "density_gas_kg_per_m3": 1.25,
+    "evaporation_heat_J_per_kg": null,
+    "boiling_point_C": null
+  },
+  "explosion": {
+    "explosion_hazard_class": 1,
+    "flash_point_C": null,
+    "lel_percent": 4,
+    "autoignition_temp_C": null,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 7,
+    "heat_of_combustion_kJ_per_kg": 120000,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": null,
+    "pdk_mg_per_m3": null,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горючая смесь. Реакционные свойства зависят от состава и условий процесса.",
+  "odor": "Наличие запаха зависит от примесей; обнаружение приборными средствами.",
+  "corrosiveness": "Зависит от примесей и условий эксплуатации; данные не предоставлены.",
+  "precautions": "Контроль герметичности, вентиляция, приборный контроль CO и горючих газов, исключение источников зажигания.",
+  "impact": "Возможны токсическое воздействие компонента CO и пожаровзрывоопасные последствия.",
+  "protection": "При аварийном входе в неизвестную или опасную концентрацию — изолирующий дыхательный аппарат с положительным давлением.",
+  "neutralization_methods": "Прекратить подачу смеси, изолировать утечку, организовать безопасное удаление газа по инструкции объекта.",
+  "first_aid": "Удалить пострадавшего из загрязнённой зоны без риска для спасателя. Немедленно вызвать медицинскую помощь."
+}

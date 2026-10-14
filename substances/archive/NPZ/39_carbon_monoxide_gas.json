@@ -1,0 +1,50 @@
+{
+  "id": 39,
+  "name": "Оксид углерода (CO, газ)",
+  "kind": 3,
+  "formula": "CO",
+  "composition": {
+    "components": [
+      {
+        "name": "Оксид углерода (CO)",
+        "mass_fraction": null
+      },
+      {
+        "name": "Примеси неустановленного состава",
+        "mass_fraction": null
+      }
+    ]
+  },
+  "notes": "Бесцветный горючий токсичный газ без запаха.",
+  "physical": {
+    "molar_mass_kg_per_mol": 0.02801,
+    "density_liquid_kg_per_m3": null,
+    "density_gas_kg_per_m3": 1.25,
+    "evaporation_heat_J_per_kg": null,
+    "boiling_point_C": -192
+  },
+  "explosion": {
+    "explosion_hazard_class": 4,
+    "flash_point_C": null,
+    "lel_percent": 12.5,
+    "autoignition_temp_C": 605,
+    "energy_reserve_factor": 1,
+    "expansion_degree": 7,
+    "heat_of_combustion_kJ_per_kg": 10102.82,
+    "burning_rate_kg_per_s_m2": null
+  },
+  "toxicity": {
+    "hazard_class": 4,
+    "pdk_mg_per_m3": 20,
+    "lethal_tox_dose_mg_min_per_L": null,
+    "threshold_tox_dose_mg_min_per_L": null
+  },
+  "reactivity": "Горит при наличии кислорода с образованием CO2; несовместим с сильными окислителями.",
+  "odor": "Без запаха.",
+  "corrosiveness": "Данные для конкретных материалов оборудования не предоставлены.",
+  "precautions": "Герметизация оборудования, вентиляция, контроль CO приборами; исключение источников зажигания.",
+  "impact": "Токсическое поражение при вдыхании; при воспламенении — тепловое воздействие, при взрыве — ударная волна.",
+  "protection": "При аварийном входе в неизвестную или опасную концентрацию — изолирующий дыхательный аппарат с положительным давлением.",
+  "neutralization_methods": "Прекратить подачу газа, изолировать утечку, обеспечить безопасное рассеивание под приборным контролем.",
+  "first_aid": "Удалить пострадавшего из загрязнённой зоны без риска для спасателя. Немедленно вызвать медицинскую помощь."
+}

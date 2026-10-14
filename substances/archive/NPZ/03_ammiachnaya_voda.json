@@ -1,7 +1,7 @@
 {
   "id": 3,
   "name": "Аммиачная вода",
-  "kind": 1,
+  "kind": 6,
   "formula": "NH4OH (NH3 · H2O)",
   "composition": {
     "components": [
