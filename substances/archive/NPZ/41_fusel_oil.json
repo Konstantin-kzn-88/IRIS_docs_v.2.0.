@@ -35,7 +35,7 @@
   "physical": {
     "molar_mass_kg_per_mol": 0.15,
     "density_liquid_kg_per_m3": 837,
-    "density_gas_kg_per_m3": null,
+    "density_gas_kg_per_m3": 3.5,
     "evaporation_heat_J_per_kg": 110000,
     "boiling_point_C": 168
   },
