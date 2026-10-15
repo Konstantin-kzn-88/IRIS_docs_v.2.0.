@@ -16,6 +16,8 @@ from iris_v2.report_component_fatality_risk import (
 
 
 MARKER = "{{NGK_BACKGROUND_RISK_COMPARISON}}"
+PETROCHEMICAL_MARKER = "{{PETROCHEMICAL_BACKGROUND_RISK_COMPARISON}}"
+PETROCHEMICAL_INDUSTRY = "Нефтехимическая промышленность"
 BACKGROUND_VALUES = (
     ("Нефтегазодобывающая промышленность", -4.3, 7.3),
     ("Нефтеперерабатывающая промышленность", -5.8, 5.2),
@@ -50,6 +52,8 @@ def _comparison(calculated: float, background: float) -> str:
 
 def load_ngk_background_risk_rows(
     project_directory: Path | str,
+    *,
+    industry: str | None = None,
 ) -> tuple[str, tuple[dict[str, str], ...]]:
     try:
         component_rows = load_component_fatality_risk_rows(project_directory)
@@ -65,7 +69,7 @@ def load_ngk_background_risk_rows(
     maximum_text = NOT_CALCULATED if maximum is None else f"{maximum:.3E}"
     rows = tuple(
         {
-            "industry": industry,
+            "industry": industry_name,
             "dbr": _decimal(dbr),
             "per_100k": _decimal(per_100k),
             "per_year": f"{per_100k / 100_000:.3E}",
@@ -75,7 +79,8 @@ def load_ngk_background_risk_rows(
                 else _comparison(maximum, per_100k / 100_000)
             ),
         }
-        for industry, dbr, per_100k in BACKGROUND_VALUES
+        for industry_name, dbr, per_100k in BACKGROUND_VALUES
+        if industry is None or industry_name == industry
     )
     return maximum_text, rows
 
@@ -183,9 +188,11 @@ def render_ngk_background_risk_comparison(
     document: DocumentType,
     maximum_risk: str,
     rows: tuple[dict[str, str], ...],
+    *,
+    marker: str = MARKER,
 ) -> bool:
     marker_paragraph = next(
-        (paragraph for paragraph in document.paragraphs if MARKER in paragraph.text),
+        (paragraph for paragraph in document.paragraphs if marker in paragraph.text),
         None,
     )
     if marker_paragraph is None:
@@ -207,7 +214,7 @@ def render_ngk_background_risk_comparison(
     table._tbl.addnext(note._p)
     _set_paragraph_text(note, SOURCE_NOTE, font_size=7.5, space_before=2)
     headers = (
-        "Отрасль нефтегазового комплекса",
+        ("Отрасль нефтегазового комплекса" if marker == MARKER else "Отрасль промышленности"),
         "Уровень риска, дБR",
         "Погибших на 100 тыс. рискующих",
         "Фоновый риск, 1/год",
@@ -238,6 +245,8 @@ def render_ngk_background_risk_comparison(
 __all__ = [
     "BACKGROUND_VALUES",
     "MARKER",
+    "PETROCHEMICAL_MARKER",
+    "PETROCHEMICAL_INDUSTRY",
     "ReportNgkBackgroundRiskError",
     "load_ngk_background_risk_rows",
     "render_ngk_background_risk_comparison",

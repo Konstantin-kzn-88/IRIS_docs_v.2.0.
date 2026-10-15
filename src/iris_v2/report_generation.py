@@ -112,6 +112,7 @@ from iris_v2.report_max_damage import (
     render_max_damage_section,
 )
 from iris_v2.report_ngk_background_risk import (
+    PETROCHEMICAL_INDUSTRY,
     ReportNgkBackgroundRiskError,
     load_ngk_background_risk_rows,
     render_ngk_background_risk_comparison,
@@ -214,6 +215,7 @@ SUPPORTED_SECTION_MARKERS = frozenset(
         "FATALITY_RISK_BY_COMPONENT_SECTION",
         "COMPARATIVE_FATALITY_RISK_TABLE",
         "NGK_BACKGROUND_RISK_COMPARISON",
+        "PETROCHEMICAL_BACKGROUND_RISK_COMPARISON",
         "SUBSTANCES_BY_COMPONENT_TABLE",
         "TOP_SCENARIOS_DESC_BY_COMPONENT",
         "TOP_SCENARIOS_PF_BY_COMPONENT",
@@ -1136,15 +1138,21 @@ class ReportGenerationService:
                     filled_sections.append("COMPARATIVE_FATALITY_RISK_TABLE")
             except ReportComparativeFatalityRiskError as exc:
                 raise ReportGenerationError(str(exc)) from exc
-        if "NGK_BACKGROUND_RISK_COMPARISON" in marker_names:
-            try:
-                maximum_risk, rows = load_ngk_background_risk_rows(project_root)
-                if render_ngk_background_risk_comparison(
-                    document, maximum_risk, rows
-                ):
-                    filled_sections.append("NGK_BACKGROUND_RISK_COMPARISON")
-            except ReportNgkBackgroundRiskError as exc:
-                raise ReportGenerationError(str(exc)) from exc
+        for background_marker, industry in (
+            ("NGK_BACKGROUND_RISK_COMPARISON", None),
+            ("PETROCHEMICAL_BACKGROUND_RISK_COMPARISON", PETROCHEMICAL_INDUSTRY),
+        ):
+            if background_marker in marker_names:
+                try:
+                    maximum_risk, rows = load_ngk_background_risk_rows(
+                        project_root, industry=industry
+                    )
+                    if render_ngk_background_risk_comparison(
+                        document, maximum_risk, rows, marker=f"{{{{{background_marker}}}}}"
+                    ):
+                        filled_sections.append(background_marker)
+                except ReportNgkBackgroundRiskError as exc:
+                    raise ReportGenerationError(str(exc)) from exc
         if "SUBSTANCES_BY_COMPONENT_TABLE" in marker_names:
             try:
                 rows = load_substances_by_component_rows(project_root)
@@ -1249,6 +1257,7 @@ class ReportGenerationService:
             "FATALITY_RISK_BY_COMPONENT_SECTION",
             "COMPARATIVE_FATALITY_RISK_TABLE",
             "NGK_BACKGROUND_RISK_COMPARISON",
+            "PETROCHEMICAL_BACKGROUND_RISK_COMPARISON",
             "TOP_SCENARIOS_DESC_BY_COMPONENT", "TOP_SCENARIOS_PF_BY_COMPONENT",
             "TOP_SCENARIOS_FATALITIES_INJURED", "TOP_SCENARIOS_DAMAGE",
             "TOP_SCENARIOS_FINAL_CONCLUSION",
@@ -1308,6 +1317,7 @@ class ReportGenerationService:
             "MAX_DAMAGE_BY_COMPONENT_SECTION", "FN_CHART", "FG_CHART",
             "DAMAGE_BY_COMPONENT_CHART", "FATALITY_RISK_BY_COMPONENT_SECTION",
             "COMPARATIVE_FATALITY_RISK_TABLE", "NGK_BACKGROUND_RISK_COMPARISON",
+            "PETROCHEMICAL_BACKGROUND_RISK_COMPARISON",
         }
         if marker_names & summary_markers:
             require_fresh("risk_summary.json", ("risk_results.json",), "Свод риска")

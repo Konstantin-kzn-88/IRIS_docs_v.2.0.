@@ -4,6 +4,8 @@ from pathlib import Path
 from docx import Document
 
 from iris_v2.report_ngk_background_risk import (
+    PETROCHEMICAL_INDUSTRY,
+    PETROCHEMICAL_MARKER,
     SOURCE_NOTE,
     load_ngk_background_risk_rows,
     render_ngk_background_risk_comparison,
@@ -101,6 +103,31 @@ def test_missing_individual_risk_is_not_compared(tmp_path: Path) -> None:
 
     assert maximum == "Не рассчитан"
     assert all(row["comparison"] == "Не рассчитан" for row in rows)
+
+
+def test_petrochemical_comparison_excludes_other_industries(tmp_path: Path) -> None:
+    prepare_project(tmp_path, 4e-6)
+    maximum, rows = load_ngk_background_risk_rows(
+        tmp_path, industry=PETROCHEMICAL_INDUSTRY
+    )
+    assert len(rows) == 1
+    assert rows[0]["industry"] == PETROCHEMICAL_INDUSTRY
+    assert rows[0]["per_year"] == "2.400E-05"
+    assert rows[0]["comparison"] == "Ниже в 6,0 раза"
+    document = Document()
+    document.add_paragraph(PETROCHEMICAL_MARKER)
+
+    assert render_ngk_background_risk_comparison(
+        document, maximum, rows, marker=PETROCHEMICAL_MARKER
+    )
+    text = "\n".join(
+        [paragraph.text for paragraph in document.paragraphs]
+        + [cell.text for table in document.tables for row in table.rows for cell in row.cells]
+    )
+    assert PETROCHEMICAL_MARKER not in text
+    assert PETROCHEMICAL_INDUSTRY in text
+    assert "Нефтегазодобывающая" not in text
+    assert "Нефтеперерабатывающая" not in text
 
 
 def test_section_replaces_marker_and_adds_source_note() -> None:

@@ -699,6 +699,49 @@ def test_template_set_creates_three_reports(tmp_path: Path) -> None:
     assert result.replaced_count == 3
 
 
+def test_real_petrochemical_template_set_creates_three_reports(tmp_path: Path) -> None:
+    project = make_project(tmp_path)
+    write_substances(project)
+    write_equipment(project)
+    write_amount_results(project)
+    write_scenario_results(project)
+    templates = Path(__file__).parents[1] / "templates"
+    TemplateCatalogService(templates).select(project, "ДПБ_нефтехимия")
+
+    result = ReportGenerationService().generate(project)
+
+    assert [path.name for path in result.output_paths] == [
+        "DPB_neftekhimiya.docx",
+        "IFL_neftekhimiya.docx",
+        "RPZ_neftekhimiya.docx",
+    ]
+    assert "PETROCHEMICAL_BACKGROUND_RISK_COMPARISON" in result.filled_sections
+    for path in result.output_paths:
+        text = all_text(Document(path))
+        assert "Нефтегазодобывающая" not in text
+        assert "{{PETROCHEMICAL_BACKGROUND_RISK_COMPARISON}}" not in text
+    rpz = all_text(Document(result.output_paths[2]))
+    assert "Нефтехимическая промышленность" in rpz
+    assert "2.400E-05" in rpz
+    assert set(result.deferred_markers) <= {"SITE_LOCATION_PLAN", "PROCESS_FLOW_DIAGRAM"}
+
+
+def test_petrochemical_comparison_rejects_stale_risk(tmp_path: Path) -> None:
+    risk = tmp_path / "risk_results.json"
+    damage = tmp_path / "damage_results.json"
+    frequency = tmp_path / "frequency_results.json"
+    database = tmp_path / "project.sqlite3"
+    for path in (risk, damage, frequency, database):
+        path.write_text("{}", encoding="utf-8")
+    newer = risk.stat().st_mtime_ns + 1_000_000_000
+    os.utime(damage, ns=(newer, newer))
+
+    with pytest.raises(ReportGenerationError, match="Риски.*устарели"):
+        ReportGenerationService._ensure_calculation_chain_is_fresh(
+            tmp_path, {"PETROCHEMICAL_BACKGROUND_RISK_COMPARISON"}
+        )
+
+
 def test_scalar_markers_are_filled_and_blocks_are_preserved(tmp_path: Path) -> None:
     project = make_project(tmp_path)
     install_template(project)
