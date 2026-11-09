@@ -321,6 +321,8 @@ def _sanitary_zone(value: Any) -> str:
 
 def _sanitary_zone_text(value: Any) -> str:
     zone = _sanitary_zone(value)
+    if zone.strip().casefold() == "не применимо":
+        return "Санитарно-защитная зона для объекта не применима."
     if zone == "отсутствует":
         return "Для объекта санитарно-защитная зона отсутствует."
     return (
