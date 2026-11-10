@@ -7,27 +7,27 @@
     "components": [
       {
         "name": "Амиловые спирты",
-        "mass_fraction": null
+        "mass_fraction": 0.05
       },
       {
         "name": "Изобутиловый спирт",
-        "mass_fraction": null
+        "mass_fraction": 0.8
       },
       {
         "name": "н-Пропиловый спирт",
-        "mass_fraction": null
+        "mass_fraction": 0.8
       },
       {
         "name": "Этиловый спирт",
-        "mass_fraction": null
+        "mass_fraction": 0.3
       },
       {
         "name": "Вода",
-        "mass_fraction": null
+        "mass_fraction": 0
       },
       {
         "name": "Прочие органические примеси",
-        "mass_fraction": null
+        "mass_fraction": 1
       }
     ]
   },
